@@ -1,0 +1,4 @@
+Efficient implementation of binary segmentation
+
+This version uses the [[http://www.rcpp.org/][Rcpp]]/.Call interface whereas the [[https://github.com/tdhock/binseg][binseg]] package
+uses the .C interface.
