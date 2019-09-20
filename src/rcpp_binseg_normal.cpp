@@ -1,12 +1,13 @@
 /* -*- compile-command: "R -e \"Rcpp::compileAttributes('..')\" && R CMD INSTALL .. && R --vanilla < ../tests/testthat/test_binseg_normal.R" -*- */
 
 #include <Rcpp.h>
+#include <R.h>
 #include "binseg_normal.h"
  
 // [[Rcpp::export]]
 Rcpp::List rcpp_binseg_normal
-(const Rcpp::NumericVector &data_vec,
- const Rcpp::IntegerVector &max_segments) {
+(const Rcpp::NumericVector data_vec,
+ const Rcpp::IntegerVector max_segments) {
   int kmax = max_segments[0];
   Rcpp::IntegerVector end(kmax);
   Rcpp::NumericVector loss(kmax);
