@@ -8,6 +8,12 @@
 Rcpp::List rcpp_binseg_normal
 (const Rcpp::NumericVector data_vec,
  const Rcpp::IntegerVector max_segments) {
+  if(max_segments.size() != 1){
+    Rcpp::stop("length(max_segments)=%d but should be 1", max_segments.size());
+  }
+  if(Rcpp::is_na(max_segments)[0]){
+    Rcpp::stop("max_segments should NOT be NA");
+  }
   int kmax = max_segments[0];
   Rcpp::IntegerVector end(kmax);
   Rcpp::NumericVector loss(kmax);

@@ -2,6 +2,18 @@ library(binsegRcpp)
 library(testthat)
 context("rcpp_binseg_normal")
 
+test_that("error for NA max_segments", {
+  expect_error({
+    binseg_normal(rnorm(5), NA)
+  }, "max_segments should NOT be NA")
+})
+
+test_that("error for length(max_segments)=0", {
+  expect_error({
+    binseg_normal(rnorm(5), integer())
+  }, "length(max_segments)=0 but should be 1", fixed=TRUE)
+})
+
 test_that("equal split cost is ok", {
   x <- c(0, 0.1, 1, 1.1, 0, 0.1)
   L <- rcpp_binseg_normal(x, length(x))
