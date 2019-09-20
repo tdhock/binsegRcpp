@@ -1,0 +1,5 @@
+useDynLib(binsegRcpp, .registration=TRUE)
+exportPattern("^[[:alpha:]]+")
+import(data.table)
+importFrom(Rcpp, evalCpp)
+
