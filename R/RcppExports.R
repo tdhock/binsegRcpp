@@ -5,3 +5,7 @@ rcpp_binseg_normal <- function(data_vec, max_segments) {
     .Call(`_binsegRcpp_rcpp_binseg_normal`, data_vec, max_segments)
 }
 
+rcpp_binseg_normal_cost <- function(data_vec, max_segments) {
+    .Call(`_binsegRcpp_rcpp_binseg_normal_cost`, data_vec, max_segments)
+}
+

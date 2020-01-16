@@ -1,5 +1,3 @@
-/* -*- compile-command: "R CMD INSTALL .. && R --vanilla < ../tests/testthat/test_binseg_normal.R" -*- */
-
 #include "binseg_normal.h"
 #include <math.h>
 #include <map>
