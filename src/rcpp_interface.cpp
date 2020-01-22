@@ -1,5 +1,4 @@
 #include <Rcpp.h>
-#include <R.h>
 #include "binseg_normal.h"
 #include "binseg_normal_cost.h"
  
@@ -47,8 +46,7 @@ Rcpp::List rcpp_binseg_normal
 // [[Rcpp::export]]
 Rcpp::List rcpp_binseg_normal_cost
 (const Rcpp::NumericVector data_vec,
- const Rcpp::IntegerVector max_segments) {
-  int kmax = max_segments[0];
+ int kmax) {
   Rcpp::NumericVector loss(kmax);
   binseg_normal_cost
     (&data_vec[0], data_vec.size(), kmax,
