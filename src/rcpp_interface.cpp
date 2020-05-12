@@ -5,9 +5,10 @@
  
 // [[Rcpp::export]]
 Rcpp::List rcpp_binseg_normal
-(const Rcpp::NumericVector data_vec,
- const Rcpp::IntegerVector max_segments) {
+(Rcpp::NumericVector data_vec,
+ Rcpp::IntegerVector max_segments) {
   int kmax = max_segments[0];
+  max_segments[0] = 5;
   Rcpp::IntegerVector end(kmax);
   Rcpp::NumericVector loss(kmax);
   Rcpp::NumericVector before_mean(kmax);

@@ -6,13 +6,13 @@
 using namespace Rcpp;
 
 // rcpp_binseg_normal
-Rcpp::List rcpp_binseg_normal(const Rcpp::NumericVector data_vec, const Rcpp::IntegerVector max_segments);
+Rcpp::List rcpp_binseg_normal(Rcpp::NumericVector data_vec, Rcpp::IntegerVector max_segments);
 RcppExport SEXP _binsegRcpp_rcpp_binseg_normal(SEXP data_vecSEXP, SEXP max_segmentsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type data_vec(data_vecSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::IntegerVector >::type max_segments(max_segmentsSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type data_vec(data_vecSEXP);
+    Rcpp::traits::input_parameter< Rcpp::IntegerVector >::type max_segments(max_segmentsSEXP);
     rcpp_result_gen = Rcpp::wrap(rcpp_binseg_normal(data_vec, max_segments));
     return rcpp_result_gen;
 END_RCPP
