@@ -5,6 +5,39 @@
 
 using namespace Rcpp;
 
+// read_memory
+int read_memory(int i);
+RcppExport SEXP _binsegRcpp_read_memory(SEXP iSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type i(iSEXP);
+    rcpp_result_gen = Rcpp::wrap(read_memory(i));
+    return rcpp_result_gen;
+END_RCPP
+}
+// read_new
+int read_new(int i);
+RcppExport SEXP _binsegRcpp_read_new(SEXP iSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type i(iSEXP);
+    rcpp_result_gen = Rcpp::wrap(read_new(i));
+    return rcpp_result_gen;
+END_RCPP
+}
+// read_malloc
+int read_malloc(int i);
+RcppExport SEXP _binsegRcpp_read_malloc(SEXP iSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type i(iSEXP);
+    rcpp_result_gen = Rcpp::wrap(read_malloc(i));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rcpp_binseg_normal
 Rcpp::List rcpp_binseg_normal(Rcpp::NumericVector data_vec, Rcpp::IntegerVector max_segments);
 RcppExport SEXP _binsegRcpp_rcpp_binseg_normal(SEXP data_vecSEXP, SEXP max_segmentsSEXP) {
@@ -31,6 +64,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_binsegRcpp_read_memory", (DL_FUNC) &_binsegRcpp_read_memory, 1},
+    {"_binsegRcpp_read_new", (DL_FUNC) &_binsegRcpp_read_new, 1},
+    {"_binsegRcpp_read_malloc", (DL_FUNC) &_binsegRcpp_read_malloc, 1},
     {"_binsegRcpp_rcpp_binseg_normal", (DL_FUNC) &_binsegRcpp_rcpp_binseg_normal, 2},
     {"_binsegRcpp_rcpp_binseg_normal_cost", (DL_FUNC) &_binsegRcpp_rcpp_binseg_normal_cost, 2},
     {NULL, NULL, 0}

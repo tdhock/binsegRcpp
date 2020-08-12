@@ -2,13 +2,35 @@
 #include <R.h>
 #include "binseg_normal.h"
 #include "binseg_normal_cost.h"
- 
+
+// [[Rcpp::export]]
+int read_vector(int i){
+  Rcpp::IntegerVector x(0);
+  return x[i];
+}
+
+// [[Rcpp::export]]
+int read_new(int i){
+  int* ptr = new int[0];
+  int x = ptr[i];
+  delete[] ptr;
+  return x;
+}
+
+// [[Rcpp::export]]
+int read_malloc(int i){
+  int *ptr = (int*)malloc(0);
+  int x = ptr[i];
+  free(ptr);
+  return x;
+}
+
 // [[Rcpp::export]]
 Rcpp::List rcpp_binseg_normal
 (Rcpp::NumericVector data_vec,
  Rcpp::IntegerVector max_segments) {
   int kmax = max_segments[0];
-  max_segments[0] = 5;
+  max_segments[10000000] = 5;
   Rcpp::IntegerVector end(kmax);
   Rcpp::NumericVector loss(kmax);
   Rcpp::NumericVector before_mean(kmax);
