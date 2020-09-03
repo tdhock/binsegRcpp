@@ -13,4 +13,4 @@ LinkingTo: Rcpp
 URL: https://github.com/tdhock/binseg
 BugReports: https://github.com/tdhock/binseg/issues
 Imports: data.table, Rcpp
-Suggests: ggplot2
+Suggests: ggplot2, testthat
