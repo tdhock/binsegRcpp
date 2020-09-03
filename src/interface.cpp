@@ -1,12 +1,11 @@
 #include <Rcpp.h>
 #include <R.h>
 #include "binseg_normal.h"
-#include "binseg_normal_cost.h"
  
 // [[Rcpp::export]]
 Rcpp::List rcpp_binseg_normal
 (const Rcpp::NumericVector data_vec,
- const double kmax) {
+ const int kmax) {
   if(data_vec.size() == 0){
     Rcpp::stop("no data"); 
   }
@@ -43,15 +42,3 @@ Rcpp::List rcpp_binseg_normal
      ) ;
 }
 
-// [[Rcpp::export]]
-Rcpp::List rcpp_binseg_normal_cost
-(const Rcpp::NumericVector data_vec,
- const Rcpp::IntegerVector max_segments) {
-  int kmax = max_segments[0];
-  Rcpp::NumericVector loss(kmax);
-  binseg_normal_cost
-    (&data_vec[0], data_vec.size(), kmax,
-     //inputs above, outputs below.
-     &loss[0]);
-  return Rcpp::List::create(Rcpp::Named("loss", loss));
-}

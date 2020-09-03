@@ -1,5 +1,8 @@
 language: r
 
+script:
+  - bash build.sh
+
 sudo: required
 
 notifications:

@@ -9,14 +9,14 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
 ### Maximum number of segments to compute, default=length(data.vec).
 ){
   result <- rcpp_binseg_normal(data.vec, max.segments)
-  na <- function(x)ifelse(x<0|x==Inf, NA, x)
+  na <- function(x)ifelse(x<0, NA, x)
   ##value<< data.table with a row for each model and columns
   with(result, data.table(
     segments=1:max.segments,##<< number of parameters
     loss=sum(data.vec^2)+loss,##<< square loss
     end=end+1L,##<< index of last data point per segment
     before.mean,##<< mean before changepoint
-    after.mean=na(after.mean),##<< mean after changepoint
+    after.mean=ifelse(after.mean==Inf, NA, after.mean),##<< mean after changepoint
     before.size,##<< number of data before changepoint
     after.size=na(after.size),##<< number of data after changepoint
     invalidates.index=na(invalidates.index+1L),##<< index of model parameter no longer used after this changepoint is used
