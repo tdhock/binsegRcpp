@@ -1,4 +1,66 @@
-Efficient implementation of binary segmentation
+binsegRcpp Efficient implementation of the binary segmentation
+heuristic algorithm for changepoint detection, using C++ std::map.
+
+| [[file:tests/testthat][tests]]    | [[https://travis-ci.org/tdhock/binsegRcpp][https://travis-ci.org/tdhock/binsegRcpp.png?branch=master]]                           |
+| [[https://github.com/jimhester/covr][coverage]] | [[https://coveralls.io/github/tdhock/binsegRcpp?branch=master][https://coveralls.io/repos/tdhock/binsegRcpp/badge.svg?branch=master&service=github]] |
+
+** Installation
+
+#+BEGIN_SRC R
+remotes::install_github("tdhock/binsegRcpp")
+#+END_SRC
+
+** Usage
+
+The main function is =binseg_normal= which takes arguments:
+- =data.vec= is a numeric vector of data to segment.
+- =max.segments= is a positive integer, the maximum number of segments
+  to consider (by default equal to the number of data points).
+
+#+BEGIN_SRC R
+> x <- c(0.1, 0, 1, 1.1, 0.1, 0)
+> (models.dt <- binsegRcpp::binseg_normal(x))
+   segments         loss end before.mean after.mean before.size after.size
+1:        1 1.348333e+00   6   0.3833333         NA           6         NA
+2:        2 1.015000e+00   4   0.5500000       0.05           4          2
+3:        3 1.500000e-02   2   0.0500000       1.05           2          2
+4:        4 1.000000e-02   5   0.1000000       0.00           1          1
+5:        5 5.000000e-03   1   0.1000000       0.00           1          1
+6:        6 4.440892e-16   3   1.0000000       1.10           1          1
+   invalidates.index invalidates.after
+1:                NA                NA
+2:                 1                 0
+3:                 2                 0
+4:                 2                 1
+5:                 3                 0
+6:                 3                 1
+#+END_SRC R
+
+The table above contains all of the data that are computed during the
+binary segmentation algorithm. It has a special class with dedicated
+methods:
+
+#+BEGIN_SRC R
+> class(models.dt)
+[1] "binseg_normal" "data.table"    "data.frame"   
+> methods(class="binseg_normal")
+[1] coef plot
+see '?methods' for accessing help and source code
+#+END_SRC
+
+The coef methods returns a data table of segment means:
+
+#+BEGIN_SRC R
+> coef(models.dt, segments=2:3)
+   segments start end mean
+1:        2     1   4 0.55
+2:        2     5   6 0.05
+3:        3     1   2 0.05
+4:        3     3   4 1.05
+5:        3     5   6 0.05
+#+BEGIN_SRC
+
+** Related work
 
 This version uses the [[http://www.rcpp.org/][Rcpp]]/.Call interface whereas the [[https://github.com/tdhock/binseg][binseg]] package
 uses the .C interface.
