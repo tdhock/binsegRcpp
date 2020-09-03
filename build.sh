@@ -4,6 +4,7 @@ PREGEX="^Package: "
 PKG=$(grep $PREGEX DESCRIPTION|sed "s/$PREGEX//")
 echo Package from DESCRIPTION: $PKG
 R -e "if(require(inlinedocs))package.skeleton.dx('.')"
+rm -f man/rcpp_binseg_normal.Rd 
 cd ..
 
 RELEASE=$PKG-release
