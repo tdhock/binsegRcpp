@@ -34,6 +34,13 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
       segments, loss),
       data=models.dt)
 
+  x <- -c(0.1, 0, 1, 1.1, 0.1, 0)
+  (models.dt <- binseg_normal(x))
+  ggplot()+
+    geom_point(aes(
+      segments, loss),
+      data=models.dt)
+
   segs.dt <- data.table(segments=1:nrow(models.dt))[, {
     i <- 1:segments
     cum.fit <- models.dt[i]

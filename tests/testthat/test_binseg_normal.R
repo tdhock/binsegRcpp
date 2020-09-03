@@ -27,7 +27,7 @@ test_that("error for 0 segments", {
   x <- c(4.1, 4, 1.1, 1)
   expect_error({
     rcpp_binseg_normal(x, 0L)
-  }, "no segments")
+  }, "kmax must be positive")
 })
 
 test_that("error for too many segments", {
@@ -37,3 +37,16 @@ test_that("error for too many segments", {
   }, "too many segments")
 })
 
+test_that("means ok for negative data", {
+  x <- c(0.2, 0, 1, 1.4, 3.6, 3)
+  pos.dt <- binseg_normal(x)
+  neg.dt <- binseg_normal(-x)
+  expect_equal(pos.dt[["loss"]], neg.dt[["loss"]])
+  expect_equal(pos.dt[["end"]], neg.dt[["end"]])
+  expect_equal(pos.dt[["before.mean"]], -neg.dt[["before.mean"]])
+  expect_equal(pos.dt[["after.mean"]], -neg.dt[["after.mean"]])
+  expect_equal(pos.dt[["before.size"]], neg.dt[["before.size"]])
+  expect_equal(pos.dt[["after.size"]], neg.dt[["after.size"]])
+  expect_equal(pos.dt[["invalidates.index"]], neg.dt[["invalidates.index"]])
+  expect_equal(pos.dt[["invalidates.after"]], neg.dt[["invalidates.after"]])
+})
