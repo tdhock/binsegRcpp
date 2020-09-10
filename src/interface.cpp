@@ -1,13 +1,17 @@
 #include <Rcpp.h>
 #include <R.h>
 #include "binseg_normal.h"
-#include "binseg_normal_cost.h"
  
 // [[Rcpp::export]]
 Rcpp::List rcpp_binseg_normal
 (const Rcpp::NumericVector data_vec,
- const Rcpp::IntegerVector max_segments) {
-  int kmax = max_segments[0];
+ const int kmax) {
+  if(data_vec.size() == 0){
+    Rcpp::stop("no data"); 
+  }
+  if(kmax < 1){
+    Rcpp::stop("kmax must be positive"); 
+  }
   Rcpp::IntegerVector end(kmax);
   Rcpp::NumericVector loss(kmax);
   Rcpp::NumericVector before_mean(kmax);
@@ -23,12 +27,6 @@ Rcpp::List rcpp_binseg_normal
      &before_mean[0], &after_mean[0],
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
-  if(status == ERROR_NO_DATA){
-    Rcpp::stop("no data"); 
-  }
-  if(status == ERROR_NO_SEGMENTS){
-    Rcpp::stop("no segments"); 
-  }
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments"); 
   }
@@ -44,15 +42,3 @@ Rcpp::List rcpp_binseg_normal
      ) ;
 }
 
-// [[Rcpp::export]]
-Rcpp::List rcpp_binseg_normal_cost
-(const Rcpp::NumericVector data_vec,
- const Rcpp::IntegerVector max_segments) {
-  int kmax = max_segments[0];
-  Rcpp::NumericVector loss(kmax);
-  binseg_normal_cost
-    (&data_vec[0], data_vec.size(), kmax,
-     //inputs above, outputs below.
-     &loss[0]);
-  return Rcpp::List::create(Rcpp::Named("loss", loss));
-}

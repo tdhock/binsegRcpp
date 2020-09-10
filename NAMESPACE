@@ -1,5 +1,6 @@
 useDynLib(binsegRcpp, .registration=TRUE)
-exportPattern("^[[:alpha:]]+")
 import(data.table)
 importFrom(Rcpp, evalCpp)
-
+export(binseg_normal)
+S3method("coef", "binseg_normal")
+S3method("plot", "binseg_normal")
