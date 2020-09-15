@@ -1,5 +1,11 @@
 TODOS
 
+2020.9.15
+
+remove unused C++ errors.
+
+test coef method.
+
 2020.9.3
 
 Bugfix for negative means, docs.

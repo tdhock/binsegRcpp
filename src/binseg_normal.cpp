@@ -53,12 +53,6 @@ public:
   }
 };
 
-class VectorTooSmall : public std::exception {
-  const char * what() const throw(){
-    return "Can NOT add segment because vector not large enough";
-  }
-};
-
 class SegVec {
 public:
   std::multimap<double,int> tree;
@@ -71,31 +65,38 @@ public:
     next_i = 0;
   }
   void add_segment(int first, int last, int invalidates_after, int invalidates_index){
-    if(next_i < seg_vec.size()){
-      seg_vec[next_i].init(data_vec, first, last, invalidates_after, invalidates_index);
-      if(first < last){
-	tree.insert
-	  (std::pair<double,int>(seg_vec[next_i].best_decrease, next_i));
-      }
-      next_i++;
-    }else{
-      throw VectorTooSmall();
+    seg_vec[next_i].init(data_vec, first, last, invalidates_after, invalidates_index);
+    if(first < last){
+      tree.insert
+	(std::pair<double,int>(seg_vec[next_i].best_decrease, next_i));
     }
+    next_i++;
   }
 };
 
+/* Binary segmentation algorithm for change in mean in the normal
+   distribution, cost function is square loss.
+
+   This code assumes, and the code which calls this function needs to
+   have error checking for, the following:
+
+   Positive number of data points (0 < n_data), data_vec is an array
+   of input data, size n_data.
+
+   Positive number of segments (0 < max_segments), all of the other
+   pointers are output arrays of size max_segments (need to be
+   allocated by the code which calls this function).
+
+   See coef.binseg_normal in R code for a procedure that uses these
+   output arrays to efficiently compute the segment means for any
+   model size.
+ */
 int binseg_normal
 (const double *data_vec, const int n_data, const int max_segments,
  int *seg_end, double *cost,
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size, 
  int *invalidates_index, int *invalidates_after){
-  if(n_data < 1){
-    return ERROR_NO_DATA;
-  }
-  if(max_segments < 1){
-    return ERROR_NO_SEGMENTS;
-  }
   if(n_data < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }

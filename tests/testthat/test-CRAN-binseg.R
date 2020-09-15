@@ -37,10 +37,10 @@ test_that("error for too many segments", {
   }, "too many segments")
 })
 
+x <- c(0.2, 0, 1, 1.4, 3.6, 3)
+pos.dt <- binseg_normal(x)
+neg.dt <- binseg_normal(-x)
 test_that("binseg_normal means ok for negative data", {
-  x <- c(0.2, 0, 1, 1.4, 3.6, 3)
-  pos.dt <- binseg_normal(x)
-  neg.dt <- binseg_normal(-x)
   expect_equal(pos.dt[["loss"]], neg.dt[["loss"]])
   expect_equal(pos.dt[["end"]], neg.dt[["end"]])
   expect_equal(pos.dt[["before.mean"]], -neg.dt[["before.mean"]])
@@ -51,10 +51,24 @@ test_that("binseg_normal means ok for negative data", {
   expect_equal(pos.dt[["invalidates.after"]], neg.dt[["invalidates.after"]])
 })
 
+test_that("error for invalid coef segments", {
+  expect_error({
+    coef(pos.dt, 12.5)
+  }, "segments must be a vector of unique integers between 1 and 6")
+  expect_error({
+    coef(pos.dt, -1L)
+  }, "segments must be a vector of unique integers between 1 and 6")
+  expect_error({
+    coef(pos.dt, 5:10)
+  }, "segments must be a vector of unique integers between 1 and 6")
+  segs.vec <- 5:6
+  segs.dt <- coef(pos.dt, segs.vec)
+  expect_equal(nrow(segs.dt), sum(segs.vec))
+})
+
+pos.list <- binsegRcpp:::rcpp_binseg_normal(x, length(x))
+neg.list <- binsegRcpp:::rcpp_binseg_normal(-x, length(x))
 test_that("rcpp_binseg_normal means ok for negative data", {
-  x <- c(0.2, 0, 1, 1.4, 3.6, 3)
-  pos.list <- binsegRcpp:::rcpp_binseg_normal(x, length(x))
-  neg.list <- binsegRcpp:::rcpp_binseg_normal(-x, length(x))
   expect_equal(pos.list[["loss"]], neg.list[["loss"]])
   expect_equal(pos.list[["end"]], neg.list[["end"]])
   expect_equal(pos.list[["before.mean"]], -neg.list[["before.mean"]])
