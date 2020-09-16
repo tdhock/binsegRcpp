@@ -10,7 +10,7 @@ Description: Standard template library
  worst case.
 License: GPL-3
 LinkingTo: Rcpp
-URL: https://github.com/tdhock/binseg
-BugReports: https://github.com/tdhock/binseg/issues
+URL: https://github.com/tdhock/binsegRcpp
+BugReports: https://github.com/tdhock/binsegRcpp/issues
 Imports: data.table, Rcpp
 Suggests: ggplot2, testthat
