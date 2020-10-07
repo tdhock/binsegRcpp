@@ -4,6 +4,24 @@
 #include <vector>
 #include <R.h>
 
+/* Compute optimal square loss for a segment with sum of data = s and
+   number of data = N.
+
+   If x_i is data point i, and s = sum_{i=1}^N x_i is the sum over N
+   data points, then the optimal mean is s/n and the optimal square
+   loss is
+
+   sum_{i=1}^N (x_i - s/N)^2 =
+
+   sum [x_i^2 - 2*(s/N)*s + N*(s/N)^2] =
+
+   sum [x_i^2] - s^2 / N
+
+   The first term (sum of squares of data) can be ignored during
+   optimization, because it does not depend on the optimization
+   variable (segment mean). It is added back after optimization, in
+   the R code.
+ */
 double optimal_cost(double s, int N){
   return -s*s/N;
 }

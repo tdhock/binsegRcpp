@@ -1,5 +1,9 @@
 TODOS
 
+2020.10.7
+
+Comment binseg_normal.cpp to explain optimal_cost computation.
+
 2020.9.15
 
 remove unused C++ errors.
