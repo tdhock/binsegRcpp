@@ -1,9 +1,45 @@
 #include "binseg_normal.h"
 #include <math.h>//INFINITY
 #include <set>//multiset
+#include <vector>
+#include <array>
 
-/* Compute optimal square loss for a segment with sum of data = s and
-   number of data = N.
+class MeanCost {
+public:
+  double mean, cost;
+};
+
+class Cumsums {
+public:
+  std::vector<double> cumsum_vec;
+  void init(const double *data_vec, const int n_data){
+    cumsum_vec.resize(n_data);
+    double total = 0.0;
+    for(int data_i=0; data_i<n_data; data_i++){
+      total += data_vec[data_i];
+      cumsum_vec[data_i] = total;
+    }
+  }
+  double get_sum(int first, int last){
+    double total = cumsum_vec[last];
+    if(0 < first){
+      total -= cumsum_vec[first-1];
+    }
+    return total;
+  }
+  void first_last_mean_cost
+  (int first, int last, double *mean, double *cost){
+    double s = get_sum(first, last);
+    int N = last-first+1;
+    *cost = -s*s/N;
+    *mean = s/N;
+  }
+  void first_last_mean_cost(int first, int last, MeanCost *mc){
+    first_last_mean_cost(first, last, &(mc->mean), &(mc->cost));
+  }
+};
+/* Above we compute the optimal square loss for a segment with sum of
+   data = s and number of data = N.
 
    If x_i is data point i, and s = sum_{i=1}^N x_i is the sum over N
    data points, then the optimal mean is s/n and the optimal square
@@ -11,7 +47,7 @@
 
    sum_{i=1}^N (x_i - s/N)^2 =
 
-   sum [x_i^2 - 2*(s/N)*s + N*(s/N)^2] =
+   sum [x_i^2] - 2*(s/N)*s + N*(s/N)^2 =
 
    sum [x_i^2] - s^2 / N
 
@@ -20,73 +56,69 @@
    variable (segment mean). It is added back after optimization, in
    the R code.
  */
-double optimal_cost(double s, int N){
-  return -s*s/N;
-}
+
+class Split {
+public:
+  int this_end;
+  std::array<MeanCost, 2> segs;
+  double set_mean_cost
+  (Cumsums &cumsums, int first, int end_i, int last){
+    this_end = end_i;
+    cumsums.first_last_mean_cost(first, end_i, &segs[0]);
+    cumsums.first_last_mean_cost(end_i+1, last, &segs[1]);
+    return segs[0].cost + segs[1].cost;
+  }
+};
 
 class Segment {
 public:
-  int first, last, best_end, invalidates_after, invalidates_index;
-  double cost, mean;
-  double best_mean_before, best_mean_after;
-  double best_cost, best_decrease;
+  int first, last, invalidates_after, invalidates_index;
+  double best_decrease;
+  Split best_split;
   friend bool operator<(const Segment& l, const Segment& r)
   {
     return l.best_decrease < r.best_decrease;
   }  
   Segment
-  (const double *data_vec, int first, int last,
-   int invalidates_after, int invalidates_index
+  (Cumsums &cumsums, int first, int last,
+   int invalidates_after, int invalidates_index,
+   double cost_no_split
    ): first(first), last(last),
       invalidates_after(invalidates_after),
       invalidates_index(invalidates_index)
   {
-    double sum_before = 0.0, sum_after = 0.0;
-    double cost_before, cost_after, cost_split, data_value;
-    for(int i=first; i <= last; i++){
-      sum_after += data_vec[i];
-    }
-    int n_total = last-first+1;
-    mean = sum_after/n_total;
-    cost = optimal_cost(sum_after, n_total);
-    int n_before, n_after, end_i;
+    Split candidate_split;
     int n_candidates = last-first;
-    best_cost = INFINITY;
+    double best_cost_split = INFINITY, cost_split;
     for(int ci=0; ci<n_candidates; ci++){
-      end_i = first+ci;
-      data_value = data_vec[end_i];
-      sum_before += data_value;
-      sum_after  -= data_value;
-      n_before = ci+1;
-      n_after = n_candidates-ci;
-      cost_before = optimal_cost(sum_before, n_before);
-      cost_after  = optimal_cost(sum_after, n_after);
-      cost_split = cost_before + cost_after;
-      if(cost_split < best_cost){
-	best_cost = cost_split;
-	best_mean_before = sum_before/n_before;
-	best_mean_after = sum_after/n_after;
-	best_end = end_i;
+      cost_split = candidate_split.set_mean_cost
+	(cumsums, first, first+ci, last);
+      if(cost_split < best_cost_split){
+	best_cost_split = cost_split;
+	best_split = candidate_split;
       }
     }
-    best_decrease = best_cost - cost;
+    best_decrease = best_cost_split - cost_no_split;
   }
 };
 
 class Candidates {
 public:
   std::multiset<Segment> candidates;
-  const double *data_vec;
-  Candidates(const double *data_vec): data_vec(data_vec) {};
+  Cumsums cumsums;
   void maybe_add
-  (int first, int last, int invalidates_after, int invalidates_index){
+  (int first, int last,
+   int invalidates_after, int invalidates_index,
+   double cost_no_split)
+  {
     if(first < last){
       // if it is possible to split (more than one data point on this
       // segment) then insert into the tree with key=best decrease in
       // cost, value=index of this segment for retrieval of parameters
       // / inserting new segments / deleting this segment.
       candidates.emplace
-	(data_vec, first, last, invalidates_after, invalidates_index);
+	(cumsums, first, last,
+	 invalidates_after, invalidates_index, cost_no_split);
     }
   }
 };
@@ -117,41 +149,43 @@ int binseg_normal
   if(n_data < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
-  Candidates V(data_vec);
-  V.maybe_add(0, n_data-1, 0, 0);
-  const Segment *first = &(*(V.candidates.begin()));
+  Candidates V;
+  V.cumsums.init(data_vec, n_data);
   seg_end[0] = n_data-1;
-  cost[0] = first->cost;
-  before_mean[0] = first->mean;
   after_mean[0] = INFINITY;
-  before_size[0] = n_data;
   after_size[0] = -2; // unused/missing indicator.
   invalidates_index[0]=-2;
   invalidates_after[0]=-2;
+  V.cumsums.first_last_mean_cost
+    (0, n_data-1, before_mean, cost);
+  before_size[0] = n_data;
+  V.maybe_add(0, n_data-1, 0, 0, cost[0]);
   for(int seg_i=1; seg_i < max_segments; seg_i++){
     // The multiset is a red-black tree which is sorted in increasing
     // order (by best_decrease values), so the first element is always
     // the segment which results in the best cost decrease.
     std::multiset<Segment>::iterator it = V.candidates.begin();
     const Segment* s = &(*(it));
-    seg_end[seg_i] = s->best_end;
+    seg_end[seg_i] = s->best_split.this_end;
     cost[seg_i] = cost[seg_i-1] + s->best_decrease;
-    before_mean[seg_i] = s->best_mean_before;
-    after_mean[seg_i] = s->best_mean_after;
-    invalidates_index[seg_i]=s->invalidates_index;
-    invalidates_after[seg_i]=s->invalidates_after;
-    before_size[seg_i]=s->best_end - s->first + 1;
-    after_size[seg_i]=s->last - s->best_end;
+    before_mean[seg_i] = s->best_split.segs[0].mean;
+    after_mean[seg_i] = s->best_split.segs[1].mean;
+    invalidates_index[seg_i] = s->invalidates_index;
+    invalidates_after[seg_i] = s->invalidates_after;
+    before_size[seg_i] = s->best_split.this_end - s->first + 1;
+    after_size[seg_i]  = s->last - s->best_split.this_end;
     // it is not necessary to store sizes (they can be derived from
     // start/end) but it makes it easier to analyze the time
     // complexity of the algorithm. Splits which result in equal sizes
     // before/after make the algorithm run fastest: first split sizes
     // N/2,N/2, second split sizes N/4,N/4, etc. Worst case is when
     // first split sizes 1,N-1 second split sizes 1,N-2, etc.
-    V.maybe_add(s->first, s->best_end, 0, seg_i);
-    V.maybe_add(s->best_end+1, s->last, 1, seg_i);
+    V.maybe_add(s->first, s->best_split.this_end,
+		0, seg_i, s->best_split.segs[0].cost);
+    V.maybe_add(s->best_split.this_end+1, s->last,
+		1, seg_i, s->best_split.segs[1].cost);
     V.candidates.erase(it);
   }
-  return 0;
+  return 0;//SUCCESS.
 }
 
