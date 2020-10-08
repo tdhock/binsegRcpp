@@ -2,7 +2,6 @@
 #include <math.h>//INFINITY
 #include <set>//multiset
 #include <vector>
-#include <array>
 
 class MeanCost {
 public:
@@ -60,13 +59,13 @@ public:
 class Split {
 public:
   int this_end;
-  std::array<MeanCost, 2> segs;
+  MeanCost before, after;
   double set_mean_cost
   (Cumsums &cumsums, int first, int end_i, int last){
     this_end = end_i;
-    cumsums.first_last_mean_cost(first, end_i, &segs[0]);
-    cumsums.first_last_mean_cost(end_i+1, last, &segs[1]);
-    return segs[0].cost + segs[1].cost;
+    cumsums.first_last_mean_cost(first, end_i, &before);
+    cumsums.first_last_mean_cost(end_i+1, last, &after);
+    return before.cost + after.cost;
   }
 };
 
@@ -168,8 +167,8 @@ int binseg_normal
     const Segment* s = &(*(it));
     seg_end[seg_i] = s->best_split.this_end;
     cost[seg_i] = cost[seg_i-1] + s->best_decrease;
-    before_mean[seg_i] = s->best_split.segs[0].mean;
-    after_mean[seg_i] = s->best_split.segs[1].mean;
+    before_mean[seg_i] = s->best_split.before.mean;
+    after_mean[seg_i] = s->best_split.after.mean;
     invalidates_index[seg_i] = s->invalidates_index;
     invalidates_after[seg_i] = s->invalidates_after;
     before_size[seg_i] = s->best_split.this_end - s->first + 1;
@@ -181,9 +180,9 @@ int binseg_normal
     // N/2,N/2, second split sizes N/4,N/4, etc. Worst case is when
     // first split sizes 1,N-1 second split sizes 1,N-2, etc.
     V.maybe_add(s->first, s->best_split.this_end,
-		0, seg_i, s->best_split.segs[0].cost);
+		0, seg_i, s->best_split.before.cost);
     V.maybe_add(s->best_split.this_end+1, s->last,
-		1, seg_i, s->best_split.segs[1].cost);
+		1, seg_i, s->best_split.after.cost);
     V.candidates.erase(it);
   }
   return 0;//SUCCESS.

@@ -6,7 +6,11 @@ Comment binseg_normal.cpp to explain optimal_cost computation.
 
 Use C++ multiset with operator< instead of multimap/vector.
 
-Use C++ vector/array to avoid repeated code/computations.
+Use cumsum C++ vector for constant time mean/cost computation for any
+split.
+
+Store cost of segments before/after split, pass the cost values to
+maybe_add to avoid having to recompute them.
 
 2020.9.15
 
