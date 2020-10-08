@@ -4,6 +4,8 @@ TODOS
 
 Comment binseg_normal.cpp to explain optimal_cost computation.
 
+Use C++ multiset with operator< instead of multimap/vector.
+
 2020.9.15
 
 remove unused C++ errors.

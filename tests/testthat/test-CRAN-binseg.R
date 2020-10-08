@@ -2,6 +2,12 @@ library(binsegRcpp)
 library(testthat)
 context("rcpp_binseg_normal")
 
+test_that("error for one data point", {
+  expect_error({
+    binsegRcpp::binseg_normal(5)
+  }, "need at least two data")
+})
+
 test_that("equal split cost is ok", {
   x <- c(0, 0.1, 1, 1.1, 0, 0.1)
   L <- binsegRcpp:::rcpp_binseg_normal(x, length(x))
@@ -20,7 +26,7 @@ test_that("error for 0 data", {
   x <- double()
   expect_error({
     binsegRcpp:::rcpp_binseg_normal(x, 5L)
-  }, "no data")
+  }, "need at least two data")
 })
 
 test_that("error for 0 segments", {

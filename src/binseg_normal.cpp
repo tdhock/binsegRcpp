@@ -1,8 +1,6 @@
 #include "binseg_normal.h"
-#include <math.h>
-#include <map>
-#include <vector>
-#include <R.h>
+#include <math.h>//INFINITY
+#include <set>//multiset
 
 /* Compute optimal square loss for a segment with sum of data = s and
    number of data = N.
@@ -32,13 +30,17 @@ public:
   double cost, mean;
   double best_mean_before, best_mean_after;
   double best_cost, best_decrease;
-  Segment(){
-  }
-  void init(const double *data_vec, int first_, int last_, int invalidates_after_, int invalidates_index_){
-    invalidates_after = invalidates_after_;
-    invalidates_index = invalidates_index_;
-    first = first_;
-    last = last_;
+  friend bool operator<(const Segment& l, const Segment& r)
+  {
+    return l.best_decrease < r.best_decrease;
+  }  
+  Segment
+  (const double *data_vec, int first, int last,
+   int invalidates_after, int invalidates_index
+   ): first(first), last(last),
+      invalidates_after(invalidates_after),
+      invalidates_index(invalidates_index)
+  {
     double sum_before = 0.0, sum_after = 0.0;
     double cost_before, cost_after, cost_split, data_value;
     for(int i=first; i <= last; i++){
@@ -71,24 +73,21 @@ public:
   }
 };
 
-class SegVec {
+class Candidates {
 public:
-  std::multimap<double,int> tree;
-  std::vector<Segment> seg_vec;
+  std::multiset<Segment> candidates;
   const double *data_vec;
-  unsigned int next_i;
-  SegVec(const double *data_vec_, int n_entries){
-    data_vec = data_vec_;
-    seg_vec.resize(n_entries);
-    next_i = 0;
-  }
-  void add_segment(int first, int last, int invalidates_after, int invalidates_index){
-    seg_vec[next_i].init(data_vec, first, last, invalidates_after, invalidates_index);
+  Candidates(const double *data_vec): data_vec(data_vec) {};
+  void maybe_add
+  (int first, int last, int invalidates_after, int invalidates_index){
     if(first < last){
-      tree.insert
-	(std::pair<double,int>(seg_vec[next_i].best_decrease, next_i));
+      // if it is possible to split (more than one data point on this
+      // segment) then insert into the tree with key=best decrease in
+      // cost, value=index of this segment for retrieval of parameters
+      // / inserting new segments / deleting this segment.
+      candidates.emplace
+	(data_vec, first, last, invalidates_after, invalidates_index);
     }
-    next_i++;
   }
 };
 
@@ -98,7 +97,7 @@ public:
    This code assumes, and the code which calls this function needs to
    have error checking for, the following:
 
-   Positive number of data points (0 < n_data), data_vec is an array
+   At least two data points (1 < n_data), data_vec is an array
    of input data, size n_data.
 
    Positive number of segments (0 < max_segments), all of the other
@@ -118,20 +117,23 @@ int binseg_normal
   if(n_data < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
-  SegVec V(data_vec, 2*max_segments+1);
-  V.add_segment(0, n_data-1, 0, 0);
+  Candidates V(data_vec);
+  V.maybe_add(0, n_data-1, 0, 0);
+  const Segment *first = &(*(V.candidates.begin()));
   seg_end[0] = n_data-1;
-  cost[0] = V.seg_vec[0].cost;
-  before_mean[0] = V.seg_vec[0].mean;
+  cost[0] = first->cost;
+  before_mean[0] = first->mean;
   after_mean[0] = INFINITY;
   before_size[0] = n_data;
-  after_size[0] = -2;
+  after_size[0] = -2; // unused/missing indicator.
   invalidates_index[0]=-2;
   invalidates_after[0]=-2;
-  int seg_i=1;
-  while(seg_i < max_segments){
-    std::multimap<double,int>::iterator it = V.tree.begin();
-    Segment* s = &V.seg_vec[it->second];
+  for(int seg_i=1; seg_i < max_segments; seg_i++){
+    // The multiset is a red-black tree which is sorted in increasing
+    // order (by best_decrease values), so the first element is always
+    // the segment which results in the best cost decrease.
+    std::multiset<Segment>::iterator it = V.candidates.begin();
+    const Segment* s = &(*(it));
     seg_end[seg_i] = s->best_end;
     cost[seg_i] = cost[seg_i-1] + s->best_decrease;
     before_mean[seg_i] = s->best_mean_before;
@@ -140,10 +142,15 @@ int binseg_normal
     invalidates_after[seg_i]=s->invalidates_after;
     before_size[seg_i]=s->best_end - s->first + 1;
     after_size[seg_i]=s->last - s->best_end;
-    V.add_segment(s->first, s->best_end, 0, seg_i);
-    V.add_segment(s->best_end+1, s->last, 1, seg_i);
-    V.tree.erase(it);
-    seg_i++;
+    // it is not necessary to store sizes (they can be derived from
+    // start/end) but it makes it easier to analyze the time
+    // complexity of the algorithm. Splits which result in equal sizes
+    // before/after make the algorithm run fastest: first split sizes
+    // N/2,N/2, second split sizes N/4,N/4, etc. Worst case is when
+    // first split sizes 1,N-1 second split sizes 1,N-2, etc.
+    V.maybe_add(s->first, s->best_end, 0, seg_i);
+    V.maybe_add(s->best_end+1, s->last, 1, seg_i);
+    V.candidates.erase(it);
   }
   return 0;
 }

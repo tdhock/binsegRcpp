@@ -6,8 +6,8 @@
 Rcpp::List rcpp_binseg_normal
 (const Rcpp::NumericVector data_vec,
  const int kmax) {
-  if(data_vec.size() == 0){
-    Rcpp::stop("no data"); 
+  if(data_vec.size() < 2){
+    Rcpp::stop("need at least two data"); 
   }
   if(kmax < 1){
     Rcpp::stop("kmax must be positive"); 
