@@ -12,6 +12,8 @@ split.
 Store cost of segments before/after split, pass the cost values to
 maybe_add to avoid having to recompute them.
 
+Computation works for only one data point.
+
 2020.9.15
 
 remove unused C++ errors.
