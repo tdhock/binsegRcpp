@@ -1,5 +1,9 @@
 TODOS
 
+2021.1.6
+
+More comments in binseg_normal.cpp to help potential GSOC students.
+
 2020.10.7
 
 Comment binseg_normal.cpp to explain optimal_cost computation.
