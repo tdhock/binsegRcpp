@@ -11,14 +11,14 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // rcpp_binseg_normal
-Rcpp::List rcpp_binseg_normal(const Rcpp::NumericVector data_vec, const int kmax, const Rcpp::LogicalVector is_validation_vec, const Rcpp::IntegerVector position_vec);
+Rcpp::List rcpp_binseg_normal(const Rcpp::NumericVector data_vec, const int kmax, const Rcpp::IntegerVector is_validation_vec, const Rcpp::IntegerVector position_vec);
 RcppExport SEXP _binsegRcpp_rcpp_binseg_normal(SEXP data_vecSEXP, SEXP kmaxSEXP, SEXP is_validation_vecSEXP, SEXP position_vecSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Rcpp::NumericVector >::type data_vec(data_vecSEXP);
     Rcpp::traits::input_parameter< const int >::type kmax(kmaxSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::LogicalVector >::type is_validation_vec(is_validation_vecSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::IntegerVector >::type is_validation_vec(is_validation_vecSEXP);
     Rcpp::traits::input_parameter< const Rcpp::IntegerVector >::type position_vec(position_vecSEXP);
     rcpp_result_gen = Rcpp::wrap(rcpp_binseg_normal(data_vec, kmax, is_validation_vec, position_vec));
     return rcpp_result_gen;

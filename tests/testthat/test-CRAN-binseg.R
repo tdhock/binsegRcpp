@@ -1,6 +1,5 @@
 library(binsegRcpp)
 library(testthat)
-context("rcpp_binseg_normal")
 
 test_that("one data point has zero loss", {
   fit <- binsegRcpp::binseg_normal(5)

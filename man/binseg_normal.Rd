@@ -6,10 +6,17 @@ mean, max normal likelihood = min square loss. Output includes
 columns which can be used to compute parameters for a single model
 in log-linear time.}
 \usage{binseg_normal(data.vec, 
-    max.segments = length(data.vec))}
+    max.segments = length(data.vec), 
+    is.validation.vec = rep(FALSE, 
+        length(data.vec)), 
+    position.vec = seq_along(data.vec))}
 \arguments{
   \item{data.vec}{Vector of numeric data to segment.}
   \item{max.segments}{Maximum number of segments to compute, default=length(\code{data.vec}).}
+  \item{is.validation.vec}{logical vector indicating which data are to be used in validation
+set, default=all FALSE (no validation set).}
+  \item{position.vec}{integer vector of positions at which data are measured,
+default=1:length(\code{data.vec}).}
 }
 
 \value{data.table with a row for each model and columns

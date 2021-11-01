@@ -6,7 +6,7 @@
 Rcpp::List rcpp_binseg_normal
 (const Rcpp::NumericVector data_vec,
  const int kmax,
- const Rcpp::LogicalVector is_validation_vec,
+ const Rcpp::IntegerVector is_validation_vec,
  const Rcpp::IntegerVector position_vec
  ) {
   int n_data = data_vec.size();
