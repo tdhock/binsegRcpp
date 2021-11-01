@@ -83,9 +83,12 @@ print.binseg_normal <- function
   ...
 ### ignored.
 ){
+  . <- segments <- loss <- end <- NULL
+  ## Above to avoid CRAN NOTE.
   cat(sprintf(
-    "binseg_normal data.table with max.segments=%d\n",
-    nrow(x)))
+    "binseg_normal data.table with names %s\n",
+    paste(names(x), collapse=", ")))
+  print(data.table(x[, .(segments, loss, end)]))
 }
 
 plot.binseg_normal <- function
@@ -137,3 +140,4 @@ coef.binseg_normal <- function
   }, by="segments"]
 ### data.table with one row for each segment.
 }
+
