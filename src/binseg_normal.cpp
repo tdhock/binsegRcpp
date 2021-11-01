@@ -98,7 +98,7 @@ public:
   int invalidates_index, invalidates_after;
   double best_decrease;
   Split best_split;
-  int n_changes(){
+  int n_changes() const {
     return last-first;
   }
   // Segments are kept sorted by best_decrease value, so that we can
@@ -108,7 +108,7 @@ public:
     if(l.best_decrease == r.best_decrease){
       // if two segments are equally good to split in terms of the
       // loss, then to save time we should split the larger.
-      return l.n_changes > r.n_changes;
+      return l.n_changes() > r.n_changes();
     }else{
       return l.best_decrease < r.best_decrease;
     }
