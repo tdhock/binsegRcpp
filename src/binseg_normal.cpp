@@ -98,11 +98,20 @@ public:
   int invalidates_index, invalidates_after;
   double best_decrease;
   Split best_split;
+  int n_changes(){
+    return last-first;
+  }
   // Segments are kept sorted by best_decrease value, so that we can
   // find the best segment to split in constant O(1) time.
   friend bool operator<(const Segment& l, const Segment& r)
   {
-    return l.best_decrease < r.best_decrease;
+    if(l.best_decrease == r.best_decrease){
+      // if two segments are equally good to split in terms of the
+      // loss, then to save time we should split the larger.
+      return l.n_changes > r.n_changes;
+    }else{
+      return l.best_decrease < r.best_decrease;
+    }
   }
   // constructor which considers all possible splits from first to
   // last, and then stores the best split and loss decrease.
@@ -201,16 +210,15 @@ int binseg_normal
     // order (by best_decrease values), so the first element is always
     // the segment which results in the best loss decrease.
     std::multiset<Segment>::iterator it = V.candidates.begin();
-    const Segment* s = &(*(it));
     // Store loss and model parameters associated with this split.
-    loss[seg_i] = loss[seg_i-1] + s->best_decrease;
-    seg_end[seg_i] = s->best_split.this_end;
-    before_mean[seg_i] = s->best_split.before.mean;
-    after_mean[seg_i] = s->best_split.after.mean;
+    loss[seg_i] = loss[seg_i-1] + it->best_decrease;
+    seg_end[seg_i] = it->best_split.this_end;
+    before_mean[seg_i] = it->best_split.before.mean;
+    after_mean[seg_i] = it->best_split.after.mean;
     // Also store invalidates index/after so we know which previous
     // model parameters are no longer used because of this split.
-    invalidates_index[seg_i] = s->invalidates_index;
-    invalidates_after[seg_i] = s->invalidates_after;
+    invalidates_index[seg_i] = it->invalidates_index;
+    invalidates_after[seg_i] = it->invalidates_after;
     // The sizes below are not strictly necessary to store (they can
     // be derived from start/end) but it makes it easier to analyze
     // the time complexity of the algorithm. Splits which result in
@@ -218,19 +226,20 @@ int binseg_normal
     // split sizes N/2,N/2, second split sizes N/4,N/4, etc. Worst
     // case is when first split sizes 1,N-1 second split sizes 1,N-2,
     // etc.
-    before_size[seg_i] = s->best_split.this_end - s->first + 1;
-    after_size[seg_i]  = s->last - s->best_split.this_end;
-    // Erase before insert to make insert faster.
-    V.candidates.erase(it);
+    before_size[seg_i] = it->best_split.this_end - it->first + 1;
+    after_size[seg_i]  = it->last - it->best_split.this_end;
     // Finally add new split candidates if necessary.
     V.maybe_add
-      (s->first, s->best_split.this_end,
+      (it->first, it->best_split.this_end,
        0,//invalidates_after=0 => before_mean invalidated.
-       seg_i, s->best_split.before.loss);
+       seg_i, it->best_split.before.loss);
     V.maybe_add
-      (s->best_split.this_end+1, s->last,
+      (it->best_split.this_end+1, it->last,
        1,//invalidates_after=1 => after_mean invalidated.
-       seg_i, s->best_split.after.loss);
+       seg_i, it->best_split.after.loss);
+    // Erase at end because we need it->values during maybe_add
+    // inserts above.
+    V.candidates.erase(it);
   }
   return 0;//SUCCESS.
 }
