@@ -76,6 +76,18 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
 
 })
 
+print.binseg_normal <- function
+### Print method for binseg_normal.
+(x,
+### data.table from binseg_normal.
+  ...
+### ignored.
+){
+  cat(sprintf(
+    "binseg_normal data.table with max.segments=%d\n",
+    nrow(x)))
+}
+
 plot.binseg_normal <- function
 ### Plot loss values from binary segmentation.
 (x,

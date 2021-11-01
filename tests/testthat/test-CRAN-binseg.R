@@ -2,7 +2,7 @@ library(binsegRcpp)
 library(testthat)
 context("rcpp_binseg_normal")
 
-test_that("one data point has zero cost", {
+test_that("one data point has zero loss", {
   fit <- binsegRcpp::binseg_normal(5)
   expect_identical(fit[["loss"]], 0)
   expect_identical(fit[["before.mean"]], 5)

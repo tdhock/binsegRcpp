@@ -67,9 +67,9 @@ The coef methods returns a data table of segment means:
 ** Related work
 
 Other implementations of binary segmentation include
-[[https://github.com/rkillick/changepoint/][changepoint::cpt.mean(method="BinSeg")]] (quadratic storage),
-[[https://github.com/diego-urgell/BinSeg][BinSeg::BinSegModel()]] (same linear storage as binsegRcpp), and
-[[https://github.com/deepcharles/ruptures][ruptures.Binseg()]] (unknown storage).
+[[https://github.com/rkillick/changepoint/][changepoint::cpt.mean(method="BinSeg")]] (quadratic storage in max
+number of segments), [[https://github.com/diego-urgell/BinSeg][BinSeg::BinSegModel()]] (same linear storage as
+binsegRcpp), and [[https://github.com/deepcharles/ruptures][ruptures.Binseg()]] (unknown storage).
 
 This version uses the [[http://www.rcpp.org/][Rcpp]]/.Call interface whereas the [[https://github.com/tdhock/binseg][binseg]] package
 uses the .C interface.
