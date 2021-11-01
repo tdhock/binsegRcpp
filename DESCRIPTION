@@ -13,4 +13,7 @@ LinkingTo: Rcpp
 URL: https://github.com/tdhock/binsegRcpp
 BugReports: https://github.com/tdhock/binsegRcpp/issues
 Imports: data.table, Rcpp
-Suggests: ggplot2, testthat
+Suggests: 
+    covr,
+    ggplot2,
+    testthat
