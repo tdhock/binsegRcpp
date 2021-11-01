@@ -8,38 +8,39 @@ test_that("one data point has zero cost", {
   expect_identical(fit[["before.mean"]], 5)
 })
 
+sloss <- function(m, x){
+  sum(m*(m-2*x)+x^2)
+}
 test_that("equal split cost is ok", {
   x <- c(0, 0.1, 1, 1.1, 0, 0.1)
-  L <- binsegRcpp:::rcpp_binseg_normal(x, length(x))
-  expect_equal(sort(L$end[1:3]), c(1, 3, 5))
-  m <- mean(x)
-  expect_equal(L$before.mean[1], m)
-  const.term <- -sum(x^2)
-  ## cost does not include the constant x^2 term.
-  expect_equal(L$loss[1], sum(m*(m-2*x)))
-  expect_equal(L$loss[6], const.term)
-  m <- c(0.05, 0.05, 1.05, 1.05, 0.05, 0.05)
-  expect_equal(L$loss[3], sum(m*(m-2*x)))
+  L <- binsegRcpp::binseg_normal(x, length(x))
+  expect_equal(sort(L$end[1:3]), c(2, 4, 6))
+  m1 <- mean(x)
+  expect_equal(L$before.mean[1], m1)
+  expect_equal(L$loss[1], sloss(m1, x))
+  expect_equal(L$loss[6], 0)
+  m3 <- c(0.05, 0.05, 1.05, 1.05, 0.05, 0.05)
+  expect_equal(L$loss[3], sloss(m3, x))
 })
 
 test_that("error for 0 data", {
   x <- double()
   expect_error({
-    binsegRcpp:::rcpp_binseg_normal(x, 5L)
+    binsegRcpp::binseg_normal(x, 5L)
   }, "need at least one data point")
 })
 
 test_that("error for 0 segments", {
   x <- c(4.1, 4, 1.1, 1)
   expect_error({
-    binsegRcpp:::rcpp_binseg_normal(x, 0L)
+    binsegRcpp::binseg_normal(x, 0L)
   }, "kmax must be positive")
 })
 
 test_that("error for too many segments", {
   x <- c(4.1, 4, 1.1, 1)
   expect_error({
-    binsegRcpp:::rcpp_binseg_normal(x, 10L)
+    binsegRcpp::binseg_normal(x, 10L)
   }, "too many segments")
 })
 
@@ -72,8 +73,8 @@ test_that("error for invalid coef segments", {
   expect_equal(nrow(segs.dt), sum(segs.vec))
 })
 
-pos.list <- binsegRcpp:::rcpp_binseg_normal(x, length(x))
-neg.list <- binsegRcpp:::rcpp_binseg_normal(-x, length(x))
+pos.list <- binsegRcpp::binseg_normal(x, length(x))
+neg.list <- binsegRcpp::binseg_normal(-x, length(x))
 test_that("rcpp_binseg_normal means ok for negative data", {
   expect_equal(pos.list[["loss"]], neg.list[["loss"]])
   expect_equal(pos.list[["end"]], neg.list[["end"]])

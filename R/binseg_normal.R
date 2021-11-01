@@ -5,10 +5,17 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
 ### in log-linear time.
 (data.vec,
 ### Vector of numeric data to segment.
-  max.segments=length(data.vec)
+  max.segments=length(data.vec),
 ### Maximum number of segments to compute, default=length(data.vec).
+  is.validation.vec=rep(FALSE, length(data.vec)),
+### logical vector indicating which data are to be used in validation
+### set, default=all FALSE (no validation set).
+  position.vec=seq_along(data.vec)
+### integer vector of positions at which data are measured,
+### default=1:length(data.vec).
 ){
-  result <- rcpp_binseg_normal(data.vec, max.segments)
+  result <- rcpp_binseg_normal(
+    data.vec, max.segments, is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
   ##value<< data.table with a row for each model and columns
   dt <- with(result, data.table(
@@ -89,7 +96,7 @@ coef.binseg_normal <- function
   ...
 ### ignored.
 ){
-  before.mean <- after.mean <- end <- 
+  before.mean <- after.mean <- end <-
     invalidates.after <- invalidates.index <- NULL
   kmax <- nrow(object)
   if(!(

@@ -3,18 +3,18 @@
 #include <set>//multiset
 #include <vector>
 
-// This class saves the optimal parameters/cost value for each segment
+// This class saves the optimal parameters/loss value for each segment
 // (before and after) resulting from a split. Currently there is only
 // one parameter (mean) because the model is normal change in mean
 // with constant variance but there could be more parameters for other
 // models (e.g., normal change in mean and variance).
-class MeanCost {
+class MeanLoss {
 public:
-  double mean, cost;
+  double mean, loss;
 };
 
 // This class computes and stores the statistics that we need to
-// compute the optimal cost/parameters of a segment from first to
+// compute the optimal loss/parameters of a segment from first to
 // last. In the case of normal change in mean with constant variance
 // the only statistic we need is the cumulative sum.
 class Cumsums {
@@ -36,17 +36,17 @@ public:
     }
     return total;
   }
-  // Compute/store optimal mean and cost values for a single segment
+  // Compute/store optimal mean and loss values for a single segment
   // from first to last in constant O(1) time.
-  void first_last_mean_cost
-  (int first, int last, double *mean, double *cost){
+  void first_last_mean_loss
+  (int first, int last, double *mean, double *loss){
     double s = get_sum(first, last);
     int N = last-first+1;
-    *cost = -s*s/N;
+    *loss = -s*s/N;
     *mean = s/N;
   }
-  void first_last_mean_cost(int first, int last, MeanCost *mc){
-    first_last_mean_cost(first, last, &(mc->mean), &(mc->cost));
+  void first_last_mean_loss(int first, int last, MeanLoss *mc){
+    first_last_mean_loss(first, last, &(mc->mean), &(mc->loss));
   }
 };
 /* Above we compute the optimal square loss for a segment with sum of
@@ -72,13 +72,13 @@ public:
 class Split {
 public:
   int this_end;//index of last data point on the first/before segment.
-  MeanCost before, after;
-  double set_mean_cost
+  MeanLoss before, after;
+  double set_mean_loss
   (Cumsums &cumsums, int first, int end_i, int last){
     this_end = end_i;
-    cumsums.first_last_mean_cost(first, end_i, &before);
-    cumsums.first_last_mean_cost(end_i+1, last, &after);
-    return before.cost + after.cost;
+    cumsums.first_last_mean_loss(first, end_i, &before);
+    cumsums.first_last_mean_loss(end_i+1, last, &after);
+    return before.loss + after.loss;
   }
 };
 
@@ -105,28 +105,28 @@ public:
     return l.best_decrease < r.best_decrease;
   }
   // constructor which considers all possible splits from first to
-  // last, and then stores the best split and cost decrease.
+  // last, and then stores the best split and loss decrease.
   Segment
   (Cumsums &cumsums, int first, int last,
    int invalidates_after, int invalidates_index,
-   double cost_no_split
+   double loss_no_split
    ): first(first), last(last),
       invalidates_after(invalidates_after),
       invalidates_index(invalidates_index)
   {
     Split candidate_split;
     int n_candidates = last-first;
-    double best_cost_split = INFINITY, cost_split;
+    double best_loss_split = INFINITY, loss_split;
     // for loop over all possible splits on this Segment.
     for(int ci=0; ci<n_candidates; ci++){
-      cost_split = candidate_split.set_mean_cost
+      loss_split = candidate_split.set_mean_loss
 	(cumsums, first, first+ci, last);
-      if(cost_split < best_cost_split){
-	best_cost_split = cost_split;
+      if(loss_split < best_loss_split){
+	best_loss_split = loss_split;
 	best_split = candidate_split;
       }
     }
-    best_decrease = best_cost_split - cost_no_split;
+    best_decrease = best_loss_split - loss_no_split;
   }
 };
 
@@ -138,20 +138,20 @@ public:
   void maybe_add
   (int first, int last,
    int invalidates_after, int invalidates_index,
-   double cost_no_split)
+   double loss_no_split)
   {
     if(first < last){
       // if it is possible to split (more than one data point on this
       // segment) then insert new segment into the candidates set.
       candidates.emplace
 	(cumsums, first, last,
-	 invalidates_after, invalidates_index, cost_no_split);
+	 invalidates_after, invalidates_index, loss_no_split);
     }
   }
 };
 
 /* Binary segmentation algorithm for change in mean in the normal
-   distribution, cost function is square loss.
+   distribution, loss function is square loss.
 
    This code assumes, and the code which calls this function needs to
    have error checking for, the following:
@@ -169,7 +169,8 @@ public:
  */
 int binseg_normal
 (const double *data_vec, const int n_data, const int max_segments,
- int *seg_end, double *cost,
+ const int *is_validation_vec, const int *position_vec,
+ int *seg_end, double *loss, double *validation_loss,
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size, 
  int *invalidates_index, int *invalidates_after){
@@ -179,10 +180,10 @@ int binseg_normal
   Candidates V;
   // Begin by initializing cumulative sum vector.
   V.cumsums.init(data_vec, n_data);
-  // Then store the trivial segment mean/cost (which starts at the
+  // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  V.cumsums.first_last_mean_cost
-    (0, n_data-1, before_mean, cost);
+  V.cumsums.first_last_mean_loss
+    (0, n_data-1, before_mean, loss);
   before_size[0] = n_data;
   seg_end[0] = n_data-1;
   after_mean[0] = INFINITY;
@@ -190,19 +191,19 @@ int binseg_normal
   invalidates_index[0]=-2;
   invalidates_after[0]=-2;
   // Add a segment and split to the set of candidates.
-  V.maybe_add(0, n_data-1, 0, 0, cost[0]);
+  V.maybe_add(0, n_data-1, 0, 0, loss[0]);
   // For loop over number of segments. During each iteration we find
-  // the Segment/split which results in the best cost decrease, store
+  // the Segment/split which results in the best loss decrease, store
   // the resulting model parameters, and add new Segment/split
   // candidates if necessary.
   for(int seg_i=1; seg_i < max_segments; seg_i++){
     // The multiset is a red-black tree which is sorted in increasing
     // order (by best_decrease values), so the first element is always
-    // the segment which results in the best cost decrease.
+    // the segment which results in the best loss decrease.
     std::multiset<Segment>::iterator it = V.candidates.begin();
     const Segment* s = &(*(it));
-    // Store cost and model parameters associated with this split.
-    cost[seg_i] = cost[seg_i-1] + s->best_decrease;
+    // Store loss and model parameters associated with this split.
+    loss[seg_i] = loss[seg_i-1] + s->best_decrease;
     seg_end[seg_i] = s->best_split.this_end;
     before_mean[seg_i] = s->best_split.before.mean;
     after_mean[seg_i] = s->best_split.after.mean;
@@ -219,16 +220,17 @@ int binseg_normal
     // etc.
     before_size[seg_i] = s->best_split.this_end - s->first + 1;
     after_size[seg_i]  = s->last - s->best_split.this_end;
+    // Erase before insert to make insert faster.
+    V.candidates.erase(it);
     // Finally add new split candidates if necessary.
     V.maybe_add
       (s->first, s->best_split.this_end,
        0,//invalidates_after=0 => before_mean invalidated.
-       seg_i, s->best_split.before.cost);
+       seg_i, s->best_split.before.loss);
     V.maybe_add
       (s->best_split.this_end+1, s->last,
        1,//invalidates_after=1 => after_mean invalidated.
-       seg_i, s->best_split.after.cost);
-    V.candidates.erase(it);
+       seg_i, s->best_split.after.loss);
   }
   return 0;//SUCCESS.
 }
