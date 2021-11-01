@@ -120,8 +120,8 @@ public:
    int invalidates_after, int invalidates_index,
    double loss_no_split
    ): first(first), last(last),
-      invalidates_after(invalidates_after),
-      invalidates_index(invalidates_index)
+      invalidates_index(invalidates_index),
+      invalidates_after(invalidates_after)
   {
     Split candidate_split;
     int n_candidates = last-first;
