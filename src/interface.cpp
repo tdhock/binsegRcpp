@@ -41,9 +41,12 @@ Rcpp::List rcpp_binseg_normal
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments"); 
   }
+  if(status == ERROR_NEED_AT_LEAST_ONE_SUBTRAIN_DATA){
+    Rcpp::stop("need at least one subtrain data");
+  }
   return Rcpp::List::create
     (Rcpp::Named("loss", loss),
-     Rcpp::Named("validation_loss", validation_loss),
+     Rcpp::Named("validation.loss", validation_loss),
      Rcpp::Named("end", end),
      Rcpp::Named("before.mean", before_mean),
      Rcpp::Named("after.mean", after_mean),

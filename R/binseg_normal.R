@@ -20,7 +20,8 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
   ##value<< data.table with a row for each model and columns
   dt <- with(result, data.table(
     segments=1:max.segments,##<< number of parameters
-    loss=sum(data.vec^2)+loss,##<< square loss
+    loss,##<< subtrain square loss
+    validation.loss,##<< validation square loss
     end=end+1L,##<< index of last data point per segment
     before.mean,##<< mean before changepoint
     after.mean=ifelse(after.mean==Inf, NA, after.mean),##<< mean after changepoint

@@ -92,3 +92,27 @@ position <-
 kmax <- sum(!is.validation)
 data.vec <- rep(1, length(position))
 binsegRcpp:::rcpp_binseg_normal(data.vec, kmax, is.validation, position)
+
+test_that("error for no subtrain data", {
+  expect_error({
+    binsegRcpp::binseg_normal(5, is.validation.vec=1)
+  }, "need at least one subtrain data")
+})
+
+test_that("error for two segments with one subtrain", {
+  expect_error({
+    binsegRcpp::binseg_normal(1:2, 2, is.validation.vec=0:1)
+  }, "too many segments")
+})
+
+test_that("two data with one subtrain and one segment is ok", {
+  fit <- binsegRcpp::binseg_normal(1:2, 1, is.validation.vec=0:1)
+  expect_equal(fit$loss, 0)
+  expect_equal(fit$validation.loss, 1)
+  expect_equal(fit$before.mean, 1)
+  fit <- binsegRcpp::binseg_normal(2:1, 1, is.validation.vec=0:1)
+  expect_equal(fit$loss, 0)
+  expect_equal(fit$validation.loss, 1)
+  expect_equal(fit$before.mean, 2)
+})
+

@@ -14,6 +14,23 @@ public:
   double mean, loss;
 };
 
+double square_loss(double N, double sum, double mean){
+  return mean*(N*mean-2*sum);
+}
+/* Above we compute the square loss for a segment with sum of data = s
+   and mean parameter m.
+
+   If x_i is data point i, and s = sum_i x_i is the sum over all N
+   data points on that segment, then total loss is
+
+   sum_i (m - x_i)^2 = N*m^2 - 2*m*s + sum_i x_i^2
+
+   The last term (sum of squares of data) can be ignored during
+   optimization, because it does not depend on the optimization
+   variable (segment mean). It is added back after optimization, at
+   the end of binseg_normal.
+*/
+
 // This class computes and stores the statistics that we need to
 // compute the optimal loss/parameters of a segment from first to
 // last. In the case of normal change in mean with constant variance
@@ -34,27 +51,9 @@ public:
   (int first, int last, double *mean, double *loss){
     double s = get_sum(first, last);
     int N = last-first+1;
-    *loss = -s*s/N;
     *mean = s/N;
+    *loss = square_loss(N, s, *mean);
   }
-  /* Above we compute the optimal square loss for a segment with sum of
-     data = s and number of data = N.
-
-     If x_i is data point i, and s = sum_{i=1}^N x_i is the sum over N
-     data points, then the optimal mean is s/n and the optimal square
-     loss is
-
-     sum_{i=1}^N (x_i - s/N)^2 =
-
-     sum [x_i^2] - 2*(s/N)*s + N*(s/N)^2 =
-
-     sum [x_i^2] - s^2 / N
-
-     The first term (sum of squares of data) can be ignored during
-     optimization, because it does not depend on the optimization
-     variable (segment mean). It is added back after optimization, in
-     the R code.
-  */
   void first_last_mean_loss(int first, int last, MeanLoss *mc){
     first_last_mean_loss(first, last, &(mc->mean), &(mc->loss));
   }
@@ -134,7 +133,14 @@ public:
 class Candidates {
 public:
   std::multiset<Segment> candidates;
-  SetCumsum subtrain, validation;
+  SetCumsum subtrain, validation, validation_count;
+  double subtrain_squares, validation_squares;
+  double get_validation_loss
+  (int first, int last, double subtrain_mean){
+    double validation_sum = validation.get_sum(first, last);
+    double validation_N = validation_count.get_sum(first, last);
+    return square_loss(validation_N, validation_sum, subtrain_mean);
+  }
   // computes the cumulative sum vectors in linear O(n_data) time.
   int init
   (const double *data_vec, const int n_data,
@@ -147,10 +153,14 @@ public:
       }
     }
     int n_subtrain = n_data - n_validation;
+    if(n_subtrain == 0)return(n_subtrain);
     subtrain.cumsum_vec.resize(n_subtrain);
     validation.cumsum_vec.resize(n_subtrain);
+    validation_count.cumsum_vec.resize(n_subtrain);
     int last_subtrain_i=-1;
     double pos_total, pos_change, subtrain_total=0, validation_total=0;
+    double validation_count_total = 0;
+    subtrain_squares=0, validation_squares=0;
     int read_start=0, write_index=0;
     for(int data_i=0; data_i<=n_data; data_i++){
       bool is_subtrain = false;
@@ -170,14 +180,19 @@ public:
 	}
 	int read_index=read_start;
 	while(read_index < n_data && position_vec[read_index] <= pos_change){
+	  double data_value = data_vec[read_index];
 	  if(is_validation_vec[read_index]){
-	    validation_total += data_vec[read_index];
+	    validation_total += data_value;
+	    validation_squares += data_value * data_value;
+	    validation_count_total += 1;
 	  }else{
-	    subtrain_total += data_vec[read_index];
+	    subtrain_total += data_value;
+	    subtrain_squares += data_value * data_value;
 	  }
 	  read_index++;
 	}
 	//Rprintf("write_index=%d validation_total=%f subtrain_total=%f\n", write_index, validation_total, subtrain_total);
+	validation_count.cumsum_vec[write_index] = validation_count_total;
 	validation.cumsum_vec[write_index] = validation_total;
 	subtrain.cumsum_vec[write_index] = subtrain_total;
 	read_start = read_index;
@@ -234,11 +249,16 @@ int binseg_normal
   int n_subtrain = V.init(data_vec, n_data, position_vec, is_validation_vec);
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
+  if(n_subtrain == 0){
+    return ERROR_NEED_AT_LEAST_ONE_SUBTRAIN_DATA;
+  }
   if(n_subtrain < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
   V.subtrain.first_last_mean_loss
     (0, n_subtrain-1, before_mean, loss);
+  validation_loss[0] = V.get_validation_loss
+    (0, n_subtrain-1, *before_mean);
   before_size[0] = n_subtrain;
   seg_end[0] = n_subtrain-1;
   after_mean[0] = INFINITY;
@@ -286,6 +306,10 @@ int binseg_normal
     // Erase at end because we need it->values during maybe_add
     // inserts above.
     V.candidates.erase(it);
+  }
+  for(int seg_i=0; seg_i < max_segments; seg_i++){
+    loss[seg_i] += V.subtrain_squares;
+    validation_loss[seg_i] += V.validation_squares;
   }
   return 0;//SUCCESS.
 }
