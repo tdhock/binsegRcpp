@@ -17,18 +17,9 @@ public:
 // compute the optimal loss/parameters of a segment from first to
 // last. In the case of normal change in mean with constant variance
 // the only statistic we need is the cumulative sum.
-class Cumsums {
+class SetCumsum {
 public:
   std::vector<double> cumsum_vec;
-  // computes the cumulative sum vector in linear O(n_data) time.
-  void init(const double *data_vec, const int n_data){
-    cumsum_vec.resize(n_data);
-    double total = 0.0;
-    for(int data_i=0; data_i<n_data; data_i++){
-      total += data_vec[data_i];
-      cumsum_vec[data_i] = total;
-    }
-  }
   double get_sum(int first, int last){
     double total = cumsum_vec[last];
     if(0 < first){
@@ -45,28 +36,28 @@ public:
     *loss = -s*s/N;
     *mean = s/N;
   }
+  /* Above we compute the optimal square loss for a segment with sum of
+     data = s and number of data = N.
+
+     If x_i is data point i, and s = sum_{i=1}^N x_i is the sum over N
+     data points, then the optimal mean is s/n and the optimal square
+     loss is
+
+     sum_{i=1}^N (x_i - s/N)^2 =
+
+     sum [x_i^2] - 2*(s/N)*s + N*(s/N)^2 =
+
+     sum [x_i^2] - s^2 / N
+
+     The first term (sum of squares of data) can be ignored during
+     optimization, because it does not depend on the optimization
+     variable (segment mean). It is added back after optimization, in
+     the R code.
+  */
   void first_last_mean_loss(int first, int last, MeanLoss *mc){
     first_last_mean_loss(first, last, &(mc->mean), &(mc->loss));
   }
 };
-/* Above we compute the optimal square loss for a segment with sum of
-   data = s and number of data = N.
-
-   If x_i is data point i, and s = sum_{i=1}^N x_i is the sum over N
-   data points, then the optimal mean is s/n and the optimal square
-   loss is
-
-   sum_{i=1}^N (x_i - s/N)^2 =
-
-   sum [x_i^2] - 2*(s/N)*s + N*(s/N)^2 =
-
-   sum [x_i^2] - s^2 / N
-
-   The first term (sum of squares of data) can be ignored during
-   optimization, because it does not depend on the optimization
-   variable (segment mean). It is added back after optimization, in
-   the R code.
- */
 
 // Split class stores info for a single candidate split to consider.
 class Split {
@@ -74,7 +65,7 @@ public:
   int this_end;//index of last data point on the first/before segment.
   MeanLoss before, after;
   double set_mean_loss
-  (Cumsums &cumsums, int first, int end_i, int last){
+  (SetCumsum &cumsums, int first, int end_i, int last){
     this_end = end_i;
     cumsums.first_last_mean_loss(first, end_i, &before);
     cumsums.first_last_mean_loss(end_i+1, last, &after);
@@ -116,7 +107,7 @@ public:
   // constructor which considers all possible splits from first to
   // last, and then stores the best split and loss decrease.
   Segment
-  (Cumsums &cumsums, int first, int last,
+  (SetCumsum &cumsums, int first, int last,
    int invalidates_after, int invalidates_index,
    double loss_no_split
    ): first(first), last(last),
@@ -141,8 +132,56 @@ public:
 
 class Candidates {
 public:
-  std::multiset<Segment> candidates; 
-  Cumsums cumsums;
+  std::multiset<Segment> candidates;
+  SetCumsum subtrain, validation;
+  // computes the cumulative sum vectors in linear O(n_data) time.
+  int init
+  (const double *data_vec, const int n_data,
+   const int *position_vec, const int *is_validation_vec
+   ){
+    int n_validation = 0;
+    for(int data_i=0; data_i<n_data; data_i++){
+      if(is_validation_vec[data_i]){
+	n_validation++;
+      }
+    }
+    subtrain.cumsum_vec.resize(n_validation);
+    validation.cumsum_vec.resize(n_validation);
+    int last_subtrain_i=-1;
+    int n_subtrain = n_data - n_validation;
+    double pos_total, pos_change, subtrain_total=0, validation_total=0;
+    int read_start=0, write_index=0;
+    for(int data_i=0; data_i<n_data; data_i++){
+      bool is_subtrain = !is_validation_vec[data_i];
+      bool write_subtrain = last_subtrain_i >= 0 && is_subtrain;
+      bool write_end = data_i == n_data-1;
+      if(write_subtrain || write_end){
+	if(write_subtrain){
+	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
+	  pos_change = pos_total/2;
+	}else{
+	  pos_change = position_vec[data_i]+1;
+	}
+	int read_index=read_start;
+	while(read_index < n_data && position_vec[read_index] <= pos_change){
+	  if(is_validation_vec[read_index]){
+	    validation_total += data_vec[read_index];
+	  }else{
+	    subtrain_total += data_vec[read_index];
+	  }
+	  read_index++;
+	}
+	validation_cumsum[write_index] = validation_total;
+	subtrain_cumsum[write_index] = subtrain_total;
+	read_start = read_index;
+	write_index++;
+      }
+      if(is_subtrain){
+	last_subtrain_i = data_i;
+      }
+    }
+    return n_subtrain;
+  }
   // Add a new Segment to candidates if it is big enough to split.
   void maybe_add
   (int first, int last,
@@ -153,7 +192,7 @@ public:
       // if it is possible to split (more than one data point on this
       // segment) then insert new segment into the candidates set.
       candidates.emplace
-	(cumsums, first, last,
+	(subtrain, first, last,
 	 invalidates_after, invalidates_index, loss_no_split);
     }
   }
@@ -187,20 +226,20 @@ int binseg_normal
     return ERROR_TOO_MANY_SEGMENTS;
   }
   Candidates V;
-  // Begin by initializing cumulative sum vector.
-  V.cumsums.init(data_vec, n_data);
+  // Begin by initializing cumulative sum vectors.
+  int n_subtrain = V.init(data_vec, n_data, position_vec, is_validation_vec);
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  V.cumsums.first_last_mean_loss
-    (0, n_data-1, before_mean, loss);
-  before_size[0] = n_data;
-  seg_end[0] = n_data-1;
+  V.subtrain.first_last_mean_loss
+    (0, n_subtrain-1, before_mean, loss);
+  before_size[0] = n_subtrain;
+  seg_end[0] = n_subtrain-1;
   after_mean[0] = INFINITY;
   after_size[0] = -2; // unused/missing indicator.
   invalidates_index[0]=-2;
   invalidates_after[0]=-2;
   // Add a segment and split to the set of candidates.
-  V.maybe_add(0, n_data-1, 0, 0, loss[0]);
+  V.maybe_add(0, n_subtrain-1, 0, 0, loss[0]);
   // For loop over number of segments. During each iteration we find
   // the Segment/split which results in the best loss decrease, store
   // the resulting model parameters, and add new Segment/split

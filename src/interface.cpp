@@ -43,6 +43,7 @@ Rcpp::List rcpp_binseg_normal
   }
   return Rcpp::List::create
     (Rcpp::Named("loss", loss),
+     Rcpp::Named("validation_loss", validation_loss),
      Rcpp::Named("end", end),
      Rcpp::Named("before.mean", before_mean),
      Rcpp::Named("after.mean", after_mean),

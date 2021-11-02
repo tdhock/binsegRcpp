@@ -84,3 +84,8 @@ test_that("rcpp_binseg_normal means ok for negative data", {
   expect_equal(pos.list[["invalidates.index"]], neg.list[["invalidates.index"]])
   expect_equal(pos.list[["invalidates.after"]], neg.list[["invalidates.after"]])
 })
+
+is.validation <- c(1,0,1,1,1,0,0,1,1)
+position <- c(1,2,3,4,101,102,201,202,203)
+data.vec <- rep(1, kmax <- length(is.validation))
+binsegRcpp:::rcpp_binseg_normal(data.vec, kmax, is.validation, position)
