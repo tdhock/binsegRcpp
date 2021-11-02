@@ -6,8 +6,8 @@
 Rcpp::List rcpp_binseg_normal
 (const Rcpp::NumericVector data_vec,
  const int kmax,
- const Rcpp::IntegerVector is_validation_vec,
- const Rcpp::IntegerVector position_vec
+ const Rcpp::LogicalVector is_validation_vec,
+ const Rcpp::NumericVector position_vec
  ) {
   int n_data = data_vec.size();
   if(n_data < 1){
@@ -22,6 +22,7 @@ Rcpp::List rcpp_binseg_normal
   if(position_vec.size() != n_data){
     Rcpp::stop("length of position_vec must be same as data_vec");
   }
+  //TODO stop for non-finite data.
   Rcpp::IntegerVector end(kmax);
   Rcpp::NumericVector loss(kmax);
   Rcpp::NumericVector validation_loss(kmax);
@@ -31,18 +32,22 @@ Rcpp::List rcpp_binseg_normal
   Rcpp::IntegerVector after_size(kmax);
   Rcpp::IntegerVector invalidates_index(kmax);
   Rcpp::IntegerVector invalidates_after(kmax);
-  int status = binseg_normal
+  int status = binseg_normal 
     (&data_vec[0], n_data, kmax, &is_validation_vec[0], &position_vec[0],
      //inputs above, outputs below.
      &end[0], &loss[0], &validation_loss[0],
      &before_mean[0], &after_mean[0],
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
+  //Rprintf("status=%d\n", status);
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments"); 
   }
   if(status == ERROR_NEED_AT_LEAST_ONE_SUBTRAIN_DATA){
     Rcpp::stop("need at least one subtrain data");
+  }
+  if(status == ERROR_POSITIONS_MUST_INCREASE){
+    Rcpp::stop("positions must increase");
   }
   return Rcpp::List::create
     (Rcpp::Named("loss", loss),

@@ -85,13 +85,23 @@ test_that("rcpp_binseg_normal means ok for negative data", {
   expect_equal(pos.list[["invalidates.after"]], neg.list[["invalidates.after"]])
 })
 
-is.validation <-
+test_that("validation loss ok for simple example", {
+  is.validation <-
     c(1,0,1,1,    1,  0,     0,  1,  1)
-position <-
+  position <-
     c(1,2,3,4,  101,102,   201,202,203)
-kmax <- sum(!is.validation)
-data.vec <- rep(1, length(position))
-binsegRcpp:::rcpp_binseg_normal(data.vec, kmax, is.validation, position)
+  data.vec <-
+    c(1,1,1,1,    2,  2,     30,  30,  30)
+  kmax <- sum(!is.validation)
+  fit <- binsegRcpp::binseg_normal(data.vec, kmax, is.validation, position)
+  subtrain.vec <- data.vec[is.validation==0]
+  validation.vec <- data.vec[is.validation==1]
+  m1 <- mean(subtrain.vec)
+  expect_equal(fit$validation.loss[1], sum((validation.vec-m1)^2))
+  m2 <- rep(c(1.5, 30), c(4, 2))
+  expect_equal(fit$validation.loss[2], sum((validation.vec-m2)^2))
+  expect_equal(fit$validation.loss[3], 0)
+})
 
 test_that("error for no subtrain data", {
   expect_error({
@@ -116,3 +126,8 @@ test_that("two data with one subtrain and one segment is ok", {
   expect_equal(fit$before.mean, 2)
 })
 
+test_that("error for positions not increasing", {
+  expect_error({
+    binsegRcpp::binseg_normal(1:2, position.vec=2:1)
+  }, "positions must increase")
+})

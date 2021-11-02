@@ -59,6 +59,16 @@ public:
   }
 };
 
+double get_validation_loss
+(int first, int last, double subtrain_mean,
+ SetCumsum &validation, SetCumsum &validation_count
+ ){
+  double validation_sum = validation.get_sum(first, last);
+  double validation_N = validation_count.get_sum(first, last);
+  return square_loss(validation_N, validation_sum, subtrain_mean);
+}
+
+
 // Split class stores info for a single candidate split to consider.
 class Split {
 public:
@@ -87,7 +97,8 @@ public:
   //invalidated. It is necessary to store this information in order to
   //recover the optimal mean parameters of any model size.
   int invalidates_index, invalidates_after;
-  double best_decrease;
+  double best_decrease, validation_decrease;
+  double before_validation_loss, after_validation_loss;
   Split best_split;
   int n_changes() const {
     return last-first;
@@ -107,9 +118,10 @@ public:
   // constructor which considers all possible splits from first to
   // last, and then stores the best split and loss decrease.
   Segment
-  (SetCumsum &cumsums, int first, int last,
+  (SetCumsum &subtrain, SetCumsum &validation, SetCumsum &validation_count,
+   int first, int last,
    int invalidates_after, int invalidates_index,
-   double loss_no_split
+   double loss_no_split, double validation_loss_no_split
    ): first(first), last(last),
       invalidates_index(invalidates_index),
       invalidates_after(invalidates_after)
@@ -120,13 +132,23 @@ public:
     // for loop over all possible splits on this Segment.
     for(int ci=0; ci<n_candidates; ci++){
       loss_split = candidate_split.set_mean_loss
-	(cumsums, first, first+ci, last);
+	(subtrain, first, first+ci, last);
       if(loss_split < best_loss_split){
 	best_loss_split = loss_split;
 	best_split = candidate_split;
       }
     }
     best_decrease = best_loss_split - loss_no_split;
+    before_validation_loss = get_validation_loss
+      (first, best_split.this_end, best_split.before.mean,
+       validation, validation_count);
+    after_validation_loss = get_validation_loss
+      (best_split.this_end+1, last, best_split.after.mean,
+       validation, validation_count);
+    double validation_loss_split =
+      before_validation_loss + after_validation_loss;
+    validation_decrease =
+      validation_loss_split - validation_loss_no_split;
   }
 };
 
@@ -135,16 +157,10 @@ public:
   std::multiset<Segment> candidates;
   SetCumsum subtrain, validation, validation_count;
   double subtrain_squares, validation_squares;
-  double get_validation_loss
-  (int first, int last, double subtrain_mean){
-    double validation_sum = validation.get_sum(first, last);
-    double validation_N = validation_count.get_sum(first, last);
-    return square_loss(validation_N, validation_sum, subtrain_mean);
-  }
   // computes the cumulative sum vectors in linear O(n_data) time.
   int init
   (const double *data_vec, const int n_data,
-   const int *position_vec, const int *is_validation_vec
+   const double *position_vec, const int *is_validation_vec
    ){
     int n_validation = 0;
     for(int data_i=0; data_i<n_data; data_i++){
@@ -208,25 +224,27 @@ public:
   void maybe_add
   (int first, int last,
    int invalidates_after, int invalidates_index,
-   double loss_no_split)
-  {
+   double loss_no_split, double validation_loss_no_split
+   ){
     if(first < last){
       // if it is possible to split (more than one data point on this
       // segment) then insert new segment into the candidates set.
       candidates.emplace
-	(subtrain, first, last,
-	 invalidates_after, invalidates_index, loss_no_split);
+	(subtrain, validation, validation_count,
+	 first, last,
+	 invalidates_after, invalidates_index,
+	 loss_no_split, validation_loss_no_split);
     }
   }
 };
 
 /* Binary segmentation algorithm for change in mean in the normal
-   distribution, loss function is square loss.
+   distribution (square loss function).
 
    This code assumes, and the code which calls this function needs to
    have error checking for, the following:
 
-   At least one data points (0 < n_data), data_vec is an array
+   At least one data point (0 < n_data), data_vec is an array
    of input data, size n_data.
 
    Positive number of segments (0 < max_segments), all of the other
@@ -239,26 +257,32 @@ public:
  */
 int binseg_normal
 (const double *data_vec, const int n_data, const int max_segments,
- const int *is_validation_vec, const int *position_vec,
+ const int *is_validation_vec, const double *position_vec, 
  int *seg_end, double *loss, double *validation_loss,
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size, 
- int *invalidates_index, int *invalidates_after){
+ int *invalidates_index, int *invalidates_after
+ ){
+  for(int data_i=1; data_i<n_data; data_i++){
+    if(position_vec[data_i] <= position_vec[data_i-1]){
+      return ERROR_POSITIONS_MUST_INCREASE;
+    }
+  }
   Candidates V;
   // Begin by initializing cumulative sum vectors.
   int n_subtrain = V.init(data_vec, n_data, position_vec, is_validation_vec);
-  // Then store the trivial segment mean/loss (which starts at the
-  // first and ends at the last data point).
   if(n_subtrain == 0){
     return ERROR_NEED_AT_LEAST_ONE_SUBTRAIN_DATA;
   }
   if(n_subtrain < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
+  // Then store the trivial segment mean/loss (which starts at the
+  // first and ends at the last data point).
   V.subtrain.first_last_mean_loss
     (0, n_subtrain-1, before_mean, loss);
-  validation_loss[0] = V.get_validation_loss
-    (0, n_subtrain-1, *before_mean);
+  validation_loss[0] = get_validation_loss
+    (0, n_subtrain-1, *before_mean, V.validation, V.validation_count);
   before_size[0] = n_subtrain;
   seg_end[0] = n_subtrain-1;
   after_mean[0] = INFINITY;
@@ -266,7 +290,7 @@ int binseg_normal
   invalidates_index[0]=-2;
   invalidates_after[0]=-2;
   // Add a segment and split to the set of candidates.
-  V.maybe_add(0, n_subtrain-1, 0, 0, loss[0]);
+  V.maybe_add(0, n_subtrain-1, 0, 0, loss[0], validation_loss[0]);
   // For loop over number of segments. During each iteration we find
   // the Segment/split which results in the best loss decrease, store
   // the resulting model parameters, and add new Segment/split
@@ -278,6 +302,7 @@ int binseg_normal
     std::multiset<Segment>::iterator it = V.candidates.begin();
     // Store loss and model parameters associated with this split.
     loss[seg_i] = loss[seg_i-1] + it->best_decrease;
+    validation_loss[seg_i] = validation_loss[seg_i-1] + it->validation_decrease;
     seg_end[seg_i] = it->best_split.this_end;
     before_mean[seg_i] = it->best_split.before.mean;
     after_mean[seg_i] = it->best_split.after.mean;
@@ -298,11 +323,13 @@ int binseg_normal
     V.maybe_add
       (it->first, it->best_split.this_end,
        0,//invalidates_after=0 => before_mean invalidated.
-       seg_i, it->best_split.before.loss);
+       seg_i, it->best_split.before.loss,
+       it->before_validation_loss);
     V.maybe_add
       (it->best_split.this_end+1, it->last,
        1,//invalidates_after=1 => after_mean invalidated.
-       seg_i, it->best_split.after.loss);
+       seg_i, it->best_split.after.loss,
+       it->after_validation_loss);
     // Erase at end because we need it->values during maybe_add
     // inserts above.
     V.candidates.erase(it);
