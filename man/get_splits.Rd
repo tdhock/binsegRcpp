@@ -20,12 +20,24 @@ case has values best, worst, empirical.}
 
 ## Example 1: empirical=worst case.
 data.vec <- rep(c(0,1), l=10)
+plot(data.vec)
 bs.model <- binsegRcpp::binseg_normal(data.vec)
 split.counts <- binsegRcpp::get_splits(bs.model)
 plot(split.counts)
 
 ## Example 2: empirical=best case.
 data.vec <- 1:20
+plot(data.vec)
+bs.model <- binsegRcpp::binseg_normal(data.vec)
+split.counts <- binsegRcpp::get_splits(bs.model)
+plot(split.counts)
+
+## Example 3: empirical case between best/worst.
+seg.mean.vec <- 1:5
+data.mean.vec <- rep(seg.mean.vec, each=10)
+set.seed(1)
+data.vec <- rnorm(length(data.mean.vec), data.mean.vec, 0.2)
+plot(data.vec)
 bs.model <- binsegRcpp::binseg_normal(data.vec)
 split.counts <- binsegRcpp::get_splits(bs.model)
 plot(split.counts)

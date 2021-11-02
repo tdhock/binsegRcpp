@@ -2,6 +2,7 @@
 #include <math.h>//INFINITY
 #include <set>//multiset
 #include <vector>
+#include <R.h>//Rprintf
 
 // This class saves the optimal parameters/loss value for each segment
 // (before and after) resulting from a split. Currently there is only
@@ -145,22 +146,27 @@ public:
 	n_validation++;
       }
     }
-    subtrain.cumsum_vec.resize(n_validation);
-    validation.cumsum_vec.resize(n_validation);
-    int last_subtrain_i=-1;
     int n_subtrain = n_data - n_validation;
+    subtrain.cumsum_vec.resize(n_subtrain);
+    validation.cumsum_vec.resize(n_subtrain);
+    int last_subtrain_i=-1;
     double pos_total, pos_change, subtrain_total=0, validation_total=0;
     int read_start=0, write_index=0;
-    for(int data_i=0; data_i<n_data; data_i++){
-      bool is_subtrain = !is_validation_vec[data_i];
-      bool write_subtrain = last_subtrain_i >= 0 && is_subtrain;
-      bool write_end = data_i == n_data-1;
+    for(int data_i=0; data_i<=n_data; data_i++){
+      bool is_subtrain = false;
+      bool write_subtrain = false;
+      bool write_end = data_i == n_data;
+      if(!write_end){
+	is_subtrain = !is_validation_vec[data_i];
+	write_subtrain = last_subtrain_i >= 0 && is_subtrain;
+      }
+      //Rprintf("data_i=%d write_subtrain=%d write_end=%d\n", data_i, write_subtrain, write_end);
       if(write_subtrain || write_end){
 	if(write_subtrain){
 	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
 	  pos_change = pos_total/2;
 	}else{
-	  pos_change = position_vec[data_i]+1;
+	  pos_change = position_vec[data_i-1]+1;//last.
 	}
 	int read_index=read_start;
 	while(read_index < n_data && position_vec[read_index] <= pos_change){
@@ -171,8 +177,9 @@ public:
 	  }
 	  read_index++;
 	}
-	validation_cumsum[write_index] = validation_total;
-	subtrain_cumsum[write_index] = subtrain_total;
+	//Rprintf("write_index=%d validation_total=%f subtrain_total=%f\n", write_index, validation_total, subtrain_total);
+	validation.cumsum_vec[write_index] = validation_total;
+	subtrain.cumsum_vec[write_index] = subtrain_total;
 	read_start = read_index;
 	write_index++;
       }
@@ -222,14 +229,14 @@ int binseg_normal
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size, 
  int *invalidates_index, int *invalidates_after){
-  if(n_data < max_segments){
-    return ERROR_TOO_MANY_SEGMENTS;
-  }
   Candidates V;
   // Begin by initializing cumulative sum vectors.
   int n_subtrain = V.init(data_vec, n_data, position_vec, is_validation_vec);
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
+  if(n_subtrain < max_segments){
+    return ERROR_TOO_MANY_SEGMENTS;
+  }
   V.subtrain.first_last_mean_loss
     (0, n_subtrain-1, before_mean, loss);
   before_size[0] = n_subtrain;
