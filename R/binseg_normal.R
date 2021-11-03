@@ -22,7 +22,7 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
     segments=1:max.segments,##<< number of parameters
     loss,##<< subtrain square loss
     validation.loss,##<< validation square loss
-    end=end+1L,##<< index of last data point per segment
+    end,##<< index of last data point per segment
     before.mean,##<< mean before changepoint
     after.mean=ifelse(after.mean==Inf, NA, after.mean),##<< mean after changepoint
     before.size,##<< number of data before changepoint

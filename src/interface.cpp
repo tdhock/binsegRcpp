@@ -24,6 +24,7 @@ Rcpp::List rcpp_binseg_normal
   }
   //TODO stop for non-finite data.
   Rcpp::IntegerVector end(kmax);
+  Rcpp::NumericVector pos_end(kmax);
   Rcpp::NumericVector loss(kmax);
   Rcpp::NumericVector validation_loss(kmax);
   Rcpp::NumericVector before_mean(kmax);
@@ -35,7 +36,7 @@ Rcpp::List rcpp_binseg_normal
   int status = binseg_normal 
     (&data_vec[0], n_data, kmax, &is_validation_vec[0], &position_vec[0],
      //inputs above, outputs below.
-     &end[0], &loss[0], &validation_loss[0],
+     &end[0], &pos_end[0], &loss[0], &validation_loss[0],
      &before_mean[0], &after_mean[0],
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
@@ -53,6 +54,7 @@ Rcpp::List rcpp_binseg_normal
     (Rcpp::Named("loss", loss),
      Rcpp::Named("validation.loss", validation_loss),
      Rcpp::Named("end", end),
+     Rcpp::Named("pos.end", pos_end),
      Rcpp::Named("before.mean", before_mean),
      Rcpp::Named("after.mean", after_mean),
      Rcpp::Named("before.size", before_size),

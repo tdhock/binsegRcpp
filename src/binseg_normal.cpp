@@ -155,6 +155,8 @@ public:
 class Candidates {
 public:
   std::multiset<Segment> candidates;
+  std::vector<double> change_pos_vec;
+  std::vector<int> change_index_vec;
   SetCumsum subtrain, validation, validation_count;
   double subtrain_squares, validation_squares;
   // computes the cumulative sum vectors in linear O(n_data) time.
@@ -173,6 +175,7 @@ public:
     subtrain.cumsum_vec.resize(n_subtrain);
     validation.cumsum_vec.resize(n_subtrain);
     validation_count.cumsum_vec.resize(n_subtrain);
+    change_pos_vec.resize(n_subtrain+1);
     int last_subtrain_i=-1;
     double pos_total, pos_change, subtrain_total=0, validation_total=0;
     double validation_count_total = 0;
@@ -191,9 +194,15 @@ public:
 	if(write_subtrain){
 	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
 	  pos_change = pos_total/2;
+	  if(write_index==0){
+	    change_pos_vec[write_index] = position_vec[last_subtrain_i]-1;
+	    change_index_vec[write_index] = last_subtrain_i;
+	  }
 	}else{
 	  pos_change = position_vec[data_i-1]+1;//last.
 	}
+	change_pos_vec[write_index+1] = pos_change;
+	change_index_vec[write_index+1] = data_i;
 	int read_index=read_start;
 	while(read_index < n_data && position_vec[read_index] <= pos_change){
 	  double data_value = data_vec[read_index];
@@ -258,7 +267,7 @@ public:
 int binseg_normal
 (const double *data_vec, const int n_data, const int max_segments,
  const int *is_validation_vec, const double *position_vec, 
- int *seg_end, double *loss, double *validation_loss,
+ int *seg_end, double *pos_end, double *loss, double *validation_loss,
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size, 
  int *invalidates_index, int *invalidates_after
@@ -284,7 +293,8 @@ int binseg_normal
   validation_loss[0] = get_validation_loss
     (0, n_subtrain-1, *before_mean, V.validation, V.validation_count);
   before_size[0] = n_subtrain;
-  seg_end[0] = n_subtrain-1;
+  seg_end[0] = V.change_index_vec[n_subtrain];
+  pos_end[0] = V.change_pos_vec[n_subtrain];
   after_mean[0] = INFINITY;
   after_size[0] = -2; // unused/missing indicator.
   invalidates_index[0]=-2;
@@ -303,7 +313,8 @@ int binseg_normal
     // Store loss and model parameters associated with this split.
     loss[seg_i] = loss[seg_i-1] + it->best_decrease;
     validation_loss[seg_i] = validation_loss[seg_i-1] + it->validation_decrease;
-    seg_end[seg_i] = it->best_split.this_end;
+    seg_end[seg_i] = V.change_index_vec[it->best_split.this_end+1];
+    pos_end[seg_i] = V.change_pos_vec[it->best_split.this_end+1];
     before_mean[seg_i] = it->best_split.before.mean;
     after_mean[seg_i] = it->best_split.after.mean;
     // Also store invalidates index/after so we know which previous
