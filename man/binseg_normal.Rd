@@ -12,7 +12,8 @@ in log-linear time.}
     position.vec = seq_along(data.vec))}
 \arguments{
   \item{data.vec}{Vector of numeric data to segment.}
-  \item{max.segments}{Maximum number of segments to compute, default=length(\code{data.vec}).}
+  \item{max.segments}{Maximum number of segments to compute, default=number of FALSE
+entries in \code{is.validation.vec}.}
   \item{is.validation.vec}{logical vector indicating which data are to be used in validation
 set, default=all FALSE (no validation set).}
   \item{position.vec}{integer vector of positions at which data are measured,

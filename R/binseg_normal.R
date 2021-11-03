@@ -6,7 +6,8 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
 (data.vec,
 ### Vector of numeric data to segment.
   max.segments=sum(!is.validation.vec),
-### Maximum number of segments to compute, default=length(data.vec).
+### Maximum number of segments to compute, default=number of FALSE
+### entries in is.validation.vec.
   is.validation.vec=rep(FALSE, length(data.vec)),
 ### logical vector indicating which data are to be used in validation
 ### set, default=all FALSE (no validation set).
@@ -85,7 +86,7 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
   n.data <- length(data.mean.vec)
   data.vec <- rnorm(n.data, data.mean.vec, 0.2)
   plot(data.vec)
-  
+
   library(data.table)
   loss.dt <- data.table(seed=1:10)[, {
     set.seed(seed)
@@ -104,7 +105,7 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
       mean.valid.loss==min(mean.valid.loss),
       "black",
       "red"))
-  
+
   selected.segments <- loss.stats[which.min(mean.valid.loss), segments]
   full.model <- binsegRcpp::binseg_normal(data.vec, selected.segments)
   (segs.dt <- coef(full.model, selected.segments))
