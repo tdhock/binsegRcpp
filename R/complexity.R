@@ -1,7 +1,7 @@
-plot.splits <- function
+plot.complexity <- function
 ### Plot comparing empirical number of splits to best/worst case.
 (x,
-### data.table from get_splits.
+### data.table from get_complexity.
   ...
 ### ignored.
 ){
@@ -16,7 +16,7 @@ plot.splits <- function
   with(x$totals, text(x, y, label, col=case.colors[case], adj=c(1,1)))
 }
 
-get_splits_extreme <- function
+get_complexity_extreme <- function
 ### Compute best and worst case number of splits.
 (N.data
 ### number of data to segment.
@@ -54,7 +54,7 @@ get_splits_extreme <- function
 ### and worst (unequal segment sizes, max splits to check).
 }
 
-get_splits_empirical <- function
+get_complexity_empirical <- function
 ### Get empirical split counts.
 (model.dt
 ### data.table from binseg_normal.
@@ -74,19 +74,20 @@ case.colors <- c(worst="deepskyblue", empirical="black", best="red")
 ### Numeric vector giving default sizes for cases.
 case.sizes <- c(worst=1.5, empirical=1, best=3)
 
-get_splits <- structure(function
+get_complexity <- structure(function
 ### Get empirical and extreme split counts.
-(model.dt
+(models
 ### data.table from binseg_normal.
 ){
   segments <- end <- . <- splits <- y <- label <- case <- NULL
   ## above to avoid CRAN NOTE.
+  model.dt <- models$splits
   n.data <- model.dt[segments==1, end]
   max.segs <- max(model.dt$segments)
-  extreme.dt <- get_splits_extreme(n.data)
+  extreme.dt <- get_complexity_extreme(n.data)
   iterations <- rbind(
     extreme.dt[segments <= max.segs],
-    get_splits_empirical(model.dt))
+    get_complexity_empirical(model.dt))
   totals <- iterations[names(case.colors), .(
     x=n.data,
     splits=sum(splits)
@@ -94,7 +95,7 @@ get_splits <- structure(function
   totals[, y := n.data*(1-.I*0.1)]
   totals[, label := sprintf("%s case total splits=%d", case, splits)]
   out <- list(iterations=iterations, totals=totals)
-  class(out) <- c("splits", class(out))
+  class(out) <- c("complexity", class(out))
   out
 ### data.table with one row per model size, and column splits with
 ### number of splits to check after computing that model size. Column
@@ -105,14 +106,14 @@ get_splits <- structure(function
   data.vec <- rep(c(0,1), l=10)
   plot(data.vec)
   bs.model <- binsegRcpp::binseg_normal(data.vec)
-  split.counts <- binsegRcpp::get_splits(bs.model)
+  split.counts <- binsegRcpp::get_complexity(bs.model)
   plot(split.counts)
 
   ## Example 2: empirical=best case.
   data.vec <- 1:20
   plot(data.vec)
   bs.model <- binsegRcpp::binseg_normal(data.vec)
-  split.counts <- binsegRcpp::get_splits(bs.model)
+  split.counts <- binsegRcpp::get_complexity(bs.model)
   plot(split.counts)
 
   ## Example 3: empirical case between best/worst.
@@ -122,7 +123,7 @@ get_splits <- structure(function
   data.vec <- rnorm(length(data.mean.vec), data.mean.vec, 0.2)
   plot(data.vec)
   bs.model <- binsegRcpp::binseg_normal(data.vec)
-  split.counts <- binsegRcpp::get_splits(bs.model)
+  split.counts <- binsegRcpp::get_complexity(bs.model)
   plot(split.counts)
 
   if(require("ggplot2")){

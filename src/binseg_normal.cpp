@@ -68,7 +68,6 @@ double get_validation_loss
   return square_loss(validation_N, validation_sum, subtrain_mean);
 }
 
-
 // Split class stores info for a single candidate split to consider.
 class Split {
 public:
@@ -139,6 +138,7 @@ public:
       }
     }
     best_decrease = best_loss_split - loss_no_split;
+    // TODO combine this logic with Split class?
     before_validation_loss = get_validation_loss
       (first, best_split.this_end, best_split.before.mean,
        validation, validation_count);
@@ -155,14 +155,13 @@ public:
 class Candidates {
 public:
   std::multiset<Segment> candidates;
-  std::vector<double> change_pos_vec;
-  std::vector<int> change_index_vec;
   SetCumsum subtrain, validation, validation_count;
   double subtrain_squares, validation_squares;
   // computes the cumulative sum vectors in linear O(n_data) time.
   int init
   (const double *data_vec, const int n_data,
-   const double *position_vec, const int *is_validation_vec
+   const double *position_vec, const int *is_validation_vec,
+   double *subtrain_borders
    ){
     int n_validation = 0;
     for(int data_i=0; data_i<n_data; data_i++){
@@ -171,11 +170,9 @@ public:
       }
     }
     int n_subtrain = n_data - n_validation;
-    if(n_subtrain == 0)return(n_subtrain);
     subtrain.cumsum_vec.resize(n_subtrain);
     validation.cumsum_vec.resize(n_subtrain);
     validation_count.cumsum_vec.resize(n_subtrain);
-    change_pos_vec.resize(n_subtrain+1);
     int last_subtrain_i=-1;
     double pos_total, pos_change, subtrain_total=0, validation_total=0;
     double validation_count_total = 0;
@@ -195,14 +192,12 @@ public:
 	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
 	  pos_change = pos_total/2;
 	  if(write_index==0){
-	    change_pos_vec[write_index] = position_vec[last_subtrain_i]-1;
-	    change_index_vec[write_index] = last_subtrain_i;
+	    subtrain_borders[write_index] = position_vec[last_subtrain_i]-0.5;
 	  }
 	}else{
-	  pos_change = position_vec[data_i-1]+1;//last.
+	  pos_change = position_vec[data_i-1]+0.5;//last.
 	}
-	change_pos_vec[write_index+1] = pos_change;
-	change_index_vec[write_index+1] = data_i;
+	subtrain_borders[write_index+1] = pos_change;
 	int read_index=read_start;
 	while(read_index < n_data && position_vec[read_index] <= pos_change){
 	  double data_value = data_vec[read_index];
@@ -267,7 +262,7 @@ public:
 int binseg_normal
 (const double *data_vec, const int n_data, const int max_segments,
  const int *is_validation_vec, const double *position_vec, 
- int *seg_end, double *pos_end, double *loss, double *validation_loss,
+ int *seg_end, double *subtrain_borders, double *loss, double *validation_loss,
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size, 
  int *invalidates_index, int *invalidates_after
@@ -279,10 +274,9 @@ int binseg_normal
   }
   Candidates V;
   // Begin by initializing cumulative sum vectors.
-  int n_subtrain = V.init(data_vec, n_data, position_vec, is_validation_vec);
-  if(n_subtrain == 0){
-    return ERROR_NEED_AT_LEAST_ONE_SUBTRAIN_DATA;
-  }
+  int n_subtrain = V.init
+    (data_vec, n_data, position_vec, is_validation_vec,
+     subtrain_borders);
   if(n_subtrain < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
@@ -293,8 +287,7 @@ int binseg_normal
   validation_loss[0] = get_validation_loss
     (0, n_subtrain-1, *before_mean, V.validation, V.validation_count);
   before_size[0] = n_subtrain;
-  seg_end[0] = V.change_index_vec[n_subtrain];
-  pos_end[0] = V.change_pos_vec[n_subtrain];
+  seg_end[0] = n_subtrain-1;
   after_mean[0] = INFINITY;
   after_size[0] = -2; // unused/missing indicator.
   invalidates_index[0]=-2;
@@ -312,9 +305,9 @@ int binseg_normal
     std::multiset<Segment>::iterator it = V.candidates.begin();
     // Store loss and model parameters associated with this split.
     loss[seg_i] = loss[seg_i-1] + it->best_decrease;
-    validation_loss[seg_i] = validation_loss[seg_i-1] + it->validation_decrease;
-    seg_end[seg_i] = V.change_index_vec[it->best_split.this_end+1];
-    pos_end[seg_i] = V.change_pos_vec[it->best_split.this_end+1];
+    validation_loss[seg_i] =
+      validation_loss[seg_i-1] + it->validation_decrease;
+    seg_end[seg_i] = it->best_split.this_end;
     before_mean[seg_i] = it->best_split.before.mean;
     after_mean[seg_i] = it->best_split.after.mean;
     // Also store invalidates index/after so we know which previous
@@ -352,3 +345,14 @@ int binseg_normal
   return 0;//SUCCESS.
 }
 
+int get_n_subtrain
+(const int n_data, const int *is_validation_vec){
+  int n_subtrain = 0;
+  for(int data_i=0; data_i<n_data; data_i++){
+    if(!is_validation_vec[data_i]){
+      n_subtrain++;
+    }
+  }
+  return n_subtrain;
+}
+  

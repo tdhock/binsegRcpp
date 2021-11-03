@@ -2,12 +2,13 @@ TODOS
 
 re-order splits to show best case with max.segments < n.data.
 
-2021.11.1
+2021.11.2
 
 break ties in Segment operator< by size (split larger segments first).
 
 binseg_normal gains args is.validation.vec, position.vec in order to
-support efficient cross-validation.
+support efficient cross-validation. it now returns list with new
+component subtrain.borders (predicted changepoint positions).
 
 get_splits* functions for comparing empirical to best/worst case.
 

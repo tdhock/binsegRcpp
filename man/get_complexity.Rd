@@ -1,10 +1,10 @@
-\name{get_splits}
-\alias{get_splits}
-\title{get splits}
+\name{get_complexity}
+\alias{get_complexity}
+\title{get complexity}
 \description{Get empirical and extreme split counts.}
-\usage{get_splits(model.dt)}
+\usage{get_complexity(models)}
 \arguments{
-  \item{model.dt}{data.table from \code{\link{binseg_normal}}.}
+  \item{models}{data.table from \code{\link{binseg_normal}}.}
 }
 
 \value{data.table with one row per model size, and column splits with
@@ -22,14 +22,14 @@ case has values best, worst, empirical.}
 data.vec <- rep(c(0,1), l=10)
 plot(data.vec)
 bs.model <- binsegRcpp::binseg_normal(data.vec)
-split.counts <- binsegRcpp::get_splits(bs.model)
+split.counts <- binsegRcpp::get_complexity(bs.model)
 plot(split.counts)
 
 ## Example 2: empirical=best case.
 data.vec <- 1:20
 plot(data.vec)
 bs.model <- binsegRcpp::binseg_normal(data.vec)
-split.counts <- binsegRcpp::get_splits(bs.model)
+split.counts <- binsegRcpp::get_complexity(bs.model)
 plot(split.counts)
 
 ## Example 3: empirical case between best/worst.
@@ -39,7 +39,7 @@ set.seed(1)
 data.vec <- rnorm(length(data.mean.vec), data.mean.vec, 0.2)
 plot(data.vec)
 bs.model <- binsegRcpp::binseg_normal(data.vec)
-split.counts <- binsegRcpp::get_splits(bs.model)
+split.counts <- binsegRcpp::get_complexity(bs.model)
 plot(split.counts)
 
 if(require("ggplot2")){

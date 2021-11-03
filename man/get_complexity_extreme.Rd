@@ -1,8 +1,8 @@
-\name{get_splits_extreme}
-\alias{get_splits_extreme}
-\title{get splits extreme}
+\name{get_complexity_extreme}
+\alias{get_complexity_extreme}
+\title{get complexity extreme}
 \description{Compute best and worst case number of splits.}
-\usage{get_splits_extreme(N.data)}
+\usage{get_complexity_extreme(N.data)}
 \arguments{
   \item{N.data}{number of data to segment.}
 }

@@ -1,8 +1,8 @@
-\name{get_splits_empirical}
-\alias{get_splits_empirical}
-\title{get splits empirical}
+\name{get_complexity_empirical}
+\alias{get_complexity_empirical}
+\title{get complexity empirical}
 \description{Get empirical split counts.}
-\usage{get_splits_empirical(model.dt)}
+\usage{get_complexity_empirical(model.dt)}
 \arguments{
   \item{model.dt}{data.table from \code{\link{binseg_normal}}.}
 }

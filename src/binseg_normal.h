@@ -1,6 +1,7 @@
 #define ERROR_TOO_MANY_SEGMENTS 2
-#define ERROR_NEED_AT_LEAST_ONE_SUBTRAIN_DATA 3
 #define ERROR_POSITIONS_MUST_INCREASE -4
+
+int get_n_subtrain(const int, const int*);
 
 int binseg_normal 
 (const double *data_vec, const int n_data, const int max_segments,

@@ -2,7 +2,8 @@ library(binsegRcpp)
 library(testthat)
 
 test_that("one data point has zero loss", {
-  fit <- binsegRcpp::binseg_normal(5)
+  L <- binsegRcpp::binseg_normal(5)
+  fit <- L$splits
   expect_identical(fit[["loss"]], 0)
   expect_identical(fit[["before.mean"]], 5)
 })
@@ -13,13 +14,14 @@ sloss <- function(m, x){
 test_that("equal split cost is ok", {
   x <- c(0, 0.1, 1, 1.1, 0, 0.1)
   L <- binsegRcpp::binseg_normal(x, length(x))
-  expect_equal(sort(L$end[1:3]), c(2, 4, 6))
+  fit <- L$splits
+  expect_equal(sort(fit$end[1:3]), c(2, 4, 6))
   m1 <- mean(x)
-  expect_equal(L$before.mean[1], m1)
-  expect_equal(L$loss[1], sloss(m1, x))
-  expect_equal(L$loss[6], 0)
+  expect_equal(fit$before.mean[1], m1)
+  expect_equal(fit$loss[1], sloss(m1, x))
+  expect_equal(fit$loss[6], 0)
   m3 <- c(0.05, 0.05, 1.05, 1.05, 0.05, 0.05)
-  expect_equal(L$loss[3], sloss(m3, x))
+  expect_equal(fit$loss[3], sloss(m3, x))
 })
 
 test_that("error for 0 data", {
@@ -44,8 +46,10 @@ test_that("error for too many segments", {
 })
 
 x <- c(0.2, 0, 1, 1.4, 3.6, 3)
-pos.dt <- binseg_normal(x)
-neg.dt <- binseg_normal(-x)
+pos.L <- binseg_normal(x)
+pos.dt <- pos.L$splits
+neg.L <- binseg_normal(-x)
+neg.dt <- neg.L$splits
 test_that("binseg_normal means ok for negative data", {
   expect_equal(pos.dt[["loss"]], neg.dt[["loss"]])
   expect_equal(pos.dt[["end"]], neg.dt[["end"]])
@@ -59,30 +63,28 @@ test_that("binseg_normal means ok for negative data", {
 
 test_that("error for invalid coef segments", {
   expect_error({
-    coef(pos.dt, 12.5)
+    coef(pos.L, 12.5)
   }, "segments must be a vector of unique integers between 1 and 6")
   expect_error({
-    coef(pos.dt, -1L)
+    coef(pos.L, -1L)
   }, "segments must be a vector of unique integers between 1 and 6")
   expect_error({
-    coef(pos.dt, 5:10)
+    coef(pos.L, 5:10)
   }, "segments must be a vector of unique integers between 1 and 6")
   segs.vec <- 5:6
-  segs.dt <- coef(pos.dt, segs.vec)
+  segs.dt <- coef(pos.L, segs.vec)
   expect_equal(nrow(segs.dt), sum(segs.vec))
 })
 
-pos.list <- binsegRcpp::binseg_normal(x, length(x))
-neg.list <- binsegRcpp::binseg_normal(-x, length(x))
 test_that("rcpp_binseg_normal means ok for negative data", {
-  expect_equal(pos.list[["loss"]], neg.list[["loss"]])
-  expect_equal(pos.list[["end"]], neg.list[["end"]])
-  expect_equal(pos.list[["before.mean"]], -neg.list[["before.mean"]])
-  expect_equal(pos.list[["after.mean"]][-1], -neg.list[["after.mean"]][-1])
-  expect_equal(pos.list[["before.size"]], neg.list[["before.size"]])
-  expect_equal(pos.list[["after.size"]], neg.list[["after.size"]])
-  expect_equal(pos.list[["invalidates.index"]], neg.list[["invalidates.index"]])
-  expect_equal(pos.list[["invalidates.after"]], neg.list[["invalidates.after"]])
+  expect_equal(pos.dt[["loss"]], neg.dt[["loss"]])
+  expect_equal(pos.dt[["end"]], neg.dt[["end"]])
+  expect_equal(pos.dt[["before.mean"]], -neg.dt[["before.mean"]])
+  expect_equal(pos.dt[["after.mean"]][-1], -neg.dt[["after.mean"]][-1])
+  expect_equal(pos.dt[["before.size"]], neg.dt[["before.size"]])
+  expect_equal(pos.dt[["after.size"]], neg.dt[["after.size"]])
+  expect_equal(pos.dt[["invalidates.index"]], neg.dt[["invalidates.index"]])
+  expect_equal(pos.dt[["invalidates.after"]], neg.dt[["invalidates.after"]])
 })
 
 test_that("validation loss ok for simple example", {
@@ -91,9 +93,10 @@ test_that("validation loss ok for simple example", {
   position <-
     c(1,2,3,4,  101,102,   201,202,203)
   data.vec <-
-    c(1,1,1,1,    2,  2,     30,  30,  30)
+    c(1,1,1,1,    2,  2,    30, 30, 30)
   kmax <- sum(!is.validation)
-  fit <- binsegRcpp::binseg_normal(data.vec, kmax, is.validation, position)
+  L <- binsegRcpp::binseg_normal(data.vec, kmax, is.validation, position)
+  fit <- L$splits
   subtrain.vec <- data.vec[is.validation==0]
   validation.vec <- data.vec[is.validation==1]
   m1 <- mean(subtrain.vec)
@@ -116,11 +119,13 @@ test_that("error for two segments with one subtrain", {
 })
 
 test_that("two data with one subtrain and one segment is ok", {
-  fit <- binsegRcpp::binseg_normal(1:2, 1, is.validation.vec=0:1)
+  L <- binsegRcpp::binseg_normal(1:2, 1, is.validation.vec=0:1)
+  fit <- L$splits
   expect_equal(fit$loss, 0)
   expect_equal(fit$validation.loss, 1)
   expect_equal(fit$before.mean, 1)
-  fit <- binsegRcpp::binseg_normal(2:1, 1, is.validation.vec=0:1)
+  L <- binsegRcpp::binseg_normal(2:1, 1, is.validation.vec=0:1)
+  fit <- L$splits
   expect_equal(fit$loss, 0)
   expect_equal(fit$validation.loss, 1)
   expect_equal(fit$before.mean, 2)

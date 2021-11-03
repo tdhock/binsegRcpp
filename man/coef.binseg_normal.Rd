@@ -4,7 +4,7 @@
 \description{Compute a data table of segment start/end/mean values for all
 models given by \code{segments}.}
 \usage{\method{coef}{binseg_normal}(object, 
-    segments = 1:min(nrow(object), 
+    segments = 1:min(nrow(object$splits), 
         10), ...)}
 \arguments{
   \item{object}{data.table from \code{\link{binseg_normal}}.}
