@@ -21,7 +21,7 @@ binseg_normal_cv <- structure(function # Binary segmentation, normal change in m
     is.valid <- random_set_vec(n.data, set.prop.vec)=="validation"
     bs.model <- binseg_normal(
       data.vec,
-      max.segments=max.segments,
+      max.segments=min(max.segments, sum(!is.valid)),
       is.validation.vec=is.valid,
       position.vec=position.vec)
     bs.model$splits[, .(segments=segments[which.min(validation.loss)])]
