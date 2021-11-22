@@ -113,8 +113,10 @@ sim.result <- data.table(data.seed=1:100)[, {
   select.each.split <- CJ(split.i=1:n.validation.sets, prop.valid)[, {
     set.seed(split.i)
     prop.sets <- c(subtrain=1-prop.valid, validation=prop.valid)
-    is.valid <- random_set_vec(n.data, prop.sets)=="validation"
-    bs.model <- binsegRcpp::binseg_normal(data.vec, is.validation.vec=is.valid)
+    is.valid <- binsegRcpp::random_set_vec(
+      n.data, prop.sets)=="validation"
+    bs.model <- binsegRcpp::binseg_normal(
+      data.vec, is.validation.vec=is.valid)
     bs.model$splits[, .(selected=segments[which.min(validation.loss)])]
   }, by=.(split.i, prop.valid)]
   data.table(n.splits=1:n.validation.sets)[, {
