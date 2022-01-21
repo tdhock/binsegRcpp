@@ -1,7 +1,7 @@
 Package: binsegRcpp
 Type: Package
 Title: Efficient Implementation of Binary Segmentation
-Version: 2021.1.6
+Version: 2021.11.3
 Author: Toby Dylan Hocking
 Maintainer: Toby Dylan Hocking <toby.hocking@r-project.org>
 Description: Standard template library 
@@ -13,4 +13,12 @@ LinkingTo: Rcpp
 URL: https://github.com/tdhock/binsegRcpp
 BugReports: https://github.com/tdhock/binsegRcpp/issues
 Imports: data.table, Rcpp
-Suggests: ggplot2, testthat
+Suggests: 
+    covr,
+    directlabels,
+    ggplot2,
+    testthat,
+    knitr,
+    markdown,
+    neuroblastoma
+VignetteBuilder: knitr

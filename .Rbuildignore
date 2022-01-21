@@ -3,3 +3,4 @@ inst/testfiles
 .travis.yml
 README.org
 build.sh
+^\.github$

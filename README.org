@@ -1,7 +1,9 @@
 binsegRcpp Efficient implementation of the binary segmentation
-heuristic algorithm for changepoint detection, using C++ std::multimap.
+heuristic algorithm for changepoint detection, using C++
+std::multimap. Also contains functions for comparing empirical time
+complexity to best/worst case.
 
-| [[file:tests/testthat][tests]]    | [[https://travis-ci.org/tdhock/binsegRcpp][https://travis-ci.org/tdhock/binsegRcpp.png?branch=master]]                           |
+| [[file:tests/testthat][tests]]    | [[https://github.com/tdhock/nc/actions][https://github.com/tdhock/nc/workflows/R-CMD-check/badge.svg]]                        |
 | [[https://github.com/jimhester/covr][coverage]] | [[https://coveralls.io/github/tdhock/binsegRcpp?branch=master][https://coveralls.io/repos/tdhock/binsegRcpp/badge.svg?branch=master&service=github]] |
 
 ** Installation
@@ -64,6 +66,11 @@ The coef methods returns a data table of segment means:
 #+END_SRC
 
 ** Related work
+
+Other implementations of binary segmentation include
+[[https://github.com/rkillick/changepoint/][changepoint::cpt.mean(method="BinSeg")]] (quadratic storage in max
+number of segments), [[https://github.com/diego-urgell/BinSeg][BinSeg::BinSegModel()]] (same linear storage as
+binsegRcpp), and [[https://github.com/deepcharles/ruptures][ruptures.Binseg()]] (unknown storage).
 
 This version uses the [[http://www.rcpp.org/][Rcpp]]/.Call interface whereas the [[https://github.com/tdhock/binseg][binseg]] package
 uses the .C interface.

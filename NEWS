@@ -1,5 +1,22 @@
 TODOS
 
+re-order splits to show best case with max.segments < n.data?
+
+2021.11.3
+
+binseg_normal_cv does model selection via most frequent number of
+segments with minimum validation error (over several random splits).
+
+2021.11.2
+
+break ties in Segment operator< by size (split larger segments first).
+
+binseg_normal gains args is.validation.vec, position.vec in order to
+support efficient cross-validation. it now returns list with new
+component subtrain.borders (predicted changepoint positions).
+
+get_splits* functions for comparing empirical to best/worst case.
+
 2021.1.6
 
 More comments in binseg_normal.cpp to help potential GSOC students.
