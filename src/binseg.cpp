@@ -45,9 +45,17 @@ double square_loss(double N, double sum, double mean){
    
 */
 
-/* for poisson loss with weights:
+/* poisson likelihood:
+
+prob_i = m^{x_i} * exp(-m) / (x_i !)
+
+log(prob_i) = x_i*log(m) - m - x_i!
+
+-log(prob_i) = w_i*x_i*log(M) - w_i*M - w_i*(x_i!)
    
-  sum_i w_i [M - x_i log(M)] = M*(sum_i w_i) - log(M)*(sum_i x_i w_i)
+poisson loss with weights:
+
+     sum_i w_i [M - x_i log(M)] = M*(sum_i w_i) - log(M)*(sum_i x_i w_i)
 
   = M*W - log(M)*S.
   
@@ -385,9 +393,11 @@ int binseg
     // inserts above.
     V.candidates.erase(it);
   }
-  for(int seg_i=0; seg_i < max_segments; seg_i++){
-    loss[seg_i] += V.subtrain.total_weighted_squares;
-    validation_loss[seg_i] += V.validation.total_weighted_squares;
+  if(distribution_int == DISTRIBUTION_MEAN_NORM){
+    for(int seg_i=0; seg_i < max_segments; seg_i++){
+      loss[seg_i] += V.subtrain.total_weighted_squares;
+      validation_loss[seg_i] += V.validation.total_weighted_squares;
+    }
   }
   return 0;//SUCCESS.
 }

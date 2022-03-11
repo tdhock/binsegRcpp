@@ -148,3 +148,63 @@ test_that("error for unrecognized distribution", {
     binsegRcpp::binseg("foo", c(1, 4.3, 5))
   }, "unrecognized distribution")
 })
+
+
+ploss <- function (count, seg.mean, weight = 1){
+    stopifnot(is.numeric(count))
+    stopifnot(is.numeric(seg.mean))
+    stopifnot(is.numeric(weight))
+    n.data <- length(count)
+    if (length(seg.mean) == 1) {
+        seg.mean <- rep(seg.mean, n.data)
+    }
+    if (length(weight) == 1) {
+        weight <- rep(weight, n.data)
+    }
+    stopifnot(n.data == length(seg.mean))
+    stopifnot(n.data == length(weight))
+    if (any(weight < 0)) {
+        stop("PoissonLoss undefined for negative weight")
+    }
+    if (any(seg.mean < 0)) {
+        stop("PoissonLoss undefined for negative segment mean")
+    }
+    not.integer <- round(count) != count
+    not.positive <- count < 0
+    loss <- ifelse(not.integer | not.positive, Inf, ifelse(seg.mean == 
+        0, ifelse(count == 0, 0, Inf), seg.mean - count * log(seg.mean)))
+    sum(loss * weight)
+}
+test_that("poisson ok with identity weights", {
+  data.vec <- c(3, 4, 15, 20)
+  fit <- binsegRcpp::binseg("poisson", data.vec)
+  expect_equal(fit$splits$end, c(4, 2, 3, 1))
+  expected.segs <- list(
+    list(data.vec),
+    list(c(3,4), c(15, 20)),
+    list(c(3,4), 15, 20),
+    list(3, 4, 15, 20))
+  expected.loss <- sapply(expected.segs, function(L){
+    mean.vec <- rep(sapply(L, mean), sapply(L, length))
+    ploss(data.vec, mean.vec)
+  })
+  expect_equal(fit$splits$loss, expected.loss)
+})
+
+test_that("poisson ok with non-identity weights", {
+  data.vec <- c(3, 4, 15, 20)
+  w.each <- 2
+  weight.vec <- rep(w.each, length(data.vec))
+  fit <- binsegRcpp::binseg("poisson", data.vec, weight.vec=weight.vec)
+  expect_equal(fit$splits$end, c(4, 2, 3, 1))
+  expected.segs <- list(
+    list(data.vec),
+    list(c(3,4), c(15, 20)),
+    list(c(3,4), 15, 20),
+    list(3, 4, 15, 20))
+  expected.loss <- sapply(expected.segs, function(L){
+    mean.vec <- rep(sapply(L, mean), sapply(L, length))
+    ploss(data.vec, mean.vec)*w.each
+  })
+  expect_equal(fit$splits$loss, expected.loss)
+})
