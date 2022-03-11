@@ -29,7 +29,27 @@ double square_loss(double N, double sum, double mean){
    optimization, because it does not depend on the optimization
    variable (segment mean). It is added back after optimization, at
    the end of binseg_normal.
+
+   Ignoring last termm and including weights it becomes
+
+   sum_i w_i (M - x_i)^2 = M^2 (sum_i w_i) - 2*M*(sum_i w_i x_i)
+
+   = W*M^2 - 2*M*S = M*(W*M - 2*S), where
+
+   W = sum_i w_i (N in code), S = sum_i w_i x_i (sum), M = S/W (mean).
+   
 */
+
+/* for poisson loss with weights:
+   
+  sum_i w_i [M - x_i log(M)] = M*(sum_i w_i) - log(M)*(sum_i x_i w_i)
+
+  = M*W - log(M)*S.
+  
+ */
+double poisson_loss(double N, double sum, double mean){
+  return mean*N - log(mean)*sum;
+}
 
 // This class computes and stores the statistics that we need to
 // compute the optimal loss/parameters of a segment from first to

@@ -5,6 +5,7 @@
 // [[Rcpp::export]]
 Rcpp::List rcpp_binseg_normal
 (const Rcpp::NumericVector data_vec,
+ const Rcpp::NumericVector weight_vec,
  const int kmax,
  const Rcpp::LogicalVector is_validation_vec,
  const Rcpp::NumericVector position_vec
@@ -12,6 +13,9 @@ Rcpp::List rcpp_binseg_normal
   int n_data = data_vec.size();
   if(n_data < 1){
     Rcpp::stop("need at least one data point"); 
+  }
+  if(weight_vec.size() != n_data){
+    Rcpp::stop("length of is_validation_vec must be same as data_vec");
   }
   if(is_validation_vec.size() != n_data){
     Rcpp::stop("length of is_validation_vec must be same as data_vec");
@@ -38,7 +42,9 @@ Rcpp::List rcpp_binseg_normal
   Rcpp::IntegerVector invalidates_index(kmax);
   Rcpp::IntegerVector invalidates_after(kmax);
   int status = binseg_normal 
-    (&data_vec[0], n_data, kmax, &is_validation_vec[0], &position_vec[0],
+    (&data_vec[0], &weight_vec[0],
+     n_data, kmax, &is_validation_vec[0], &position_vec[0],
+     loss,
      //inputs above, outputs below.
      &end[0], &subtrain_borders[0], &loss[0], &validation_loss[0],
      &before_mean[0], &after_mean[0],
