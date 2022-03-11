@@ -9,7 +9,9 @@ in log-linear time.}
     max.segments = sum(!is.validation.vec), 
     is.validation.vec = rep(FALSE, 
         length(data.vec)), 
-    position.vec = seq_along(data.vec))}
+    position.vec = seq_along(data.vec), 
+    weight.vec = rep(1, 
+        length(data.vec)))}
 \arguments{
   \item{data.vec}{Vector of numeric data to segment.}
   \item{max.segments}{Maximum number of segments to compute, default=number of FALSE
@@ -18,19 +20,10 @@ entries in \code{is.validation.vec}.}
 set, default=all FALSE (no validation set).}
   \item{position.vec}{integer vector of positions at which data are measured,
 default=1:length(\code{data.vec}).}
+  \item{weight.vec}{Numeric vector of non-negative weights for each data point.}
 }
 
-\value{list with elements subtrain.borders and splits.
-\item{segments}{number of parameters}
-\item{loss}{subtrain square loss}
-\item{validation.loss}{validation square loss}
-\item{end}{index of last data point per segment}
-\item{before.mean}{mean before changepoint}
-\item{after.mean}{mean after changepoint}
-\item{before.size}{number of data before changepoint}
-\item{after.size}{number of data after changepoint}
-\item{invalidates.index}{index of model parameter no longer used after this changepoint is used}
-\item{invalidates.after}{idem}}
+
 
 \author{Toby Dylan Hocking}
 
