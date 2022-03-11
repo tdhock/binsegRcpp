@@ -46,7 +46,7 @@ default=1:length(\code{data.vec}).}
 x <- c(0.1, 0, 1, 1.1, 0.1, 0)
 ## Compute full path of binary segmentation models from 1 to 6
 ## segments.
-(models <- binsegRcpp::binseg_normal(x))
+(models <- binsegRcpp::binseg("mean_norm", x))
 
 ## Plot loss values using base graphics.
 plot(models)
@@ -97,7 +97,7 @@ library(data.table)
 loss.dt <- data.table(seed=1:10)[, {
   set.seed(seed)
   is.valid <- sample(rep(c(TRUE,FALSE), l=n.data))
-  bs.model <- binsegRcpp::binseg_normal(data.vec, is.validation.vec=is.valid)
+  bs.model <- binsegRcpp::binseg("mean_norm", data.vec, is.validation.vec=is.valid)
   bs.model$splits[, data.table(
     segments,
     validation.loss)]
@@ -113,7 +113,7 @@ plot(
     "red"))
 
 selected.segments <- loss.stats[which.min(mean.valid.loss), segments]
-full.model <- binsegRcpp::binseg_normal(data.vec, selected.segments)
+full.model <- binsegRcpp::binseg("mean_norm", data.vec, selected.segments)
 (segs.dt <- coef(full.model, selected.segments))
 if(require("ggplot2")){
   ggplot()+
@@ -134,5 +134,12 @@ if(require("ggplot2")){
       pos, data.vec),
       data=data.frame(data.vec, pos=seq_along(data.vec)))
 }
+
+## Demo of poisson loss, weights.
+data.vec <- c(3,4,10,20)
+(fit1 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,1,10)))
+coef(fit1, 2L)
+(fit2 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,10,1)))
+coef(fit2, 2L)
 
 }

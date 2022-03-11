@@ -137,6 +137,13 @@ binseg <- structure(function # Binary segmentation
         data=data.frame(data.vec, pos=seq_along(data.vec)))
   }
 
+  ## Demo of poisson loss, weights.
+  data.vec <- c(3,4,10,20)
+  (fit1 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,1,10)))
+  coef(fit1, 2L)
+  (fit2 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,10,1)))
+  coef(fit2, 2L)
+
 })
 
 print.binsegRcpp <- function
