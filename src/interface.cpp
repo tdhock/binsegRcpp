@@ -34,7 +34,9 @@ Rcpp::List binseg_interface
   if(position_vec.size() != n_data){
     Rcpp::stop("length of position_vec must be same as data_vec");
   }
-  //TODO stop for non-finite data.
+  if(Rcpp::any(!Rcpp::is_finite(data_vec))){
+    Rcpp::stop("data must be finite");
+  }
   int n_subtrain = get_n_subtrain(n_data, &is_validation_vec[0]);
   if(n_subtrain == 0){
     Rcpp::stop("need at least one subtrain data");
@@ -61,7 +63,9 @@ Rcpp::List binseg_interface
      &before_mean[0], &after_mean[0],
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
-  //Rprintf("status=%d\n", status);
+  if(status == ERROR_UNRECOGNIZED_DISTRIBUTION){
+    Rcpp::stop("unrecognized distribution"); 
+  }
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments"); 
   }

@@ -20,7 +20,7 @@ binseg <- structure(function # Binary segmentation
 ### Numeric vector of non-negative weights for each data point.
 ){
   code.vec <- get_distribution_code()
-  distribution.int <- code.vec[[distribution]]
+  distribution.int <- code.vec[distribution]
   result <- binseg_interface(
     data.vec, weight.vec, max.segments,
     distribution.int,

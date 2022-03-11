@@ -136,3 +136,15 @@ test_that("error for positions not increasing", {
     binsegRcpp::binseg_normal(1:2, position.vec=2:1)
   }, "positions must increase")
 })
+
+test_that("error for NA data", {
+  expect_error({
+    binsegRcpp::binseg("mean_norm", c(1, 4.3, NA, 5))
+  }, "data must be finite")
+})
+
+test_that("error for unrecognized distribution", {
+  expect_error({
+    binsegRcpp::binseg("foo", c(1, 4.3, 5))
+  }, "unrecognized distribution")
+})

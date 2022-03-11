@@ -4,6 +4,8 @@
 #include <vector>
 #include <R.h>//Rprintf
 
+typedef double(*loss_fun)(double,double,double);
+
 // This class saves the optimal parameters/loss value for each segment
 // (before and after) resulting from a split. Currently there is only
 // one parameter (mean) because the model is normal change in mean
@@ -57,6 +59,7 @@ double poisson_loss(double N, double sum, double mean){
 // the only statistic we need is the cumulative sum.
 class SetCumsum {
 public:
+  loss_fun instance_loss;
   std::vector<double> cumsum_vec;
   double get_sum(int first, int last){
     double total = cumsum_vec[last];
@@ -72,7 +75,7 @@ public:
     double s = get_sum(first, last);
     int N = last-first+1;
     *mean = s/N;
-    *loss = square_loss(N, s, *mean);
+    *loss = instance_loss(N, s, *mean);
   }
   void first_last_mean_loss(int first, int last, MeanLoss *mc){
     first_last_mean_loss(first, last, &(mc->mean), &(mc->loss));
@@ -85,7 +88,7 @@ double get_validation_loss
  ){
   double validation_sum = validation.get_sum(first, last);
   double validation_N = validation_count.get_sum(first, last);
-  return square_loss(validation_N, validation_sum, subtrain_mean);
+  return validation.instance_loss(validation_N, validation_sum, subtrain_mean);
 }
 
 // Split class stores info for a single candidate split to consider.
@@ -181,8 +184,10 @@ public:
   int init
   (const double *data_vec, const int n_data,
    const double *position_vec, const int *is_validation_vec,
-   double *subtrain_borders
+   double *subtrain_borders, loss_fun distribution_loss
    ){
+    subtrain.instance_loss = distribution_loss;
+    validation.instance_loss = distribution_loss;
     int n_validation = 0;
     for(int data_i=0; data_i<n_data; data_i++){
       if(is_validation_vec[data_i]){
@@ -283,7 +288,7 @@ int binseg
 (const double *data_vec, const double *weight_vec,
  const int n_data, const int max_segments,
  const int *is_validation_vec, const double *position_vec,
- const int distribution,
+ const int distribution_int,
  int *seg_end, double *subtrain_borders, double *loss, double *validation_loss,
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size, 
@@ -294,11 +299,20 @@ int binseg
       return ERROR_POSITIONS_MUST_INCREASE;
     }
   }
+  loss_fun distribution_loss;
+  switch(distribution_int){
+  case DISTRIBUTION_MEAN_NORM:
+    distribution_loss = square_loss; break;
+  case DISTRIBUTION_POISSON:
+    distribution_loss = poisson_loss; break;
+  default:
+    return ERROR_UNRECOGNIZED_DISTRIBUTION;
+  }
   Candidates V;
   // Begin by initializing cumulative sum vectors.
   int n_subtrain = V.init
     (data_vec, n_data, position_vec, is_validation_vec,
-     subtrain_borders);
+     subtrain_borders, distribution_loss);
   if(n_subtrain < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
