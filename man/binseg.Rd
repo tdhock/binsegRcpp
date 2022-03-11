@@ -4,7 +4,7 @@
 \description{Efficient implementation of binary segmentation. Output includes
 columns which can be used to compute parameters for a single model
 in log-linear time.}
-\usage{binseg(distribution, 
+\usage{binseg(distribution.str, 
     data.vec, max.segments = sum(!is.validation.vec), 
     is.validation.vec = rep(FALSE, 
         length(data.vec)), 
@@ -12,7 +12,7 @@ in log-linear time.}
     weight.vec = rep(1, 
         length(data.vec)))}
 \arguments{
-  \item{distribution}{String indicating \code{distribution}, use \code{\link{get_distribution_code}} to see
+  \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_names}} to see
 possible values.}
   \item{data.vec}{Vector of numeric data to segment.}
   \item{max.segments}{Maximum number of segments to compute, default=number of FALSE

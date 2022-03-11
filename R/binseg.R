@@ -2,8 +2,8 @@ binseg <- structure(function # Binary segmentation
 ### Efficient implementation of binary segmentation. Output includes
 ### columns which can be used to compute parameters for a single model
 ### in log-linear time.
-(distribution,
-### String indicating distribution, use get_distribution_code to see
+(distribution.str,
+### String indicating distribution, use get_distribution_names to see
 ### possible values.
   data.vec,
 ### Vector of numeric data to segment.
@@ -19,11 +19,9 @@ binseg <- structure(function # Binary segmentation
   weight.vec=rep(1, length(data.vec))
 ### Numeric vector of non-negative weights for each data point.
 ){
-  code.vec <- get_distribution_code()
-  distribution.int <- code.vec[distribution]
   result <- binseg_interface(
     data.vec, weight.vec, max.segments,
-    distribution.int,
+    distribution.str,
     is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
   ##value<< list with elements subtrain.borders and splits.

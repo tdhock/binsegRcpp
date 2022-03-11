@@ -4,7 +4,8 @@
 
 \usage{binseg_interface(data_vec, 
     weight_vec, kmax, 
-    distribution, is_validation_vec, 
+    distribution_str, 
+    is_validation_vec, 
     position_vec)}
 \arguments{
   \item{data_vec}{
@@ -13,7 +14,7 @@
 }
   \item{kmax}{
 }
-  \item{distribution}{
+  \item{distribution_str}{
 }
   \item{is_validation_vec}{
 }

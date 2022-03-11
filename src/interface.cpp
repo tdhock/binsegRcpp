@@ -2,14 +2,19 @@
 #include <R.h>
 #include "binseg.h"
  
-//' Lookup the integer values used to represent different distributions
+//' Lookup the string values used to represent different distributions
 //'
-//' @return Integer vector with names corresponding to supported distributions
+//' @return Character vector corresponding to supported distributions
 // [[Rcpp::export]]
-Rcpp::IntegerVector get_distribution_code(){
-  Rcpp::IntegerVector code {DISTRIBUTION_MEAN_NORM, DISTRIBUTION_POISSON};
-  code.names() = Rcpp::CharacterVector {"mean_norm", "poisson"};
-  return code;
+Rcpp::CharacterVector get_distribution_names(){
+  map_type *dmap = get_dist_map();
+  int n_items = dmap->size();
+  Rcpp::CharacterVector names(n_items);
+  int i=0;
+  for(map_type::iterator it=dmap->begin(); it != dmap->end(); it++){
+    names[i++] = it->first;
+  }
+  return names;
 }
 
 // [[Rcpp::export]]
@@ -17,7 +22,7 @@ Rcpp::List binseg_interface
 (const Rcpp::NumericVector data_vec,
  const Rcpp::NumericVector weight_vec,
  const int kmax,
- const int distribution,
+ const std::string distribution_str,
  const Rcpp::LogicalVector is_validation_vec,
  const Rcpp::NumericVector position_vec
  ) {
@@ -57,7 +62,7 @@ Rcpp::List binseg_interface
   int status = binseg 
     (&data_vec[0], &weight_vec[0],
      n_data, kmax, &is_validation_vec[0], &position_vec[0],
-     distribution,
+     distribution_str.c_str(),
      //inputs above, outputs below.
      &end[0], &subtrain_borders[0], &loss[0], &validation_loss[0],
      &before_mean[0], &after_mean[0],

@@ -1,88 +1,58 @@
 #include "binseg.h"
 #include <math.h>//INFINITY
-#include <set>//multiset
-#include <unordered_map>
-#include <string>
-#include <vector>
 #include <R.h>//Rprintf
 
-// This class saves the optimal parameters/loss value for each segment
-// (before and after) resulting from a split. Currently there is only
-// one parameter (mean) because the model is normal change in mean
-// with constant variance but there could be more parameters for other
-// models (e.g., normal change in mean and variance).
-class MeanLoss {
-public:
-  double mean, loss;
-};
+// needs to be here since map is static/local to this file and we want
+// to query its contents from interface.cpp
+map_type* get_dist_map(void){
+  return &distribution_map;
+}
 
-typedef double(*compute_fun)(double,double,double);
+double Cumsum::get_sum(int first, int last){
+  double total = cumsum_vec[last];
+  if(0 < first){
+    total -= cumsum_vec[first-1];
+  }
+  return total;
+}
 
-// This class computes and stores the statistics that we need to
-// compute the optimal loss/parameters of a segment from first to
-// last. In the case of normal change in mean with constant variance
-// the only statistic we need is the cumulative sum.
-class Cumsum {
-public:
-  compute_fun instance_loss;
-  std::vector<double> cumsum_vec;
-  double get_sum(int first, int last){
-    double total = cumsum_vec[last];
-    if(0 < first){
-      total -= cumsum_vec[first-1];
-    }
-    return total;
-  }
-};
+double Set::get_mean(int first, int last){
+  total_weighted_data = weighted_data.get_sum(first, last);
+  total_weights = weights.get_sum(first, last);
+  return total_weighted_data/total_weights;
+}
+void Set::set_mean_loss(int first, int last, double *mean, double *loss){
+  *mean = get_mean(first, last);
+  *loss = get_loss(first, last, *mean);
+}
+void Set::set_mean_loss(int first, int last, MeanLoss *ML){
+  set_mean_loss(first, last, &(ML->mean), &(ML->loss));
+}
+double Set::get_loss(int first, int last, double subtrain_mean){
+  total_weighted_data = weighted_data.get_sum(first, last);
+  total_weights = weights.get_sum(first, last);
+  return instance_loss(total_weights, total_weighted_data, subtrain_mean);
+}
+void Set::resize_cumsums(int vec_size){
+  weights.cumsum_vec.resize(vec_size);
+  weighted_data.cumsum_vec.resize(vec_size);
+}
+void Set::write_cumsums(int write_index){
+  weights.cumsum_vec[write_index] = total_weights;
+  weighted_data.cumsum_vec[write_index] = total_weighted_data;
+}
 
-class Set {// either subtrain or validation.
-public:
-  Cumsum weights, weighted_data;
-  compute_fun instance_loss;
-  double total_weighted_data=0, total_weights=0, total_weighted_squares=0;
-  double get_mean(int first, int last){
-    total_weighted_data = weighted_data.get_sum(first, last);
-    total_weights = weights.get_sum(first, last);
-    return total_weighted_data/total_weights;
-  }
-  void set_mean_loss(int first, int last, double *mean, double *loss){
-    *mean = get_mean(first, last);
-    *loss = get_loss(first, last, *mean);
-  }
-  void set_mean_loss(int first, int last, MeanLoss *ML){
-    set_mean_loss(first, last, &(ML->mean), &(ML->loss));
-  }
-  double get_loss(int first, int last, double subtrain_mean){
-    total_weighted_data = weighted_data.get_sum(first, last);
-    total_weights = weights.get_sum(first, last);
-    return instance_loss(total_weights, total_weighted_data, subtrain_mean);
-  }
-  void resize_cumsums(int vec_size){
-    weights.cumsum_vec.resize(vec_size);
-    weighted_data.cumsum_vec.resize(vec_size);
-  }
-  void write_cumsums(int write_index){
-    weights.cumsum_vec[write_index] = total_weights;
-    weighted_data.cumsum_vec[write_index] = total_weighted_data;
-  }
-};
+Distribution::Distribution
+(const char *name, compute_fun compute, update_fun update){
+  compute_loss = compute;
+  update_loss = update;
+  distribution_map.emplace(name, this);
+}
 
-typedef void (*update_fun)(double*, Set&);
+Distribution::Distribution(){
+}
 
-class Distribution {
-public:
-  compute_fun compute_loss;
-  update_fun update_loss;
-  Distribution(){
-  }
-  Distribution(compute_fun compute, update_fun update){
-    compute_loss = compute;
-    update_loss = update;
-  }
-};
-
-static std::unordered_map<std::string, Distribution> distribution_map;
-
+//https://stackoverflow.com/questions/34858341/c-compile-time-list-of-subclasses-of-a-class
 #define CONCAT(x, y) x##y
 #define FUN_NAME(x,y) CONCAT(x,y)
 #define DISTRIBUTION(NAME, COMPUTE, UPDATE) \
@@ -92,12 +62,15 @@ static std::unordered_map<std::string, Distribution> distribution_map;
   void FUN_NAME(NAME,update) (double *loss, Set &set){ \
   UPDATE; \
   } \
-  static Distribution NAME( FUN_NAME(NAME,compute), FUN_NAME(NAME,update) ); 
+  static Distribution NAME( #NAME, FUN_NAME(NAME,compute), FUN_NAME(NAME,update) ); 
 //  distribution_map.emplace( #NAME, NAME);
 
 DISTRIBUTION(mean_norm, \
              mean*(N*mean-2*sum),
              *loss += set.total_weighted_squares)
+
+//distribution_map.emplace("mean_norm", mean_norm);
+
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
 
@@ -337,10 +310,10 @@ int binseg
 (const double *data_vec, const double *weight_vec,
  const int n_data, const int max_segments,
  const int *is_validation_vec, const double *position_vec,
- const int distribution_int,
+ const char *distribution_str,
  int *seg_end, double *subtrain_borders, double *loss, double *validation_loss,
  double *before_mean, double *after_mean, 
- int *before_size, int *after_size, 
+ int *before_size, int *after_size,  
  int *invalidates_index, int *invalidates_after
  ){
   for(int data_i=1; data_i<n_data; data_i++){
@@ -348,20 +321,16 @@ int binseg
       return ERROR_POSITIONS_MUST_INCREASE;
     }
   }
-  Distribution distribution;
-  switch(distribution_int){
-  case DISTRIBUTION_MEAN_NORM:
-    distribution = mean_norm; break;
-  case DISTRIBUTION_POISSON:
-    distribution = poisson; break;
-  default:
+  map_type::iterator it = distribution_map.find(distribution_str);
+  if(it == distribution_map.end()){
     return ERROR_UNRECOGNIZED_DISTRIBUTION;
   }
+  Distribution* dist_ptr = it->second;
   Candidates V;
   // Begin by initializing cumulative sum vectors.
   int n_subtrain = V.init
     (data_vec, weight_vec, n_data, position_vec, is_validation_vec,
-     subtrain_borders, distribution.compute_loss);
+     subtrain_borders, dist_ptr->compute_loss);
   if(n_subtrain < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
@@ -424,8 +393,8 @@ int binseg
     V.candidates.erase(it);
   }
   for(int seg_i=0; seg_i < max_segments; seg_i++){
-    distribution.update_loss(loss+seg_i, V.subtrain);
-    distribution.update_loss(validation_loss+seg_i, V.validation);
+    dist_ptr->update_loss(loss+seg_i, V.subtrain);
+    dist_ptr->update_loss(validation_loss+seg_i, V.validation);
   }
   return 0;//SUCCESS.
 }

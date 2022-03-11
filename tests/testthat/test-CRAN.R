@@ -208,3 +208,8 @@ test_that("poisson ok with non-identity weights", {
   })
   expect_equal(fit$splits$loss, expected.loss)
 })
+
+test_that("at least one distribution", {
+  name.vec <- get_distribution_names()
+  expect_gt(length(name.vec), 0)
+})
