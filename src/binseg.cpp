@@ -1,4 +1,4 @@
-#include "binseg_normal.h"
+#include "binseg.h"
 #include <math.h>//INFINITY
 #include <set>//multiset
 #include <vector>
@@ -279,9 +279,11 @@ public:
    output arrays to efficiently compute the segment means for any
    model size.
  */
-int binseg_normal
-(const double *data_vec, const int n_data, const int max_segments,
- const int *is_validation_vec, const double *position_vec, 
+int binseg
+(const double *data_vec, const double *weight_vec,
+ const int n_data, const int max_segments,
+ const int *is_validation_vec, const double *position_vec,
+ const int distribution,
  int *seg_end, double *subtrain_borders, double *loss, double *validation_loss,
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size, 

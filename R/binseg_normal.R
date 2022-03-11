@@ -11,12 +11,18 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
   is.validation.vec=rep(FALSE, length(data.vec)),
 ### logical vector indicating which data are to be used in validation
 ### set, default=all FALSE (no validation set).
-  position.vec=seq_along(data.vec)
+  position.vec=seq_along(data.vec),
 ### integer vector of positions at which data are measured,
 ### default=1:length(data.vec).
+  weight.vec=rep(1, length(data.vec))
+### Numeric vector of non-negative weights for each data point.
 ){
-  result <- rcpp_binseg_normal(
-    data.vec, max.segments, is.validation.vec, position.vec)
+  code.vec <- get_distribution_code()
+  distribution.int <- code.vec[["mean_norm"]]
+  result <- binseg_interface(
+    data.vec, weight.vec, max.segments,
+    distribution.int,
+    is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
   ##value<< list with elements subtrain.borders and splits.
   dt <- with(result, list(
