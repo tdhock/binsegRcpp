@@ -49,12 +49,7 @@ Distribution::Distribution
   distribution_map.emplace(name, this);
 }
 
-Distribution::Distribution(){
-}
-
-//https://stackoverflow.com/questions/34858341/c-compile-time-list-of-subclasses-of-a-class
-#define CONCAT(x, y) x##y
-#define FUN_NAME(x,y) CONCAT(x,y)
+#define FUN_NAME(x,y) x##y
 #define DISTRIBUTION(NAME, COMPUTE, UPDATE) \
   double FUN_NAME(NAME,compute) (double N, double sum, double mean){ \
   return COMPUTE;\
@@ -63,14 +58,10 @@ Distribution::Distribution(){
   UPDATE; \
   } \
   static Distribution NAME( #NAME, FUN_NAME(NAME,compute), FUN_NAME(NAME,update) ); 
-//  distribution_map.emplace( #NAME, NAME);
 
 DISTRIBUTION(mean_norm, \
-             mean*(N*mean-2*sum),
-             *loss += set.total_weighted_squares)
-
-//distribution_map.emplace("mean_norm", mean_norm);
-
+             mean*(N*mean-2*sum), // square loss minus constant term.
+             *loss += set.total_weighted_squares) //add back constant.
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
 
@@ -97,6 +88,9 @@ DISTRIBUTION(mean_norm, \
    
 */
 
+DISTRIBUTION(poisson, \
+             mean*N - log(mean)*sum, // neg log lik minus constant term.
+             ) // dont add constant term to loss.
 /* poisson likelihood:
 
 prob_i = m^{x_i} * exp(-m) / (x_i !)
@@ -112,9 +106,6 @@ poisson loss with weights:
   = M*W - log(M)*S.
   
  */
-DISTRIBUTION(poisson, \
-             mean*N - log(mean)*sum,
-             )
 
 // Split class stores info for a single candidate split to consider.
 class Split {
