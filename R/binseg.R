@@ -1,9 +1,11 @@
-binseg_normal <- structure(function # Binary segmentation, normal change in mean
-### Efficient implementation of binary segmentation for change in
-### mean, max normal likelihood = min square loss. Output includes
+binseg <- structure(function # Binary segmentation
+### Efficient implementation of binary segmentation. Output includes
 ### columns which can be used to compute parameters for a single model
 ### in log-linear time.
-(data.vec,
+(distribution,
+### String indicating distribution, use get_distribution_code to see
+### possible values.
+  data.vec,
 ### Vector of numeric data to segment.
   max.segments=sum(!is.validation.vec),
 ### Maximum number of segments to compute, default=number of FALSE
@@ -17,9 +19,30 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
   weight.vec=rep(1, length(data.vec))
 ### Numeric vector of non-negative weights for each data point.
 ){
-  binseg(
-    "mean_norm", data.vec, max.segments,
-    is.validation.vec, position.vec, weight.vec)
+  code.vec <- get_distribution_code()
+  distribution.int <- code.vec[[distribution]]
+  result <- binseg_interface(
+    data.vec, weight.vec, max.segments,
+    distribution.int,
+    is.validation.vec, position.vec)
+  na <- function(x)ifelse(x<0, NA, x)
+  ##value<< list with elements subtrain.borders and splits.
+  dt <- with(result, list(
+    subtrain.borders=subtrain.borders,
+    splits=data.table(
+      segments=1:max.segments,##<< number of parameters
+      loss,##<< subtrain square loss
+      validation.loss,##<< validation square loss
+      end=end+1L,##<< index of last data point per segment
+      before.mean,##<< mean before changepoint
+      after.mean=ifelse(after.mean==Inf, NA, after.mean),##<< mean after changepoint
+      before.size,##<< number of data before changepoint
+      after.size=na(after.size),##<< number of data after changepoint
+      invalidates.index=na(invalidates.index+1L),##<< index of model parameter no longer used after this changepoint is used
+      invalidates.after=na(invalidates.after))))##<< idem
+  class(dt) <- c("binseg_normal", class(dt))
+  dt
+  ##end<<
 }, ex=function(){
 
   x <- c(0.1, 0, 1, 1.1, 0.1, 0)
