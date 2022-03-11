@@ -2,6 +2,11 @@ TODOS
 
 re-order splits to show best case with max.segments < n.data?
 
+2022.3.11
+
+new binseg function with distribution=poisson or mean_norm,
+weight.vec.
+
 2021.11.3
 
 binseg_normal_cv does model selection via most frequent number of
