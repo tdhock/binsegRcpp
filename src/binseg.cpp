@@ -2,12 +2,6 @@
 #include <math.h>//INFINITY
 #include <R.h>//Rprintf
 
-// needs to be here since map is static/local to this file and we want
-// to query its contents from interface.cpp
-map_type* get_dist_map(void){
-  return &distribution_map;
-}
-
 double Cumsum::get_sum(int first, int last){
   double total = cumsum_vec[last];
   if(0 < first){
@@ -42,11 +36,17 @@ void Set::write_cumsums(int write_index){
   weighted_data.cumsum_vec[write_index] = total_weighted_data;
 }
 
+static map_type distribution_map;
 Distribution::Distribution
 (const char *name, compute_fun compute, update_fun update){
   compute_loss = compute;
   update_loss = update;
   distribution_map.emplace(name, this);
+}
+// we need get_dist_map in this file to query map contents from
+// interface.cpp
+map_type* get_dist_map(void){
+  return &distribution_map;
 }
 
 #define FUN_NAME(x,y) x##y
@@ -59,7 +59,7 @@ Distribution::Distribution
   } \
   static Distribution NAME( #NAME, FUN_NAME(NAME,compute), FUN_NAME(NAME,update) ); 
 
-DISTRIBUTION(mean_norm, \
+DISTRIBUTION(mean_norm,
              mean*(N*mean-2*sum), // square loss minus constant term.
              *loss += set.total_weighted_squares) //add back constant.
 /* Above we compute the square loss for a segment with sum of data = s
@@ -88,7 +88,7 @@ DISTRIBUTION(mean_norm, \
    
 */
 
-DISTRIBUTION(poisson, \
+DISTRIBUTION(poisson, 
              mean*N - log(mean)*sum, // neg log lik minus constant term.
              ) // dont add constant term to loss.
 /* poisson likelihood:
@@ -210,7 +210,6 @@ public:
     int n_subtrain = n_data - n_validation;
     subtrain.resize_cumsums(n_subtrain);
     validation.resize_cumsums(n_subtrain);
-    //TODO
     int last_subtrain_i=-1;
     double pos_total, pos_change;
     int read_start=0, write_index=0;
@@ -222,7 +221,6 @@ public:
 	is_subtrain = !is_validation_vec[data_i];
 	write_subtrain = last_subtrain_i >= 0 && is_subtrain;
       }
-      //Rprintf("data_i=%d write_subtrain=%d write_end=%d\n", data_i, write_subtrain, write_end);
       if(write_subtrain || write_end){
 	if(write_subtrain){
 	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
@@ -250,7 +248,6 @@ public:
           this_set->total_weights += weight_value;
 	  read_index++;
 	}
-	//Rprintf("write_index=%d validation_total=%f subtrain_total=%f\n", write_index, validation_total, subtrain_total);
         validation.write_cumsums(write_index);
         subtrain.write_cumsums(write_index);
 	read_start = read_index;
@@ -280,29 +277,42 @@ public:
   }
 };
 
-/* Binary segmentation algorithm for change in mean in the normal
-   distribution (square loss function).
+/* Binary segmentation algorithm.
 
-   This code assumes, and the code which calls this function needs to
-   have error checking for, the following:
+   This code assumes all array parameters are allocated by the code
+   which calls this function, and the code which calls this function
+   needs to have error checking for, the following:
 
-   At least one data point (0 < n_data), data_vec is an array
-   of input data, size n_data.
+   At least one data point (0 < n_data), arrays of this size:
+   - data_vec: input data sequence to segment,
+   - weight_vec: non-negative weight for each data point,
+   - is_validation_vec: indicator for validation set,
+   - position_vec: position where each data point is measured in time/space,
 
-   Positive number of segments (0 < max_segments), all of the other
-   pointers are output arrays of size max_segments (need to be
-   allocated by the code which calls this function).
+   distribution_str: string indicating loss function to use.
+   subtrain_borders: array of size n_subtrain+1.
 
-   See coef.binseg_normal in R code for a procedure that uses these
-   output arrays to efficiently compute the segment means for any
-   model size.
+   Positive number of segments (0 < max_segments), arrays of this size:
+   - seg_end: end of segment/split.
+   - subtrain_loss: subtrain loss of each split.
+   - validation_loss: validation loss of each split.
+   - before_mean: mean before split.
+   - after_mean: mean after split.
+   - before_size: number of data before this split.
+   - after_size: number of data after this split.
+   - invalidates_index: index of mean invalidated by this split.
+   - invalidates_after: indicates if after mean invalidated by this split.
+
+   See coef method in R code for a procedure that uses these output
+   arrays to efficiently compute the segment means for any model size.
  */
 int binseg
 (const double *data_vec, const double *weight_vec,
  const int n_data, const int max_segments,
  const int *is_validation_vec, const double *position_vec,
  const char *distribution_str,
- int *seg_end, double *subtrain_borders, double *loss, double *validation_loss,
+ double *subtrain_borders, 
+ int *seg_end, double *subtrain_loss, double *validation_loss,
  double *before_mean, double *after_mean, 
  int *before_size, int *after_size,  
  int *invalidates_index, int *invalidates_after
@@ -328,7 +338,7 @@ int binseg
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
   V.subtrain.set_mean_loss
-    (0, n_subtrain-1, before_mean, loss);
+    (0, n_subtrain-1, before_mean, subtrain_loss);
   validation_loss[0] = V.validation.get_loss
     (0, n_subtrain-1, *before_mean);
   before_size[0] = n_subtrain;
@@ -338,7 +348,7 @@ int binseg
   invalidates_index[0]=-2;
   invalidates_after[0]=-2;
   // Add a segment and split to the set of candidates.
-  V.maybe_add(0, n_subtrain-1, 0, 0, loss[0], validation_loss[0]);
+  V.maybe_add(0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0]);
   // For loop over number of segments. During each iteration we find
   // the Segment/split which results in the best loss decrease, store
   // the resulting model parameters, and add new Segment/split
@@ -349,7 +359,7 @@ int binseg
     // the segment which results in the best loss decrease.
     std::multiset<Segment>::iterator it = V.candidates.begin();
     // Store loss and model parameters associated with this split.
-    loss[seg_i] = loss[seg_i-1] + it->best_decrease;
+    subtrain_loss[seg_i] = subtrain_loss[seg_i-1] + it->best_decrease;
     validation_loss[seg_i] =
       validation_loss[seg_i-1] + it->validation_decrease;
     seg_end[seg_i] = it->best_split.this_end;
@@ -384,7 +394,7 @@ int binseg
     V.candidates.erase(it);
   }
   for(int seg_i=0; seg_i < max_segments; seg_i++){
-    dist_ptr->update_loss(loss+seg_i, V.subtrain);
+    dist_ptr->update_loss(subtrain_loss+seg_i, V.subtrain);
     dist_ptr->update_loss(validation_loss+seg_i, V.validation);
   }
   return 0;//SUCCESS.

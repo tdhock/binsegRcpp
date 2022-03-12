@@ -53,7 +53,6 @@ public:
 };
 
 typedef std::unordered_map<std::string, Distribution*> map_type;
-static map_type distribution_map;
 map_type* get_dist_map(void);
 
 int get_n_subtrain(const int, const int*);
@@ -63,7 +62,8 @@ int binseg
  const int n_data, const int max_segments,
  const int *is_validation_vec, const double *position_vec,
  const char *distribution_str,
- int *seg_end, double *pos_end, double *loss, double *validation_loss,
+ double *pos_end,
+ int *seg_end, double *loss, double *validation_loss,
  double *before_mean, double *after_mean,
  int *, int *,
  int *invalidates_index, int *invalidates_before);

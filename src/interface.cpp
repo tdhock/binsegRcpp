@@ -49,8 +49,8 @@ Rcpp::List binseg_interface
   if(kmax < 1){
     Rcpp::stop("kmax must be positive"); 
   }
-  Rcpp::IntegerVector end(kmax);
   Rcpp::NumericVector subtrain_borders(n_subtrain+1);
+  Rcpp::IntegerVector end(kmax);
   Rcpp::NumericVector loss(kmax);
   Rcpp::NumericVector validation_loss(kmax);
   Rcpp::NumericVector before_mean(kmax);
@@ -64,7 +64,8 @@ Rcpp::List binseg_interface
      n_data, kmax, &is_validation_vec[0], &position_vec[0],
      distribution_str.c_str(),
      //inputs above, outputs below.
-     &end[0], &subtrain_borders[0], &loss[0], &validation_loss[0],
+     &subtrain_borders[0],
+     &end[0], &loss[0], &validation_loss[0],
      &before_mean[0], &after_mean[0],
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
