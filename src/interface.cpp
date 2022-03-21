@@ -69,7 +69,16 @@ Rcpp::List binseg_interface
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
   if(status == ERROR_UNRECOGNIZED_DISTRIBUTION){
-    Rcpp::stop("unrecognized distribution"); 
+    std::string msg = "unrecognized distribution, try one of: ";
+    map_type *dmap = get_dist_map();
+    map_type::iterator it=dmap->begin();
+    while(1){
+      msg += it->first;
+      if(++it != dmap->end()){
+	msg += ", ";
+      }else break;
+    }
+    Rcpp::stop(msg); 
   }
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments"); 
