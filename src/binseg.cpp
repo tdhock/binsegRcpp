@@ -1,22 +1,67 @@
-#include "binseg_normal.h"
+#include "binseg.h"
 #include <math.h>//INFINITY
-#include <set>//multiset
-#include <vector>
 #include <R.h>//Rprintf
 
-// This class saves the optimal parameters/loss value for each segment
-// (before and after) resulting from a split. Currently there is only
-// one parameter (mean) because the model is normal change in mean
-// with constant variance but there could be more parameters for other
-// models (e.g., normal change in mean and variance).
-class MeanLoss {
-public:
-  double mean, loss;
-};
-
-double square_loss(double N, double sum, double mean){
-  return mean*(N*mean-2*sum);
+double Cumsum::get_sum(int first, int last){
+  double total = cumsum_vec[last];
+  if(0 < first){
+    total -= cumsum_vec[first-1];
+  }
+  return total;
 }
+
+double Set::get_mean(int first, int last){
+  total_weighted_data = weighted_data.get_sum(first, last);
+  total_weights = weights.get_sum(first, last);
+  return total_weighted_data/total_weights;
+}
+void Set::set_mean_loss(int first, int last, double *mean, double *loss){
+  *mean = get_mean(first, last);
+  *loss = get_loss(first, last, *mean);
+}
+void Set::set_mean_loss(int first, int last, MeanLoss *ML){
+  set_mean_loss(first, last, &(ML->mean), &(ML->loss));
+}
+double Set::get_loss(int first, int last, double subtrain_mean){
+  total_weighted_data = weighted_data.get_sum(first, last);
+  total_weights = weights.get_sum(first, last);
+  return instance_loss(total_weights, total_weighted_data, subtrain_mean);
+}
+void Set::resize_cumsums(int vec_size){
+  weights.cumsum_vec.resize(vec_size);
+  weighted_data.cumsum_vec.resize(vec_size);
+}
+void Set::write_cumsums(int write_index){
+  weights.cumsum_vec[write_index] = total_weights;
+  weighted_data.cumsum_vec[write_index] = total_weighted_data;
+}
+
+static map_type distribution_map;
+Distribution::Distribution
+(const char *name, compute_fun compute, update_fun update){
+  compute_loss = compute;
+  update_loss = update;
+  distribution_map.emplace(name, this);
+}
+// we need get_dist_map in this file to query map contents from
+// interface.cpp
+map_type* get_dist_map(void){
+  return &distribution_map;
+}
+
+#define FUN_NAME(x,y) x##y
+#define DISTRIBUTION(NAME, COMPUTE, UPDATE) \
+  double FUN_NAME(NAME,compute) (double N, double sum, double mean){ \
+  return COMPUTE;\
+  } \
+  void FUN_NAME(NAME,update) (double *loss, Set &set){ \
+  UPDATE; \
+  } \
+  static Distribution NAME( #NAME, FUN_NAME(NAME,compute), FUN_NAME(NAME,update) ); 
+
+DISTRIBUTION(mean_norm,
+             mean*(N*mean-2*sum), // square loss minus constant term.
+             *loss += set.total_weighted_squares) //add back constant.
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
 
@@ -28,45 +73,39 @@ double square_loss(double N, double sum, double mean){
    The last term (sum of squares of data) can be ignored during
    optimization, because it does not depend on the optimization
    variable (segment mean). It is added back after optimization, at
-   the end of binseg_normal.
+   the end of binseg.
+
+   Including weights it becomes
+
+   sum_i w_i (M - x_i)^2 = M^2 (sum_i w_i) - 2*M*(sum_i w_i x_i)
+   + sum_i w_i x_i^2
+
+   Ignoring last term it becomes
+
+   = W*M^2 - 2*M*S = M*(W*M - 2*S), where
+
+   W = sum_i w_i (N in code), S = sum_i w_i x_i (sum), M = S/W (mean).
+   
 */
 
-// This class computes and stores the statistics that we need to
-// compute the optimal loss/parameters of a segment from first to
-// last. In the case of normal change in mean with constant variance
-// the only statistic we need is the cumulative sum.
-class SetCumsum {
-public:
-  std::vector<double> cumsum_vec;
-  double get_sum(int first, int last){
-    double total = cumsum_vec[last];
-    if(0 < first){
-      total -= cumsum_vec[first-1];
-    }
-    return total;
-  }
-  // Compute/store optimal mean and loss values for a single segment
-  // from first to last in constant O(1) time.
-  void first_last_mean_loss
-  (int first, int last, double *mean, double *loss){
-    double s = get_sum(first, last);
-    int N = last-first+1;
-    *mean = s/N;
-    *loss = square_loss(N, s, *mean);
-  }
-  void first_last_mean_loss(int first, int last, MeanLoss *mc){
-    first_last_mean_loss(first, last, &(mc->mean), &(mc->loss));
-  }
-};
+DISTRIBUTION(poisson, 
+             mean*N - log(mean)*sum, // neg log lik minus constant term.
+             ) // dont add constant term to loss.
+/* poisson likelihood:
 
-double get_validation_loss
-(int first, int last, double subtrain_mean,
- SetCumsum &validation, SetCumsum &validation_count
- ){
-  double validation_sum = validation.get_sum(first, last);
-  double validation_N = validation_count.get_sum(first, last);
-  return square_loss(validation_N, validation_sum, subtrain_mean);
-}
+prob_i = m^{x_i} * exp(-m) / (x_i !)
+
+log(prob_i) = x_i*log(m) - m - x_i!
+
+-log(prob_i) = w_i*x_i*log(M) - w_i*M - w_i*(x_i!)
+   
+poisson loss with weights:
+
+     sum_i w_i [M - x_i log(M)] = M*(sum_i w_i) - log(M)*(sum_i x_i w_i)
+
+  = M*W - log(M)*S.
+  
+ */
 
 // Split class stores info for a single candidate split to consider.
 class Split {
@@ -74,10 +113,10 @@ public:
   int this_end;//index of last data point on the first/before segment.
   MeanLoss before, after;
   double set_mean_loss
-  (SetCumsum &cumsums, int first, int end_i, int last){
+  (Set &subtrain, int first, int end_i, int last){
     this_end = end_i;
-    cumsums.first_last_mean_loss(first, end_i, &before);
-    cumsums.first_last_mean_loss(end_i+1, last, &after);
+    subtrain.set_mean_loss(first, end_i, &before);
+    subtrain.set_mean_loss(end_i+1, last, &after);
     return before.loss + after.loss;
   }
 };
@@ -117,7 +156,7 @@ public:
   // constructor which considers all possible splits from first to
   // last, and then stores the best split and loss decrease.
   Segment
-  (SetCumsum &subtrain, SetCumsum &validation, SetCumsum &validation_count,
+  (Set &subtrain, Set &validation,
    int first, int last,
    int invalidates_after, int invalidates_index,
    double loss_no_split, double validation_loss_no_split
@@ -139,12 +178,10 @@ public:
     }
     best_decrease = best_loss_split - loss_no_split;
     // TODO combine this logic with Split class?
-    before_validation_loss = get_validation_loss
-      (first, best_split.this_end, best_split.before.mean,
-       validation, validation_count);
-    after_validation_loss = get_validation_loss
-      (best_split.this_end+1, last, best_split.after.mean,
-       validation, validation_count);
+    before_validation_loss = validation.get_loss
+      (first, best_split.this_end, best_split.before.mean);
+    after_validation_loss = validation.get_loss
+      (best_split.this_end+1, last, best_split.after.mean);
     double validation_loss_split =
       before_validation_loss + after_validation_loss;
     validation_decrease =
@@ -155,14 +192,15 @@ public:
 class Candidates {
 public:
   std::multiset<Segment> candidates;
-  SetCumsum subtrain, validation, validation_count;
-  double subtrain_squares, validation_squares;
+  Set subtrain, validation;
   // computes the cumulative sum vectors in linear O(n_data) time.
   int init
-  (const double *data_vec, const int n_data,
+  (const double *data_vec, const double *weight_vec, const int n_data,
    const double *position_vec, const int *is_validation_vec,
-   double *subtrain_borders
+   double *subtrain_borders, compute_fun distribution_loss
    ){
+    subtrain.instance_loss = distribution_loss;
+    validation.instance_loss = distribution_loss;
     int n_validation = 0;
     for(int data_i=0; data_i<n_data; data_i++){
       if(is_validation_vec[data_i]){
@@ -170,13 +208,10 @@ public:
       }
     }
     int n_subtrain = n_data - n_validation;
-    subtrain.cumsum_vec.resize(n_subtrain);
-    validation.cumsum_vec.resize(n_subtrain);
-    validation_count.cumsum_vec.resize(n_subtrain);
+    subtrain.resize_cumsums(n_subtrain);
+    validation.resize_cumsums(n_subtrain);
     int last_subtrain_i=-1;
-    double pos_total, pos_change, subtrain_total=0, validation_total=0;
-    double validation_count_total = 0;
-    subtrain_squares=0, validation_squares=0;
+    double pos_total, pos_change;
     int read_start=0, write_index=0;
     for(int data_i=0; data_i<=n_data; data_i++){
       bool is_subtrain = false;
@@ -186,7 +221,6 @@ public:
 	is_subtrain = !is_validation_vec[data_i];
 	write_subtrain = last_subtrain_i >= 0 && is_subtrain;
       }
-      //Rprintf("data_i=%d write_subtrain=%d write_end=%d\n", data_i, write_subtrain, write_end);
       if(write_subtrain || write_end){
 	if(write_subtrain){
 	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
@@ -201,20 +235,21 @@ public:
 	int read_index=read_start;
 	while(read_index < n_data && position_vec[read_index] <= pos_change){
 	  double data_value = data_vec[read_index];
+          double weight_value = weight_vec[read_index];
+          Set *this_set;
 	  if(is_validation_vec[read_index]){
-	    validation_total += data_value;
-	    validation_squares += data_value * data_value;
-	    validation_count_total += 1;
-	  }else{
-	    subtrain_total += data_value;
-	    subtrain_squares += data_value * data_value;
-	  }
+            this_set = &validation;
+          }else{
+            this_set = &subtrain;
+          }
+          this_set->total_weighted_data += data_value * weight_value;
+          this_set->total_weighted_squares +=
+            data_value * data_value * weight_value;
+          this_set->total_weights += weight_value;
 	  read_index++;
 	}
-	//Rprintf("write_index=%d validation_total=%f subtrain_total=%f\n", write_index, validation_total, subtrain_total);
-	validation_count.cumsum_vec[write_index] = validation_count_total;
-	validation.cumsum_vec[write_index] = validation_total;
-	subtrain.cumsum_vec[write_index] = subtrain_total;
+        validation.write_cumsums(write_index);
+        subtrain.write_cumsums(write_index);
 	read_start = read_index;
 	write_index++;
       }
@@ -234,7 +269,7 @@ public:
       // if it is possible to split (more than one data point on this
       // segment) then insert new segment into the candidates set.
       candidates.emplace
-	(subtrain, validation, validation_count,
+	(subtrain, validation, 
 	 first, last,
 	 invalidates_after, invalidates_index,
 	 loss_no_split, validation_loss_no_split);
@@ -242,29 +277,44 @@ public:
   }
 };
 
-/* Binary segmentation algorithm for change in mean in the normal
-   distribution (square loss function).
+/* Binary segmentation algorithm.
 
-   This code assumes, and the code which calls this function needs to
-   have error checking for, the following:
+   This code assumes all array parameters are allocated by the code
+   which calls this function, and the code which calls this function
+   needs to have error checking for, the following:
 
-   At least one data point (0 < n_data), data_vec is an array
-   of input data, size n_data.
+   At least one data point (0 < n_data), arrays of this size:
+   - data_vec: input data sequence to segment,
+   - weight_vec: non-negative weight for each data point,
+   - is_validation_vec: indicator for validation set,
+   - position_vec: position where each data point is measured in time/space,
 
-   Positive number of segments (0 < max_segments), all of the other
-   pointers are output arrays of size max_segments (need to be
-   allocated by the code which calls this function).
+   distribution_str: string indicating loss function to use.
+   subtrain_borders: array of size n_subtrain+1.
 
-   See coef.binseg_normal in R code for a procedure that uses these
-   output arrays to efficiently compute the segment means for any
-   model size.
+   Positive number of segments (0 < max_segments), arrays of this size:
+   - seg_end: end of segment/split.
+   - subtrain_loss: subtrain loss of each split.
+   - validation_loss: validation loss of each split.
+   - before_mean: mean before split.
+   - after_mean: mean after split.
+   - before_size: number of data before this split.
+   - after_size: number of data after this split.
+   - invalidates_index: index of mean invalidated by this split.
+   - invalidates_after: indicates if after mean invalidated by this split.
+
+   See coef method in R code for a procedure that uses these output
+   arrays to efficiently compute the segment means for any model size.
  */
-int binseg_normal
-(const double *data_vec, const int n_data, const int max_segments,
- const int *is_validation_vec, const double *position_vec, 
- int *seg_end, double *subtrain_borders, double *loss, double *validation_loss,
+int binseg
+(const double *data_vec, const double *weight_vec,
+ const int n_data, const int max_segments,
+ const int *is_validation_vec, const double *position_vec,
+ const char *distribution_str,
+ double *subtrain_borders, 
+ int *seg_end, double *subtrain_loss, double *validation_loss,
  double *before_mean, double *after_mean, 
- int *before_size, int *after_size, 
+ int *before_size, int *after_size,  
  int *invalidates_index, int *invalidates_after
  ){
   for(int data_i=1; data_i<n_data; data_i++){
@@ -272,20 +322,25 @@ int binseg_normal
       return ERROR_POSITIONS_MUST_INCREASE;
     }
   }
+  map_type::iterator it = distribution_map.find(distribution_str);
+  if(it == distribution_map.end()){
+    return ERROR_UNRECOGNIZED_DISTRIBUTION;
+  }
+  Distribution* dist_ptr = it->second;
   Candidates V;
   // Begin by initializing cumulative sum vectors.
   int n_subtrain = V.init
-    (data_vec, n_data, position_vec, is_validation_vec,
-     subtrain_borders);
+    (data_vec, weight_vec, n_data, position_vec, is_validation_vec,
+     subtrain_borders, dist_ptr->compute_loss);
   if(n_subtrain < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  V.subtrain.first_last_mean_loss
-    (0, n_subtrain-1, before_mean, loss);
-  validation_loss[0] = get_validation_loss
-    (0, n_subtrain-1, *before_mean, V.validation, V.validation_count);
+  V.subtrain.set_mean_loss
+    (0, n_subtrain-1, before_mean, subtrain_loss);
+  validation_loss[0] = V.validation.get_loss
+    (0, n_subtrain-1, *before_mean);
   before_size[0] = n_subtrain;
   seg_end[0] = n_subtrain-1;
   after_mean[0] = INFINITY;
@@ -293,7 +348,7 @@ int binseg_normal
   invalidates_index[0]=-2;
   invalidates_after[0]=-2;
   // Add a segment and split to the set of candidates.
-  V.maybe_add(0, n_subtrain-1, 0, 0, loss[0], validation_loss[0]);
+  V.maybe_add(0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0]);
   // For loop over number of segments. During each iteration we find
   // the Segment/split which results in the best loss decrease, store
   // the resulting model parameters, and add new Segment/split
@@ -304,7 +359,7 @@ int binseg_normal
     // the segment which results in the best loss decrease.
     std::multiset<Segment>::iterator it = V.candidates.begin();
     // Store loss and model parameters associated with this split.
-    loss[seg_i] = loss[seg_i-1] + it->best_decrease;
+    subtrain_loss[seg_i] = subtrain_loss[seg_i-1] + it->best_decrease;
     validation_loss[seg_i] =
       validation_loss[seg_i-1] + it->validation_decrease;
     seg_end[seg_i] = it->best_split.this_end;
@@ -339,8 +394,8 @@ int binseg_normal
     V.candidates.erase(it);
   }
   for(int seg_i=0; seg_i < max_segments; seg_i++){
-    loss[seg_i] += V.subtrain_squares;
-    validation_loss[seg_i] += V.validation_squares;
+    dist_ptr->update_loss(subtrain_loss+seg_i, V.subtrain);
+    dist_ptr->update_loss(validation_loss+seg_i, V.validation);
   }
   return 0;//SUCCESS.
 }

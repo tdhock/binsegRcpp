@@ -118,7 +118,7 @@ coef.binseg_normal_cv <- function
   ...
 ### ignored.
 ){
-  coef.binseg_normal(object, segments)
+  coef.binsegRcpp(object, segments)
 ### data.table with one row for each segment.
 }
 

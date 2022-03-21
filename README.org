@@ -65,6 +65,20 @@ The coef methods returns a data table of segment means:
 5:        3     5   6 0.05
 #+END_SRC
 
+Demo of poisson loss and non-uniform weights:
+
+#+begin_src R
+> data.vec <- c(3,4,10,20)
+> (fit1 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,1,10)))
+binary segmentation model:
+   segments   end      loss validation.loss
+      <int> <int>     <num>           <num>
+1:        1     4 -393.8437               0
+2:        2     3 -411.6347               0
+3:        3     2 -413.9416               0
+4:        4     1 -414.0133               0
+#+end_src
+
 ** Related work
 
 Other implementations of binary segmentation include

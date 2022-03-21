@@ -1,18 +1,19 @@
-\name{binseg_normal}
-\alias{binseg_normal}
-\title{Binary segmentation, normal change in mean}
-\description{Efficient implementation of binary segmentation for change in
-mean, max normal likelihood = min square loss. Output includes
+\name{binseg}
+\alias{binseg}
+\title{Binary segmentation}
+\description{Efficient implementation of binary segmentation. Output includes
 columns which can be used to compute parameters for a single model
 in log-linear time.}
-\usage{binseg_normal(data.vec, 
-    max.segments = sum(!is.validation.vec), 
+\usage{binseg(distribution.str, 
+    data.vec, max.segments = sum(!is.validation.vec), 
     is.validation.vec = rep(FALSE, 
         length(data.vec)), 
     position.vec = seq_along(data.vec), 
     weight.vec = rep(1, 
         length(data.vec)))}
 \arguments{
+  \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_names}} to see
+possible values.}
   \item{data.vec}{Vector of numeric data to segment.}
   \item{max.segments}{Maximum number of segments to compute, default=number of FALSE
 entries in \code{is.validation.vec}.}
@@ -23,7 +24,17 @@ default=1:length(\code{data.vec}).}
   \item{weight.vec}{Numeric vector of non-negative weights for each data point.}
 }
 
-
+\value{list with elements subtrain.borders and splits.
+\item{segments}{number of parameters}
+\item{loss}{subtrain square loss}
+\item{validation.loss}{validation square loss}
+\item{end}{index of last data point per segment}
+\item{before.mean}{mean before changepoint}
+\item{after.mean}{mean after changepoint}
+\item{before.size}{number of data before changepoint}
+\item{after.size}{number of data after changepoint}
+\item{invalidates.index}{index of model parameter no longer used after this changepoint is used}
+\item{invalidates.after}{idem}}
 
 \author{Toby Dylan Hocking}
 
@@ -35,7 +46,7 @@ default=1:length(\code{data.vec}).}
 x <- c(0.1, 0, 1, 1.1, 0.1, 0)
 ## Compute full path of binary segmentation models from 1 to 6
 ## segments.
-(models <- binsegRcpp::binseg_normal(x))
+(models <- binsegRcpp::binseg("mean_norm", x))
 
 ## Plot loss values using base graphics.
 plot(models)
@@ -86,7 +97,7 @@ library(data.table)
 loss.dt <- data.table(seed=1:10)[, {
   set.seed(seed)
   is.valid <- sample(rep(c(TRUE,FALSE), l=n.data))
-  bs.model <- binsegRcpp::binseg_normal(data.vec, is.validation.vec=is.valid)
+  bs.model <- binsegRcpp::binseg("mean_norm", data.vec, is.validation.vec=is.valid)
   bs.model$splits[, data.table(
     segments,
     validation.loss)]
@@ -102,7 +113,7 @@ plot(
     "red"))
 
 selected.segments <- loss.stats[which.min(mean.valid.loss), segments]
-full.model <- binsegRcpp::binseg_normal(data.vec, selected.segments)
+full.model <- binsegRcpp::binseg("mean_norm", data.vec, selected.segments)
 (segs.dt <- coef(full.model, selected.segments))
 if(require("ggplot2")){
   ggplot()+
@@ -123,5 +134,12 @@ if(require("ggplot2")){
       pos, data.vec),
       data=data.frame(data.vec, pos=seq_along(data.vec)))
 }
+
+## Demo of poisson loss, weights.
+data.vec <- c(3,4,10,20)
+(fit1 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,1,10)))
+coef(fit1, 2L)
+(fit2 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,10,1)))
+coef(fit2, 2L)
 
 }
