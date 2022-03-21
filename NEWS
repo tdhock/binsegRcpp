@@ -2,6 +2,13 @@ TODOS
 
 re-order splits to show best case with max.segments < n.data?
 
+min_segment_length paramter.
+
+meanvar_norm distribution: generalize C++ code to more than one
+segment-specific parameter.
+
+warning and suggestion to use weights for runs of identical data?
+
 2022.3.11
 
 new binseg function with distribution=poisson or mean_norm,

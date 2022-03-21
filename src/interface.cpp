@@ -3,8 +3,6 @@
 #include "binseg.h"
  
 //' Lookup the string values used to represent different distributions
-//'
-//' @return Character vector corresponding to supported distributions
 // [[Rcpp::export]]
 Rcpp::CharacterVector get_distribution_names(){
   map_type *dmap = get_dist_map();
@@ -17,6 +15,7 @@ Rcpp::CharacterVector get_distribution_names(){
   return names;
 }
 
+//' Low-level interface to binary segmentation algorithm.
 // [[Rcpp::export]]
 Rcpp::List binseg_interface
 (const Rcpp::NumericVector data_vec,
@@ -79,10 +78,10 @@ Rcpp::List binseg_interface
     Rcpp::stop("positions must increase");
   }
   return Rcpp::List::create
-    (Rcpp::Named("loss", loss),
-     Rcpp::Named("validation.loss", validation_loss),
+    (Rcpp::Named("subtrain.borders", subtrain_borders),
      Rcpp::Named("end", end),
-     Rcpp::Named("subtrain.borders", subtrain_borders),
+     Rcpp::Named("loss", loss),
+     Rcpp::Named("validation.loss", validation_loss),
      Rcpp::Named("before.mean", before_mean),
      Rcpp::Named("after.mean", after_mean),
      Rcpp::Named("before.size", before_size),
