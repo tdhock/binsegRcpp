@@ -20,6 +20,7 @@ names.}
 
 library(data.table)
 library(ggplot2)
+library(binsegRcpp)
 tvt.props <- c(test=0.19, train=0.67, validation=0.14)
 tvt.N <- 1234567L
 system.time({
@@ -111,10 +112,6 @@ guess.dt <- data.table(
   validation=floor(validation.bound))
 max.dt <- grid.dt[which.max(prob)]#same
 max.dt[, test := n.total-train-validation]
-test.rev(
-  as.integer(n.total),
-  prob.vec,
-  max.dt[, c(test, train, validation)])
 
 ggplot()+
   geom_tile(aes(

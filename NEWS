@@ -2,6 +2,10 @@ TODOS
 
 re-order splits to show best case with max.segments < n.data?
 
+2022.1.24
+
+remove random_set_vec test.rev example which failed on M1.
+
 2021.11.3
 
 binseg_normal_cv does model selection via most frequent number of
