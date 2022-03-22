@@ -4,6 +4,7 @@
 \description{Low-level interface to binary segmentation algorithm.}
 \usage{binseg_interface(data_vec, 
     weight_vec, kmax, 
+    min_segment_length, 
     distribution_str, 
     is_validation_vec, 
     position_vec)}
@@ -13,6 +14,8 @@
   \item{weight_vec}{
 }
   \item{kmax}{
+}
+  \item{min_segment_length}{
 }
   \item{distribution_str}{
 }

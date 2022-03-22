@@ -21,6 +21,7 @@ Rcpp::List binseg_interface
 (const Rcpp::NumericVector data_vec,
  const Rcpp::NumericVector weight_vec,
  const int kmax,
+ const int min_segment_length,
  const std::string distribution_str,
  const Rcpp::LogicalVector is_validation_vec,
  const Rcpp::NumericVector position_vec
@@ -60,7 +61,8 @@ Rcpp::List binseg_interface
   Rcpp::IntegerVector invalidates_after(kmax);
   int status = binseg 
     (&data_vec[0], &weight_vec[0],
-     n_data, kmax, &is_validation_vec[0], &position_vec[0],
+     n_data, kmax, min_segment_length,
+     &is_validation_vec[0], &position_vec[0],
      distribution_str.c_str(),
      //inputs above, outputs below.
      &subtrain_borders[0],
@@ -82,6 +84,9 @@ Rcpp::List binseg_interface
   }
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments"); 
+  }
+  if(status == ERROR_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE){
+    Rcpp::stop("min segment length must be positive"); 
   }
   if(status == ERROR_POSITIONS_MUST_INCREASE){
     Rcpp::stop("positions must increase");

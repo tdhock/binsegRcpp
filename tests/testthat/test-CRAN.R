@@ -213,3 +213,34 @@ test_that("at least one distribution", {
   name.vec <- get_distribution_names()
   expect_gt(length(name.vec), 0)
 })
+
+test_that("min seg length enforced", {
+  data.vec <- c(3,4,10,20)
+  (fit1 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,1,10)))
+  expect_equal(nrow(fit1$splits), 4)
+  (fit1.segs2 <- coef(fit1, 2L))
+  expect_equal(fit1.segs2$end, c(3,4))
+  (fit2 <- binsegRcpp::binseg("poisson", data.vec, weight.vec=c(1,1,1,10), min.segment.length=2L))
+  expect_equal(nrow(fit2$splits), 2)
+  (fit2.segs2 <- coef(fit2, 2L))
+  expect_equal(fit2.segs2$end, c(2,4))
+})
+
+test_that("no crash for max_segs < n_data", {
+  n.segs <- 5L
+  seg.mean.vec <- 1:n.segs
+  data.mean.vec <- rep(seg.mean.vec, each=20)
+  set.seed(1)
+  n.data <- length(data.mean.vec)
+  data.vec <- rnorm(n.data, data.mean.vec, 0.2)
+  fit <- binsegRcpp::binseg("mean_norm", data.vec, n.segs)
+  segs.dt <- coef(fit, n.segs)
+  expect_equal(nrow(segs.dt), n.segs)
+})
+
+test_that("error for invalid min seg length", {
+  expect_error({
+    binsegRcpp::binseg("poisson", c(3,4,10,20), min.segment.length=0L)
+  }, "min segment length must be positive")
+})
+    

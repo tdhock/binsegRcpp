@@ -1,7 +1,6 @@
 #include "binseg.h"
 #include <math.h>//INFINITY
 #include <stdexcept>      // std::out_of_range
-#include <R.h>//Rprintf
 
 double Cumsum::get_sum(int first, int last){
   double total = cumsum_vec[last];
@@ -158,20 +157,20 @@ public:
   // last, and then stores the best split and loss decrease.
   Segment
   (Set &subtrain, Set &validation,
-   int first, int last,
+   int first_data, int last_data,
+   int first_candidate, int last_candidate,
    int invalidates_after, int invalidates_index,
    double loss_no_split, double validation_loss_no_split
-   ): first_i(first), last_i(last),
+   ): first_i(first_data), last_i(last_data),
       invalidates_index(invalidates_index),
       invalidates_after(invalidates_after)
   {
     Split candidate_split;
-    int n_candidates = last-first;
     double best_loss_split = INFINITY, loss_split;
     // for loop over all possible splits on this Segment.
-    for(int ci=0; ci<n_candidates; ci++){
+    for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
       loss_split = candidate_split.set_mean_loss
-	(subtrain, first, first+ci, last);
+	(subtrain, first_data, candidate, last_data);
       if(loss_split < best_loss_split){
 	best_loss_split = loss_split;
 	best_split = candidate_split;
@@ -180,9 +179,9 @@ public:
     best_decrease = best_loss_split - loss_no_split;
     // TODO combine this logic with Split class?
     before_validation_loss = validation.get_loss
-      (first, best_split.this_end, best_split.before.mean);
+      (first_data, best_split.this_end, best_split.before.mean);
     after_validation_loss = validation.get_loss
-      (best_split.this_end+1, last, best_split.after.mean);
+      (best_split.this_end+1, last_data, best_split.after.mean);
     double validation_loss_split =
       before_validation_loss + after_validation_loss;
     validation_decrease =
@@ -196,12 +195,15 @@ class Candidates {
 public:
   segment_set_type segment_set;
   Set subtrain, validation;
+  int min_segment_length;
   // computes the cumulative sum vectors in linear O(n_data) time.
   int init
   (const double *data_vec, const double *weight_vec, const int n_data,
    const double *position_vec, const int *is_validation_vec,
-   double *subtrain_borders, compute_fun distribution_loss
+   double *subtrain_borders, compute_fun distribution_loss,
+   int min_segment_length_arg
    ){
+    min_segment_length = min_segment_length_arg;
     subtrain.instance_loss = distribution_loss;
     validation.instance_loss = distribution_loss;
     int n_validation = 0;
@@ -264,16 +266,19 @@ public:
   }
   // Add a new Segment to candidates if it is big enough to split.
   void maybe_add
-  (int first, int last,
+  (int first_data, int last_data,
    int invalidates_after, int invalidates_index,
    double loss_no_split, double validation_loss_no_split
    ){
-    if(first < last){
+    int first_candidate = first_data + min_segment_length-1;
+    int last_candidate = last_data - min_segment_length;
+    if(first_candidate <= last_candidate){
       // if it is possible to split (more than one data point on this
       // segment) then insert new segment into the candidates set.
       segment_set.emplace
 	(subtrain, validation, 
-	 first, last,
+	 first_data, last_data,
+         first_candidate, last_candidate,
 	 invalidates_after, invalidates_index,
 	 loss_no_split, validation_loss_no_split);
     }
@@ -311,7 +316,7 @@ public:
  */
 int binseg
 (const double *data_vec, const double *weight_vec,
- const int n_data, const int max_segments,
+ const int n_data, const int max_segments, const int min_segment_length,
  const int *is_validation_vec, const double *position_vec,
  const char *distribution_str,
  double *subtrain_borders, 
@@ -320,6 +325,9 @@ int binseg
  int *before_size, int *after_size,  
  int *invalidates_index, int *invalidates_after
  ){
+  if(min_segment_length < 1){
+    return ERROR_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE;
+  }
   for(int data_i=1; data_i<n_data; data_i++){
     if(position_vec[data_i] <= position_vec[data_i-1]){
       return ERROR_POSITIONS_MUST_INCREASE;
@@ -336,7 +344,7 @@ int binseg
   // Begin by initializing cumulative sum vectors.
   int n_subtrain = V.init
     (data_vec, weight_vec, n_data, position_vec, is_validation_vec,
-     subtrain_borders, dist_ptr->compute_loss);
+     subtrain_borders, dist_ptr->compute_loss, min_segment_length);
   if(n_subtrain < max_segments){
     return ERROR_TOO_MANY_SEGMENTS;
   }
@@ -354,15 +362,31 @@ int binseg
   invalidates_after[0]=-2;
   // Add a segment and split to the set of candidates.
   V.maybe_add(0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0]);
-  // For loop over number of segments. During each iteration we find
-  // the Segment/split which results in the best loss decrease, store
-  // the resulting model parameters, and add new Segment/split
-  // candidates if necessary.
+  // initialize to missing values.
   for(int seg_i=1; seg_i < max_segments; seg_i++){
-    // The multiset is a red-black tree which is sorted in increasing
-    // order (by best_decrease values), so the first element is always
-    // the segment which results in the best loss decrease.
-    segment_set_type::iterator it = V.segment_set.begin();
+    subtrain_loss[seg_i] = INFINITY;
+    validation_loss[seg_i] = INFINITY;
+    seg_end[seg_i] = -2;
+    before_mean[seg_i] = INFINITY;
+    after_mean[seg_i] = INFINITY;
+    invalidates_index[seg_i] = -2;
+    invalidates_after[seg_i] = -2;
+    before_size[seg_i] = -2;
+    after_size[seg_i]  = -2;
+  }
+  // Loop over splits. During each iteration we find the Segment/split
+  // which results in the best loss decrease, store the resulting
+  // model parameters, and add new Segment/split candidates if
+  // necessary.
+  segment_set_type::iterator it;
+  // The multiset is a red-black tree which is sorted in increasing
+  // order (by best_decrease values), so the first element is always
+  // the segment which results in the best loss decrease.
+  int seg_i = 0;
+  while
+    ((it = V.segment_set.begin()) != V.segment_set.end() &&
+     ++seg_i < max_segments
+     ){
     // Store loss and model parameters associated with this split.
     subtrain_loss[seg_i] = subtrain_loss[seg_i-1] + it->best_decrease;
     validation_loss[seg_i] =

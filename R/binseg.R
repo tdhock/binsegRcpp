@@ -16,11 +16,14 @@ binseg <- structure(function # Binary segmentation
   position.vec=seq_along(data.vec),
 ### integer vector of positions at which data are measured,
 ### default=1:length(data.vec).
-  weight.vec=rep(1, length(data.vec))
+  weight.vec=rep(1, length(data.vec)),
 ### Numeric vector of non-negative weights for each data point.
+  min.segment.length=1L
+### Integer, minimum number of data points per segment.
 ){
   result <- binseg_interface(
     data.vec, weight.vec, max.segments,
+    min.segment.length,
     distribution.str,
     is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
@@ -37,7 +40,9 @@ binseg <- structure(function # Binary segmentation
       before.size,##<< number of data before changepoint
       after.size=na(after.size),##<< number of data after changepoint
       invalidates.index=na(invalidates.index+1L),##<< index of model parameter no longer used after this changepoint is used
-      invalidates.after=na(invalidates.after))))##<< idem
+      invalidates.after=na(invalidates.after)
+    )[loss < Inf]
+  ))##<< idem
   class(dt) <- c("binsegRcpp", class(dt))
   dt
   ##end<<
@@ -83,6 +88,9 @@ binseg <- structure(function # Binary segmentation
         pos, x),
         data=data.frame(x, pos=seq_along(x)))
   }
+
+  ## Use min.segment.length to constrain segment sizes.
+  (constrained.models <- binsegRcpp::binseg("mean_norm", x, min.segment.length = 2))
 
   ## Demonstration of model selection using cross-validation in
   ## simulated data.

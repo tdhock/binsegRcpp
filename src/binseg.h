@@ -4,6 +4,7 @@
 #include <vector>
 #define ERROR_TOO_MANY_SEGMENTS 2
 #define ERROR_UNRECOGNIZED_DISTRIBUTION 3
+#define ERROR_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE 5
 #define ERROR_POSITIONS_MUST_INCREASE -4
 
 // This class saves the optimal parameters/loss value for each segment
@@ -59,7 +60,7 @@ int get_n_subtrain(const int, const int*);
 
 int binseg 
 (const double *data_vec, const double *weight_vec,
- const int n_data, const int max_segments,
+ const int n_data, const int max_segments, const int min_segment_length,
  const int *is_validation_vec, const double *position_vec,
  const char *distribution_str,
  double *pos_end,

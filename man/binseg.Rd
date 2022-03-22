@@ -10,7 +10,8 @@ in log-linear time.}
         length(data.vec)), 
     position.vec = seq_along(data.vec), 
     weight.vec = rep(1, 
-        length(data.vec)))}
+        length(data.vec)), 
+    min.segment.length = 1L)}
 \arguments{
   \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_names}} to see
 possible values.}
@@ -22,6 +23,7 @@ set, default=all FALSE (no validation set).}
   \item{position.vec}{integer vector of positions at which data are measured,
 default=1:length(\code{data.vec}).}
   \item{weight.vec}{Numeric vector of non-negative weights for each data point.}
+  \item{min.segment.length}{Integer, minimum number of data points per segment.}
 }
 
 \value{list with elements subtrain.borders and splits.
@@ -33,8 +35,7 @@ default=1:length(\code{data.vec}).}
 \item{after.mean}{mean after changepoint}
 \item{before.size}{number of data before changepoint}
 \item{after.size}{number of data after changepoint}
-\item{invalidates.index}{index of model parameter no longer used after this changepoint is used}
-\item{invalidates.after}{idem}}
+\item{invalidates.index}{index of model parameter no longer used after this changepoint is used}}
 
 \author{Toby Dylan Hocking}
 
@@ -83,6 +84,9 @@ if(require("ggplot2")){
       pos, x),
       data=data.frame(x, pos=seq_along(x)))
 }
+
+## Use min.segment.length to constrain segment sizes.
+(constrained.models <- binsegRcpp::binseg("mean_norm", x, min.segment.length = 2))
 
 ## Demonstration of model selection using cross-validation in
 ## simulated data.
