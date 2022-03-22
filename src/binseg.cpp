@@ -1,5 +1,6 @@
 #include "binseg.h"
 #include <math.h>//INFINITY
+#include <stdexcept>      // std::out_of_range
 #include <R.h>//Rprintf
 
 double Cumsum::get_sum(int first, int last){
@@ -36,28 +37,28 @@ void Set::write_cumsums(int write_index){
   weighted_data.cumsum_vec[write_index] = total_weighted_data;
 }
 
-static map_type distribution_map;
+static dist_map_type dist_map;
 Distribution::Distribution
 (const char *name, compute_fun compute, update_fun update){
   compute_loss = compute;
   update_loss = update;
-  distribution_map.emplace(name, this);
+  dist_map.emplace(name, this);
 }
 // we need get_dist_map in this file to query map contents from
 // interface.cpp
-map_type* get_dist_map(void){
-  return &distribution_map;
+dist_map_type* get_dist_map(void){
+  return &dist_map;
 }
 
-#define FUN_NAME(x,y) x##y
+#define FUN(x,y) x##y
 #define DISTRIBUTION(NAME, COMPUTE, UPDATE) \
-  double FUN_NAME(NAME,compute) (double N, double sum, double mean){ \
+  double FUN(NAME,compute) (double N, double sum, double mean){ \
   return COMPUTE;\
   } \
-  void FUN_NAME(NAME,update) (double *loss, Set &set){ \
+  void FUN(NAME,update) (double *loss, Set &set){ \
   UPDATE; \
   } \
-  static Distribution NAME( #NAME, FUN_NAME(NAME,compute), FUN_NAME(NAME,update) ); 
+  static Distribution NAME( #NAME, FUN(NAME,compute), FUN(NAME,update) ); 
 
 DISTRIBUTION(mean_norm,
              mean*(N*mean-2*sum), // square loss minus constant term.
@@ -126,7 +127,7 @@ public:
 class Segment {
 public:
   //indices of first/last data points on this segment.
-  int first, last;
+  int first_i, last_i;
   //index and after indicator of a previous segment whose mean
   //parameter is invalidated if this segment in included. For example
   //invalidates_index=2 and invalidates_after=0 implies before_mean
@@ -139,7 +140,7 @@ public:
   double before_validation_loss, after_validation_loss;
   Split best_split;
   int n_changes() const {
-    return last-first;
+    return last_i-first_i;
   }
   // Segments are kept sorted by best_decrease value, so that we can
   // find the best segment to split in constant O(1) time.
@@ -160,7 +161,7 @@ public:
    int first, int last,
    int invalidates_after, int invalidates_index,
    double loss_no_split, double validation_loss_no_split
-   ): first(first), last(last),
+   ): first_i(first), last_i(last),
       invalidates_index(invalidates_index),
       invalidates_after(invalidates_after)
   {
@@ -189,9 +190,11 @@ public:
   }
 };
 
+typedef std::multiset<Segment> segment_set_type;
+
 class Candidates {
 public:
-  std::multiset<Segment> candidates;
+  segment_set_type segment_set;
   Set subtrain, validation;
   // computes the cumulative sum vectors in linear O(n_data) time.
   int init
@@ -268,7 +271,7 @@ public:
     if(first < last){
       // if it is possible to split (more than one data point on this
       // segment) then insert new segment into the candidates set.
-      candidates.emplace
+      segment_set.emplace
 	(subtrain, validation, 
 	 first, last,
 	 invalidates_after, invalidates_index,
@@ -322,11 +325,13 @@ int binseg
       return ERROR_POSITIONS_MUST_INCREASE;
     }
   }
-  map_type::iterator it = distribution_map.find(distribution_str);
-  if(it == distribution_map.end()){
+  Distribution* dist_ptr;
+  try{
+    dist_ptr = dist_map.at(distribution_str);
+  }
+  catch(const std::out_of_range& err){
     return ERROR_UNRECOGNIZED_DISTRIBUTION;
   }
-  Distribution* dist_ptr = it->second;
   Candidates V;
   // Begin by initializing cumulative sum vectors.
   int n_subtrain = V.init
@@ -357,7 +362,7 @@ int binseg
     // The multiset is a red-black tree which is sorted in increasing
     // order (by best_decrease values), so the first element is always
     // the segment which results in the best loss decrease.
-    std::multiset<Segment>::iterator it = V.candidates.begin();
+    segment_set_type::iterator it = V.segment_set.begin();
     // Store loss and model parameters associated with this split.
     subtrain_loss[seg_i] = subtrain_loss[seg_i-1] + it->best_decrease;
     validation_loss[seg_i] =
@@ -376,22 +381,22 @@ int binseg
     // split sizes N/2,N/2, second split sizes N/4,N/4, etc. Worst
     // case is when first split sizes 1,N-1 second split sizes 1,N-2,
     // etc.
-    before_size[seg_i] = it->best_split.this_end - it->first + 1;
-    after_size[seg_i]  = it->last - it->best_split.this_end;
+    before_size[seg_i] = it->best_split.this_end - it->first_i + 1;
+    after_size[seg_i]  = it->last_i - it->best_split.this_end;
     // Finally add new split candidates if necessary.
     V.maybe_add
-      (it->first, it->best_split.this_end,
+      (it->first_i, it->best_split.this_end,
        0,//invalidates_after=0 => before_mean invalidated.
        seg_i, it->best_split.before.loss,
        it->before_validation_loss);
     V.maybe_add
-      (it->best_split.this_end+1, it->last,
+      (it->best_split.this_end+1, it->last_i,
        1,//invalidates_after=1 => after_mean invalidated.
        seg_i, it->best_split.after.loss,
        it->after_validation_loss);
     // Erase at end because we need it->values during maybe_add
     // inserts above.
-    V.candidates.erase(it);
+    V.segment_set.erase(it);
   }
   for(int seg_i=0; seg_i < max_segments; seg_i++){
     dist_ptr->update_loss(subtrain_loss+seg_i, V.subtrain);

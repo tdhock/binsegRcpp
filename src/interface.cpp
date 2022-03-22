@@ -5,11 +5,11 @@
 //' Lookup the string values used to represent different distributions
 // [[Rcpp::export]]
 Rcpp::CharacterVector get_distribution_names(){
-  map_type *dmap = get_dist_map();
+  dist_map_type *dmap = get_dist_map();
   int n_items = dmap->size();
   Rcpp::CharacterVector names(n_items);
   int i=0;
-  for(map_type::iterator it=dmap->begin(); it != dmap->end(); it++){
+  for(dist_map_type::iterator it=dmap->begin(); it != dmap->end(); it++){
     names[i++] = it->first;
   }
   return names;
@@ -70,8 +70,8 @@ Rcpp::List binseg_interface
      &invalidates_index[0], &invalidates_after[0]);
   if(status == ERROR_UNRECOGNIZED_DISTRIBUTION){
     std::string msg = "unrecognized distribution, try one of: ";
-    map_type *dmap = get_dist_map();
-    map_type::iterator it=dmap->begin();
+    dist_map_type *dmap = get_dist_map();
+    dist_map_type::iterator it=dmap->begin();
     while(1){
       msg += it->first;
       if(++it != dmap->end()){

@@ -52,8 +52,8 @@ public:
   Distribution(const char *name, compute_fun compute, update_fun update);
 };
 
-typedef std::unordered_map<std::string, Distribution*> map_type;
-map_type* get_dist_map(void);
+typedef std::unordered_map<std::string, Distribution*> dist_map_type;
+dist_map_type* get_dist_map(void);
 
 int get_n_subtrain(const int, const int*);
 
