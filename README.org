@@ -3,8 +3,8 @@ heuristic algorithm for changepoint detection, using C++
 std::multiset. Also contains functions for comparing empirical time
 complexity to best/worst case.
 
-| [[file:tests/testthat][tests]]    | [[https://github.com/tdhock/nc/actions][https://github.com/tdhock/nc/workflows/R-CMD-check/badge.svg]]                        |
-| [[https://github.com/jimhester/covr][coverage]] | [[https://coveralls.io/github/tdhock/binsegRcpp?branch=master][https://coveralls.io/repos/tdhock/binsegRcpp/badge.svg?branch=master&service=github]] |
+| [[file:tests/testthat][tests]]                  | [[https://github.com/tdhock/nc/actions][https://github.com/tdhock/nc/workflows/R-CMD-check/badge.svg]]                               |
+| [[https://github.com/jimhester/covr][coverage]] | [[https://app.codecov.io/gh/tdhock/binsegRcpp?branch=master][https://codecov.io/gh/tdhock/binsegRcpp/branch/master/graph/badge.svg]] |
 
 ** Installation
 

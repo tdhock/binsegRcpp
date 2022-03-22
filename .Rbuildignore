@@ -4,3 +4,4 @@ inst/testfiles
 README.org
 build.sh
 ^\.github$
+^codecov\.yml$
