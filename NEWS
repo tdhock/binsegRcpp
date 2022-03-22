@@ -5,9 +5,9 @@ re-order splits to show best case with max.segments < n.data?
 meanvar_norm distribution: generalize C++ code to more than one
 segment-specific parameter.
 
-warning and suggestion to use weights for runs of identical data?
-
 2022.3.22
+
+warning and suggestion to use weights for runs of identical data.
 
 R code binseg(min.segment.length=3) etc uses min_segment_length
 parameter in C++ code.

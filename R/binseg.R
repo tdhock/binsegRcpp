@@ -7,9 +7,11 @@ binseg <- structure(function # Binary segmentation
 ### possible values.
   data.vec,
 ### Vector of numeric data to segment.
-  max.segments=sum(!is.validation.vec),
-### Maximum number of segments to compute, default=number of FALSE
-### entries in is.validation.vec.
+  max.segments=NULL,
+### Maximum number of segments to compute, default=NULL which means to
+### compute the largest number possible, given is.validation.vec and
+### min.segment.length. Note that the returned number of segments may
+### be less than this, if there are min segment length constraints.
   is.validation.vec=rep(FALSE, length(data.vec)),
 ### logical vector indicating which data are to be used in validation
 ### set, default=all FALSE (no validation set).
@@ -21,6 +23,30 @@ binseg <- structure(function # Binary segmentation
   min.segment.length=1L
 ### Integer, minimum number of data points per segment.
 ){
+  if(!(
+    is.logical(is.validation.vec) &&
+    length(is.validation.vec)==length(data.vec) &&
+    sum(is.na(is.validation.vec))==0)){
+      stop("is.validation.vec must be logical vector with no missing values, same length as data.vec")
+  }
+  set.value.vec <- c(validation=TRUE, subtrain=FALSE)
+  for(set.name in names(set.value.vec)){
+    set.value <- set.value.vec[[set.name]]
+    set.data <- data.vec[is.validation.vec == set.value]
+    L <- rle(set.data)
+    if(any(1 < L$lengths)){
+      warning(sprintf("some consecutive data values are identical in set=%s, so you could get speedups by converting your data to use a run length encoding, for example L=rle(data.vec);binseg(data.vec=L$values, weight.vec=L$lengths)", set.name))
+    }
+  }
+  if(!(
+    is.integer(min.segment.length) &&
+    length(min.segment.length)==1 &&
+    0<min.segment.length)){
+    stop("min.segment.length must be a positive integer")
+  }
+  if(is.null(max.segments)){
+    max.segments <- floor(sum(!is.validation.vec)/min.segment.length)
+  }
   result <- binseg_interface(
     data.vec, weight.vec, max.segments,
     min.segment.length,
@@ -90,7 +116,7 @@ binseg <- structure(function # Binary segmentation
   }
 
   ## Use min.segment.length to constrain segment sizes.
-  (constrained.models <- binsegRcpp::binseg("mean_norm", x, min.segment.length = 2))
+  (constrained.models <- binsegRcpp::binseg("mean_norm", x, min.segment.length = 2L))
 
   ## Demonstration of model selection using cross-validation in
   ## simulated data.

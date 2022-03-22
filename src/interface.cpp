@@ -1,5 +1,4 @@
 #include <Rcpp.h>
-#include <R.h>
 #include "binseg.h"
  
 //' Lookup the string values used to represent different distributions
@@ -20,7 +19,7 @@ Rcpp::CharacterVector get_distribution_names(){
 Rcpp::List binseg_interface
 (const Rcpp::NumericVector data_vec,
  const Rcpp::NumericVector weight_vec,
- const int kmax,
+ const int max_segments,
  const int min_segment_length,
  const std::string distribution_str,
  const Rcpp::LogicalVector is_validation_vec,
@@ -46,22 +45,22 @@ Rcpp::List binseg_interface
   if(n_subtrain == 0){
     Rcpp::stop("need at least one subtrain data");
   }
-  if(kmax < 1){
-    Rcpp::stop("kmax must be positive"); 
+  if(max_segments < 1){
+    Rcpp::stop("max_segments must be positive"); 
   }
   Rcpp::NumericVector subtrain_borders(n_subtrain+1);
-  Rcpp::IntegerVector end(kmax);
-  Rcpp::NumericVector loss(kmax);
-  Rcpp::NumericVector validation_loss(kmax);
-  Rcpp::NumericVector before_mean(kmax);
-  Rcpp::NumericVector after_mean(kmax);
-  Rcpp::IntegerVector before_size(kmax);
-  Rcpp::IntegerVector after_size(kmax);
-  Rcpp::IntegerVector invalidates_index(kmax);
-  Rcpp::IntegerVector invalidates_after(kmax);
+  Rcpp::IntegerVector end(max_segments);
+  Rcpp::NumericVector loss(max_segments);
+  Rcpp::NumericVector validation_loss(max_segments);
+  Rcpp::NumericVector before_mean(max_segments);
+  Rcpp::NumericVector after_mean(max_segments);
+  Rcpp::IntegerVector before_size(max_segments);
+  Rcpp::IntegerVector after_size(max_segments);
+  Rcpp::IntegerVector invalidates_index(max_segments);
+  Rcpp::IntegerVector invalidates_after(max_segments);
   int status = binseg 
     (&data_vec[0], &weight_vec[0],
-     n_data, kmax, min_segment_length,
+     n_data, max_segments, min_segment_length,
      &is_validation_vec[0], &position_vec[0],
      distribution_str.c_str(),
      //inputs above, outputs below.
@@ -83,7 +82,7 @@ Rcpp::List binseg_interface
     Rcpp::stop(msg); 
   }
   if(status == ERROR_TOO_MANY_SEGMENTS){
-    Rcpp::stop("too many segments"); 
+    Rcpp::stop("too many segments, max_segments=%d and min_segment_length=%d which would require at least %d data but n_subtrain=%d", max_segments, min_segment_length, max_segments*min_segment_length, n_subtrain); 
   }
   if(status == ERROR_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE){
     Rcpp::stop("min segment length must be positive"); 

@@ -345,7 +345,7 @@ int binseg
   int n_subtrain = V.init
     (data_vec, weight_vec, n_data, position_vec, is_validation_vec,
      subtrain_borders, dist_ptr->compute_loss, min_segment_length);
-  if(n_subtrain < max_segments){
+  if(n_subtrain < max_segments*min_segment_length){
     return ERROR_TOO_MANY_SEGMENTS;
   }
   // Then store the trivial segment mean/loss (which starts at the

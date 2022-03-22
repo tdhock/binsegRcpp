@@ -35,7 +35,7 @@ test_that("error for 0 segments", {
   x <- c(4.1, 4, 1.1, 1)
   expect_error({
     binsegRcpp::binseg_normal(x, 0L)
-  }, "kmax must be positive")
+  }, "max_segments must be positive")
 })
 
 test_that("error for too many segments", {
@@ -95,7 +95,9 @@ test_that("validation loss ok for simple example", {
   data.vec <-
     c(1,1,1,1,    2,  2,    30, 30, 30)
   kmax <- sum(!is.validation)
-  L <- binsegRcpp::binseg_normal(data.vec, kmax, is.validation, position)
+  expect_warning({
+    L <- binsegRcpp::binseg_normal(data.vec, kmax, as.logical(is.validation), position)
+  }, "some consecutive data values are identical in set=validation")
   fit <- L$splits
   subtrain.vec <- data.vec[is.validation==0]
   validation.vec <- data.vec[is.validation==1]
@@ -108,23 +110,23 @@ test_that("validation loss ok for simple example", {
 
 test_that("error for no subtrain data", {
   expect_error({
-    binsegRcpp::binseg_normal(5, is.validation.vec=1)
+    binsegRcpp::binseg_normal(5, is.validation.vec=TRUE)
   }, "need at least one subtrain data")
 })
 
 test_that("error for two segments with one subtrain", {
   expect_error({
-    binsegRcpp::binseg_normal(1:2, 2, is.validation.vec=0:1)
+    binsegRcpp::binseg_normal(1:2, 2, is.validation.vec=c(FALSE,TRUE))
   }, "too many segments")
 })
 
 test_that("two data with one subtrain and one segment is ok", {
-  L <- binsegRcpp::binseg_normal(1:2, 1, is.validation.vec=0:1)
+  L <- binsegRcpp::binseg_normal(1:2, 1, is.validation.vec=c(FALSE,TRUE))
   fit <- L$splits
   expect_equal(fit$loss, 0)
   expect_equal(fit$validation.loss, 1)
   expect_equal(fit$before.mean, 1)
-  L <- binsegRcpp::binseg_normal(2:1, 1, is.validation.vec=0:1)
+  L <- binsegRcpp::binseg_normal(2:1, 1, is.validation.vec=c(FALSE,TRUE))
   fit <- L$splits
   expect_equal(fit$loss, 0)
   expect_equal(fit$validation.loss, 1)
@@ -241,6 +243,24 @@ test_that("no crash for max_segs < n_data", {
 test_that("error for invalid min seg length", {
   expect_error({
     binsegRcpp::binseg("poisson", c(3,4,10,20), min.segment.length=0L)
-  }, "min segment length must be positive")
+  }, "min.segment.length must be a positive integer", fixed=TRUE)
 })
     
+test_that("either two or three segments for max.segments=3", {
+  fit2 <- binsegRcpp::binseg("mean_norm", 1:6, min.segment.length=2L, max.segments=3L)
+  expect_equal(fit2$splits$end, c(6, 3))
+  fit3 <- binsegRcpp::binseg("mean_norm", c(0,0.1, 1,1.1, 0.5,0.6), min.segment.length=2L, max.segments=3L)
+  expect_equal(fit3$splits$end, c(6, 2, 4))
+})
+
+test_that("error for incompatible max.segments/min.segment.length", {
+  expect_error({
+    binsegRcpp::binseg("mean_norm", 1:5, min.segment.length=2L, max.segments=3L)
+  }, "too many segments")
+})
+
+test_that("warning for consecutive data", {
+  expect_warning({
+    binsegRcpp::binseg("mean_norm", c(1,1))
+  }, "some consecutive data values are identical in set=subtrain")
+})

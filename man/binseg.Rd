@@ -5,7 +5,7 @@
 columns which can be used to compute parameters for a single model
 in log-linear time.}
 \usage{binseg(distribution.str, 
-    data.vec, max.segments = sum(!is.validation.vec), 
+    data.vec, max.segments = NULL, 
     is.validation.vec = rep(FALSE, 
         length(data.vec)), 
     position.vec = seq_along(data.vec), 
@@ -16,8 +16,10 @@ in log-linear time.}
   \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_names}} to see
 possible values.}
   \item{data.vec}{Vector of numeric data to segment.}
-  \item{max.segments}{Maximum number of segments to compute, default=number of FALSE
-entries in \code{is.validation.vec}.}
+  \item{max.segments}{Maximum number of segments to compute, default=NULL which means to
+compute the largest number possible, given \code{is.validation.vec} and
+\code{min.segment.length}. Note that the returned number of segments may
+be less than this, if there are min segment length constraints.}
   \item{is.validation.vec}{logical vector indicating which data are to be used in validation
 set, default=all FALSE (no validation set).}
   \item{position.vec}{integer vector of positions at which data are measured,
@@ -86,7 +88,7 @@ if(require("ggplot2")){
 }
 
 ## Use min.segment.length to constrain segment sizes.
-(constrained.models <- binsegRcpp::binseg("mean_norm", x, min.segment.length = 2))
+(constrained.models <- binsegRcpp::binseg("mean_norm", x, min.segment.length = 2L))
 
 ## Demonstration of model selection using cross-validation in
 ## simulated data.

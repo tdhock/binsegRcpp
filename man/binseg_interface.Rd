@@ -3,7 +3,7 @@
 \title{binseg interface}
 \description{Low-level interface to binary segmentation algorithm.}
 \usage{binseg_interface(data_vec, 
-    weight_vec, kmax, 
+    weight_vec, max_segments, 
     min_segment_length, 
     distribution_str, 
     is_validation_vec, 
@@ -13,7 +13,7 @@
 }
   \item{weight_vec}{
 }
-  \item{kmax}{
+  \item{max_segments}{
 }
   \item{min_segment_length}{
 }

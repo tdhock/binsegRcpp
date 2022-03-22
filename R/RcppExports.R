@@ -7,7 +7,7 @@ get_distribution_names <- function() {
 }
 
 ### Low-level interface to binary segmentation algorithm.
-binseg_interface <- function(data_vec, weight_vec, kmax, min_segment_length, distribution_str, is_validation_vec, position_vec) {
-    .Call(`_binsegRcpp_binseg_interface`, data_vec, weight_vec, kmax, min_segment_length, distribution_str, is_validation_vec, position_vec)
+binseg_interface <- function(data_vec, weight_vec, max_segments, min_segment_length, distribution_str, is_validation_vec, position_vec) {
+    .Call(`_binsegRcpp_binseg_interface`, data_vec, weight_vec, max_segments, min_segment_length, distribution_str, is_validation_vec, position_vec)
 }
 
