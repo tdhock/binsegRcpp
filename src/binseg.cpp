@@ -362,7 +362,10 @@ int binseg
   invalidates_after[0]=-2;
   // Add a segment and split to the set of candidates.
   V.maybe_add(0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0]);
-  // initialize to missing values.
+  // initialize to infinite cost and missing values, which is
+  // necessary when number of segments returned is less than
+  // max_segments: infinite cost rows are removed from the resulting
+  // splits table in the R code.
   for(int seg_i=1; seg_i < max_segments; seg_i++){
     subtrain_loss[seg_i] = INFINITY;
     validation_loss[seg_i] = INFINITY;

@@ -1,7 +1,22 @@
 binseg <- structure(function # Binary segmentation
-### Efficient implementation of binary segmentation. Output includes
-### columns which can be used to compute parameters for a single model
-### in log-linear time.
+### Efficient implementation of binary segmentation for a sequence of
+### N data. Each iteration involves first computing and storing the
+### best split point on one or two segments, then looking up the
+### segment with the best split so far. The best case time complexity
+### occurs when splits are equal (N data split into two segments of
+### size N/2), and the worst case is when splits are unequal (N data
+### split into one big segment with N-1 data and one small segment
+### with 1 data point). Looking up the segment with the best split so
+### far is a constant O(1) time operation using C++ multimap, so O(K)
+### overall for K iterations/segments. Storage of a new best split
+### point/cost involves the multimap insert method which is
+### logarithmic time in the size of the multimap, overall O(K log K)
+### for equal splits and O(K) for unequal splits. Computing the cost
+### values, and overall time complexity, is best case O(N log K) time
+### for equal splits and worst case O(N K) time for unequal
+### splits. Output includes columns which can be used to compute
+### parameters for a single model in log-linear time, using coef
+### method.
 (distribution.str,
 ### String indicating distribution, use get_distribution_names to see
 ### possible values.
