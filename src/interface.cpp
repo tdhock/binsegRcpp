@@ -22,6 +22,7 @@ Rcpp::List binseg_interface
  const int max_segments,
  const int min_segment_length,
  const std::string distribution_str,
+ const std::string container_str,
  const Rcpp::LogicalVector is_validation_vec,
  const Rcpp::NumericVector position_vec
  ) {
@@ -63,6 +64,7 @@ Rcpp::List binseg_interface
      n_data, max_segments, min_segment_length,
      &is_validation_vec[0], &position_vec[0],
      distribution_str.c_str(),
+     container_str.c_str(),
      //inputs above, outputs below.
      &subtrain_borders[0],
      &end[0], &loss[0], &validation_loss[0],

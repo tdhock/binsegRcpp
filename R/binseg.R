@@ -35,8 +35,13 @@ binseg <- structure(function # Binary segmentation
 ### default=1:length(data.vec).
   weight.vec=rep(1, length(data.vec)),
 ### Numeric vector of non-negative weights for each data point.
-  min.segment.length=1L
+  min.segment.length=1L,
 ### Integer, minimum number of data points per segment.
+  container.str="multiset"
+### C++ container to use for storing breakpoints/cost. Most users
+### should leave this at the default "multiset" for efficiency but you
+### could use "list" if you want to study the time complexity of a
+### slower implementation of binary segmentation.
 ){
   if(!(
     is.logical(is.validation.vec) &&
@@ -66,6 +71,7 @@ binseg <- structure(function # Binary segmentation
     data.vec, weight.vec, max.segments,
     min.segment.length,
     distribution.str,
+    container.str,
     is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
   ##value<< list with elements subtrain.borders and splits.

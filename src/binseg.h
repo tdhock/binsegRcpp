@@ -1,4 +1,9 @@
+#include <math.h>//INFINITY
+#include <stdexcept>      // std::out_of_range
 #include <string>
+#include <string.h>
+#include <list>
+#include <algorithm>
 #include <set>//multiset
 #include <unordered_map>
 #include <vector>
@@ -63,6 +68,7 @@ int binseg
  const int n_data, const int max_segments, const int min_segment_length,
  const int *is_validation_vec, const double *position_vec,
  const char *distribution_str,
+ const char *container_str,
  double *pos_end,
  int *seg_end, double *loss, double *validation_loss,
  double *before_mean, double *after_mean,
