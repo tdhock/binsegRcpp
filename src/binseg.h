@@ -75,3 +75,48 @@ int binseg
  int *, int *,
  int *invalidates_index, int *invalidates_before);
 
+// Split class stores info for a single candidate split to consider.
+class Split {
+public:
+  int this_end;//index of last data point on the first/before segment.
+  MeanLoss before, after;
+  double set_mean_loss(Set &subtrain, int first, int end_i, int last);
+};
+
+class Segment {
+public:
+  int first_i, last_i;
+  int invalidates_index, invalidates_after;
+  double best_decrease, validation_decrease;
+  double before_validation_loss, after_validation_loss;
+  Split best_split;
+  int n_changes(void) const;
+  friend bool operator<(const Segment& l, const Segment& r){
+    if(l.best_decrease == r.best_decrease){
+      // if two segments are equally good to split in terms of the
+      // loss, then to save time we should split the larger.
+      return l.n_changes() > r.n_changes();
+    }else{
+      return l.best_decrease < r.best_decrease;
+    }
+  }
+  Segment
+  (Set &subtrain, Set &validation,
+   int first_data, int last_data,
+   int first_candidate, int last_candidate,
+   int invalidates_after, int invalidates_index,
+   double loss_no_split, double validation_loss_no_split
+   );
+};
+
+class Container {
+public:
+  virtual void insert(Segment&) = 0;
+  virtual int get_size(void) = 0;
+  virtual const Segment* set_best(void) = 0;
+  virtual void remove_best(void) = 0;
+  bool not_empty(void){
+    return get_size() > 0;
+  }
+};
+

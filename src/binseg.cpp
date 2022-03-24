@@ -105,143 +105,96 @@ poisson loss with weights:
   
  */
 
-// Split class stores info for a single candidate split to consider.
-class Split {
-public:
-  int this_end;//index of last data point on the first/before segment.
-  MeanLoss before, after;
-  double set_mean_loss
-  (Set &subtrain, int first, int end_i, int last){
-    this_end = end_i;
-    subtrain.set_mean_loss(first, end_i, &before);
-    subtrain.set_mean_loss(end_i+1, last, &after);
-    return before.loss + after.loss;
-  }
-};
+double Split::set_mean_loss(Set &subtrain, int first, int end_i, int last){
+  this_end = end_i;
+  subtrain.set_mean_loss(first, end_i, &before);
+  subtrain.set_mean_loss(end_i+1, last, &after);
+  return before.loss + after.loss;
+}
 
-// Segment class stores information about a segment that could be
-// split.
-class Segment {
-public:
-  //indices of first/last data points on this segment.
-  int first_i, last_i;
-  //index and after indicator of a previous segment whose mean
-  //parameter is invalidated if this segment in included. For example
-  //invalidates_index=2 and invalidates_after=0 implies before_mean
-  //parameter at index 2 is invalidated; invalidates_index=1 and
-  //invalidates_after=1 implies after_mean parameter at index 1 is
-  //invalidated. It is necessary to store this information in order to
-  //recover the optimal mean parameters of any model size.
-  int invalidates_index, invalidates_after;
-  double best_decrease, validation_decrease;
-  double before_validation_loss, after_validation_loss;
-  Split best_split;
-  int n_changes() const {
-    return last_i-first_i;
-  }
-  // Segments are kept sorted by best_decrease value, so that we can
-  // find the best segment to split in constant O(1) time.
-  friend bool operator<(const Segment& l, const Segment& r)
-  {
-    if(l.best_decrease == r.best_decrease){
-      // if two segments are equally good to split in terms of the
-      // loss, then to save time we should split the larger.
-      return l.n_changes() > r.n_changes();
-    }else{
-      return l.best_decrease < r.best_decrease;
+int Segment::n_changes() const {
+  return last_i-first_i;
+}
+Segment::Segment
+(Set &subtrain, Set &validation,
+ int first_data, int last_data,
+ int first_candidate, int last_candidate,
+ int invalidates_after, int invalidates_index,
+ double loss_no_split, double validation_loss_no_split
+ ): first_i(first_data), last_i(last_data),
+    invalidates_index(invalidates_index),
+    invalidates_after(invalidates_after){
+  Split candidate_split;
+  double best_loss_split = INFINITY, loss_split;
+  // for loop over all possible splits on this Segment.
+  for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
+    loss_split = candidate_split.set_mean_loss
+      (subtrain, first_data, candidate, last_data);
+    if(loss_split < best_loss_split){
+      best_loss_split = loss_split;
+      best_split = candidate_split;
     }
   }
-  // constructor which considers all possible splits from first to
-  // last, and then stores the best split and loss decrease.
-  Segment
-  (Set &subtrain, Set &validation,
-   int first_data, int last_data,
-   int first_candidate, int last_candidate,
-   int invalidates_after, int invalidates_index,
-   double loss_no_split, double validation_loss_no_split
-   ): first_i(first_data), last_i(last_data),
-      invalidates_index(invalidates_index),
-      invalidates_after(invalidates_after)
-  {
-    Split candidate_split;
-    double best_loss_split = INFINITY, loss_split;
-    // for loop over all possible splits on this Segment.
-    for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
-      loss_split = candidate_split.set_mean_loss
-	(subtrain, first_data, candidate, last_data);
-      if(loss_split < best_loss_split){
-	best_loss_split = loss_split;
-	best_split = candidate_split;
-      }
-    }
-    best_decrease = best_loss_split - loss_no_split;
-    // TODO combine this logic with Split class?
-    before_validation_loss = validation.get_loss
-      (first_data, best_split.this_end, best_split.before.mean);
-    after_validation_loss = validation.get_loss
-      (best_split.this_end+1, last_data, best_split.after.mean);
-    double validation_loss_split =
-      before_validation_loss + after_validation_loss;
-    validation_decrease =
-      validation_loss_split - validation_loss_no_split;
-  }
-};
+  best_decrease = best_loss_split - loss_no_split;
+  // TODO combine this logic with Split class?
+  before_validation_loss = validation.get_loss
+    (first_data, best_split.this_end, best_split.before.mean);
+  after_validation_loss = validation.get_loss
+    (best_split.this_end+1, last_data, best_split.after.mean);
+  double validation_loss_split =
+    before_validation_loss + after_validation_loss;
+  validation_decrease =
+    validation_loss_split - validation_loss_no_split;
+}
 
-class Container {
+template <typename T>
+class MyContainer : public Container {
 public:
-  virtual void insert(Segment&);
-  virtual int get_size(void);
-  virtual const Segment* get_best(void);
-  virtual void remove_best(void);
-  bool not_empty(void){
-    return get_size() > 0;
+  T segment_container;
+  typename T::iterator best;
+  int get_size(void){
+    return segment_container.size();
+  }
+  void remove_best(void){
+    segment_container.erase(best);
+  }
+  virtual typename T::iterator get_best_it(void) = 0;
+  const Segment* set_best(void){
+    best = get_best_it();
+    return &(*best);
   }
 };
 
 // The multiset is a red-black tree which is sorted in increasing
 // order (by best_decrease values), so the first element is always
 // the segment which results in the best loss decrease.
-class Multiset : public Container {
+typedef std::multiset<Segment> segment_set_type;
+class Multiset : public MyContainer<segment_set_type> {
 public:
-  std::multiset<Segment> segment_set;
   void insert(Segment& new_seg){
-    segment_set.insert(new_seg);
+    segment_container.insert(new_seg);
   }
-  int get_size(void){
-    return segment_set.size();
-  }
-  const Segment* get_best(void){
-    return &(*(segment_set.begin()));
-  }
-  void remove_best(void){
-    segment_set.erase(segment_set.begin());
+  segment_set_type::iterator get_best_it(void){
+    return segment_container.begin();
   }
 };
 
+//inefficient.
 typedef std::list<Segment> segment_list_type;
-class List : public Container {
+class List : public MyContainer<segment_list_type> {
 public:
-  segment_list_type segment_list;
   void insert(Segment& new_seg){
-    segment_list.push_back(new_seg);
+    segment_container.push_back(new_seg);
   }
-  int get_size(void){
-    return segment_list.size();
-  }
-  segment_list_type::iterator get_min(void){
-    return std::min_element(segment_list.begin(),segment_list.end());
-  }
-  const Segment* get_best(void){
-    return &(*(get_min()));
-  }
-  void remove_best(void){
-    segment_list.erase(get_min());
+  segment_list_type::iterator get_best_it(void){
+    return std::min_element
+      (segment_container.begin(),segment_container.end());
   }
 };
 
 class Candidates {
 public:
-  Container *segment_container;
+  Container *container_ptr;
   Set subtrain, validation;
   int min_segment_length;
   // computes the cumulative sum vectors in linear O(n_data) time.
@@ -329,7 +282,7 @@ public:
          first_candidate, last_candidate,
 	 invalidates_after, invalidates_index,
 	 loss_no_split, validation_loss_no_split);
-      segment_container->insert(new_seg);
+      container_ptr->insert(new_seg);
     }
   }
 };
@@ -394,9 +347,9 @@ int binseg
   List L;
   Candidates V;
   if(strcmp(container_str,"multiset")==0){
-    V.segment_container = &M;
+    V.container_ptr = &M;
   }else{
-    V.segment_container = &L;
+    V.container_ptr = &L;
   }
   // Begin by initializing cumulative sum vectors.
   int n_subtrain = V.init
@@ -439,9 +392,9 @@ int binseg
   // model parameters, and add new Segment/split candidates if
   // necessary.
   int seg_i = 0;
-  while(V.segment_container->not_empty() && ++seg_i < max_segments){
+  while(V.container_ptr->not_empty() && ++seg_i < max_segments){
     // Store loss and model parameters associated with this split.
-    const Segment *seg_ptr = V.segment_container->get_best();
+    const Segment *seg_ptr = V.container_ptr->set_best();
     subtrain_loss[seg_i] = subtrain_loss[seg_i-1] + seg_ptr->best_decrease;
     validation_loss[seg_i] =
       validation_loss[seg_i-1] + seg_ptr->validation_decrease;
@@ -474,7 +427,7 @@ int binseg
        seg_ptr->after_validation_loss);
     // Erase at end because we need seg_ptr->values during maybe_add
     // inserts above.
-    V.segment_container->remove_best();
+    V.container_ptr->remove_best();
   }
   for(int seg_i=0; seg_i < max_segments; seg_i++){
     dist_ptr->update_loss(subtrain_loss+seg_i, V.subtrain);
