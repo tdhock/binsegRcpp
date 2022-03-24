@@ -47,15 +47,15 @@ dist_map_type* get_dist_map(void){
   return &dist_map;
 }
 
-#define FUN(x,y) x##y
+#define CONCAT(x,y) x##y
 #define DISTRIBUTION(NAME, COMPUTE, UPDATE) \
-  double FUN(NAME,compute) (double N, double sum, double mean){ \
+  double CONCAT(NAME,compute) (double N, double sum, double mean){ \
   return COMPUTE;\
   } \
-  void FUN(NAME,update) (double *loss, Set &set){ \
+  void CONCAT(NAME,update) (double *loss, Set &set){ \
   UPDATE; \
   } \
-  static Distribution NAME( #NAME, FUN(NAME,compute), FUN(NAME,update) ); 
+  static Distribution NAME( #NAME, CONCAT(NAME,compute), CONCAT(NAME,update) ); 
 
 DISTRIBUTION(mean_norm,
              mean*(N*mean-2*sum), // square loss minus constant term.
@@ -158,52 +158,65 @@ public:
   void remove_best(void){
     segment_container.erase(best);
   }
-  virtual typename T::iterator get_best_it(void) = 0;
+  virtual typename T::iterator get_best_it(void) = 0;  
   const Segment* set_best(void){
     best = get_best_it();
     return &(*best);
   }
 };
 
-// The multiset is a red-black tree which is sorted in increasing
-// order (by best_decrease values), so the first element is always
-// the segment which results in the best loss decrease.
-typedef std::multiset<Segment> segment_set_type;
-class Multiset : public MyContainer<segment_set_type> {
-public:
-  void insert(Segment& new_seg){
-    segment_container.insert(new_seg);
-  }
-  segment_set_type::iterator get_best_it(void){
-    return segment_container.begin();
-  }
-};
+static factory_map_type factory_map;
+ContainerFactory::ContainerFactory
+(const char *name, construct_fun_type construct, destruct_fun_type destruct){
+  construct_fun_ptr = construct;
+  destruct_fun_ptr = destruct;
+  factory_map.emplace(name, this);
+}
+factory_map_type* get_factory_map(void){
+  return &factory_map;
+}
 
-//inefficient.
-typedef std::list<Segment> segment_list_type;
-class List : public MyContainer<segment_list_type> {
-public:
-  void insert(Segment& new_seg){
-    segment_container.push_back(new_seg);
-  }
-  segment_list_type::iterator get_best_it(void){
-    return std::min_element
-      (segment_container.begin(),segment_container.end());
-  }
-};
+#define CMAKER(CONTAINER, INSERT, BEST) \
+  class CONCAT(CONTAINER,Wrapper) : public MyContainer< std::CONTAINER<Segment> > { \
+  public: \
+  void insert(Segment& new_seg){ \
+    segment_container.INSERT(new_seg);                          \
+  }                                                             \
+  std::CONTAINER<Segment>::iterator get_best_it(void){\
+  return BEST; \
+  }                                                             \
+  };                                                                    \
+  Container* CONCAT(CONTAINER,construct) (){ \
+    return new CONCAT(CONTAINER,Wrapper);                               \
+  } \
+  void CONCAT(CONTAINER,destruct) (Container *c_ptr){ \
+    delete static_cast< CONCAT(CONTAINER,Wrapper) * >(c_ptr); \
+  } \
+  static ContainerFactory CONCAT(CONTAINER,_instance) ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
+
+CMAKER(multiset, insert, segment_container.begin())
+
+CMAKER(list, push_back, std::min_element(segment_container.begin(),segment_container.end()))
 
 class Candidates {
 public:
-  Container *container_ptr;
+  ContainerFactory *factory_ptr;
+  Container *container_ptr = 0;
   Set subtrain, validation;
   int min_segment_length;
+  ~Candidates(){
+    if(container_ptr != 0)factory_ptr->destruct_fun_ptr(container_ptr);
+  }
   // computes the cumulative sum vectors in linear O(n_data) time.
   int init
-  (const double *data_vec, const double *weight_vec, const int n_data,
+  (const char *container_str,
+   const double *data_vec, const double *weight_vec, const int n_data,
    const double *position_vec, const int *is_validation_vec,
    double *subtrain_borders, compute_fun distribution_loss,
    int min_segment_length_arg
    ){
+    factory_ptr = factory_map.at(container_str);
+    container_ptr = factory_ptr->construct_fun_ptr();
     min_segment_length = min_segment_length_arg;
     subtrain.instance_loss = distribution_loss;
     validation.instance_loss = distribution_loss;
@@ -343,18 +356,17 @@ int binseg
   catch(const std::out_of_range& err){
     return ERROR_UNRECOGNIZED_DISTRIBUTION;
   }
-  Multiset M;
-  List L;
   Candidates V;
-  if(strcmp(container_str,"multiset")==0){
-    V.container_ptr = &M;
-  }else{
-    V.container_ptr = &L;
-  }
-  // Begin by initializing cumulative sum vectors.
-  int n_subtrain = V.init
-    (data_vec, weight_vec, n_data, position_vec, is_validation_vec,
+  int n_subtrain;
+  try{
+    n_subtrain = V.init
+    (container_str,
+     data_vec, weight_vec, n_data, position_vec, is_validation_vec,
      subtrain_borders, dist_ptr->compute_loss, min_segment_length);
+  }
+  catch(const std::out_of_range& err){
+    return ERROR_UNRECOGNIZED_CONTAINER;
+  }
   if(n_subtrain < max_segments*min_segment_length){
     return ERROR_TOO_MANY_SEGMENTS;
   }

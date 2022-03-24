@@ -10,6 +10,7 @@
 #define ERROR_TOO_MANY_SEGMENTS 2
 #define ERROR_UNRECOGNIZED_DISTRIBUTION 3
 #define ERROR_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE 5
+#define ERROR_UNRECOGNIZED_CONTAINER 6
 #define ERROR_POSITIONS_MUST_INCREASE -4
 
 // This class saves the optimal parameters/loss value for each segment
@@ -115,8 +116,19 @@ public:
   virtual int get_size(void) = 0;
   virtual const Segment* set_best(void) = 0;
   virtual void remove_best(void) = 0;
+  virtual ~Container() {};
   bool not_empty(void){
     return get_size() > 0;
   }
 };
 
+typedef Container* (*construct_fun_type)(void);
+typedef void (*destruct_fun_type)(Container*);
+class ContainerFactory {
+public:
+  construct_fun_type construct_fun_ptr;
+  destruct_fun_type destruct_fun_ptr;
+  ContainerFactory(const char *name, construct_fun_type construct, destruct_fun_type destruct);
+};
+typedef std::unordered_map<std::string, ContainerFactory*> factory_map_type;
+factory_map_type* get_factory_map(void);
