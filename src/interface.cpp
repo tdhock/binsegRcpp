@@ -83,6 +83,18 @@ Rcpp::List binseg_interface
     }
     Rcpp::stop(msg); 
   }
+  if(status == ERROR_UNRECOGNIZED_CONTAINER){
+    std::string msg = "unrecognized container, try one of: ";
+    factory_map_type *fmap = get_factory_map();
+    factory_map_type::iterator it=fmap->begin();
+    while(1){
+      msg += it->first;
+      if(++it != fmap->end()){
+	msg += ", ";
+      }else break;
+    }
+    Rcpp::stop(msg); 
+  }
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments, max_segments=%d and min_segment_length=%d which would require at least %d data but n_subtrain=%d", max_segments, min_segment_length, max_segments*min_segment_length, n_subtrain); 
   }

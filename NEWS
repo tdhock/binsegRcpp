@@ -5,6 +5,10 @@ re-order splits to show best case with max.segments < n.data?
 meanvar_norm distribution: generalize C++ code to more than one
 segment-specific parameter.
 
+2022.3.24
+
+container.str can be list (slow) or multimap (fast).
+
 2022.3.22
 
 warning and suggestion to use weights for runs of identical data.

@@ -60,7 +60,7 @@ public:
 };
 
 typedef std::unordered_map<std::string, Distribution*> dist_map_type;
-dist_map_type* get_dist_map(void);
+dist_map_type* get_dist_map(void);  
 
 int get_n_subtrain(const int, const int*);
 

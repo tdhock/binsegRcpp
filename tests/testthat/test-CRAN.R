@@ -264,3 +264,9 @@ test_that("warning for consecutive data", {
     binsegRcpp::binseg("mean_norm", c(1,1))
   }, "some consecutive data values are identical in set=subtrain")
 })
+
+test_that("error for unrecognized container", {
+  expect_error({
+    binsegRcpp::binseg("mean_norm", 1:4, container.str="foo")
+  }, "unrecognized container")
+})
