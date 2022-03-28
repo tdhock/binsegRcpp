@@ -48,7 +48,7 @@ dist_map_type* get_dist_map(void){
 }
 
 #define CONCAT(x,y) x##y
-#define DISTRIBUTION(NAME, COMPUTE, UPDATE) \
+#define DISTRIBUTION(NAME, COMPUTE, UPDATE, VARIANCE)		   \
   double CONCAT(NAME,compute) (double N, double sum, double mean){ \
   return COMPUTE;\
   } \
@@ -59,7 +59,8 @@ dist_map_type* get_dist_map(void){
 
 DISTRIBUTION(mean_norm,
              mean*(N*mean-2*sum), // square loss minus constant term.
-             *loss += set.total_weighted_squares) //add back constant.
+             *loss += set.total_weighted_squares,//add back constant.
+	     false) 
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
 
@@ -88,7 +89,7 @@ DISTRIBUTION(mean_norm,
 
 DISTRIBUTION(poisson, 
              mean*N - log(mean)*sum, // neg log lik minus constant term.
-             ) // dont add constant term to loss.
+             false) // dont add constant term to loss.
 /* poisson likelihood:
 
 prob_i = m^{x_i} * exp(-m) / (x_i !)
@@ -104,6 +105,39 @@ poisson loss with weights:
   = M*W - log(M)*S.
   
  */
+
+DISTRIBUTION(meanvar_norm,
+	     ,
+	     ,
+	     true)
+
+double costFunction(int start, int end){
+        double lSum =  this -> summaryStatistics -> getLinearSum(start, end);
+        double sSum =  this -> summaryStatistics -> getQuadraticSum(start, end);
+        int N = end - start + 1;
+        double varN = (sSum - (lSum*lSum/N));
+        if(varN <= 0) return INFINITY;
+        return N*(log(varN/N) + log(2*M_PI) + 1);
+    }
+    void calcParams(int start, int mid, int end, int i,  double * param_mat, int cpts){
+        double meanLeft = this -> summaryStatistics -> getMean(start, mid);
+        double meanRight = this -> summaryStatistics -> getMean(mid + 1, end);
+        double varLeft = this -> summaryStatistics -> getVarianceN(start, mid, false);
+        double varRight = this -> summaryStatistics -> getVarianceN(mid + 1, end, false);
+
+        param_mat[i + cpts * 5] = meanLeft;
+        param_mat[i + cpts * 6] = meanRight;
+        param_mat[i + cpts * 7] = varLeft / (mid - start + 1);
+        param_mat[i + cpts * 8] = varRight / (end - mid);
+    }
+    double getVarianceN(int start, int end, bool fixedMean){
+        double lSum = this -> getLinearSum(start, end);
+        double sSum =  this ->  getQuadraticSum(start, end);
+        int N = end - start + 1;
+        double mean = fixedMean ? this -> getTotalMean() : this -> getMean(start, end); // Fixed mean
+        double varN = (sSum - 2 * mean * lSum + N * pow(mean, 2)); // Variance of segment.
+        return varN;
+    }
 
 double Split::set_mean_loss(Set &subtrain, int first, int end_i, int last){
   this_end = end_i;
