@@ -18,12 +18,12 @@
 // one parameter (mean) because the model is normal change in mean
 // with constant variance but there could be more parameters for other
 // models (e.g., normal change in mean and variance).
-class MeanLoss {
+class MeanVarLoss {
 public:
-  double mean, loss;
+  double mean, var, loss;
 };
 
-typedef double(*compute_fun)(double,double,double);
+typedef double(*compute_fun)(double,double,double,double,double);
 
 // This class computes and stores the statistics that we need to
 // compute the optimal loss/parameters of a segment from first to
@@ -38,25 +38,24 @@ public:
 
 class Set {// either subtrain or validation.
 public:
-  Cumsum weights, weighted_data;
+  Cumsum weights, weighted_data, weighted_squares;
   compute_fun instance_loss;
   double total_weighted_data=0, total_weights=0, total_weighted_squares=0;
   double get_mean(int first, int last);
-  void set_mean_loss(int first, int last, double *mean, double *loss);
-  void set_mean_loss(int first, int last, MeanLoss *ML);
-  double get_loss(int first, int last, double subtrain_mean);
+  double get_var(int first, int last);
+  void set_mean_var_loss(int first, int last, double *mean, double *var, double *loss);
+  void set_mean_var_loss(int first, int last, MeanVarLoss*);
+  double get_loss(int first, int last, double subtrain_mean, double subtrain_var);
   void resize_cumsums(int vec_size);
   void write_cumsums(int write_index);
 };
 
-typedef void (*update_fun)(double*, Set&);
-
 class Distribution {
 public:
   compute_fun compute_loss;
-  update_fun update_loss;
+  std::vector<std::string> param_name_vec;
   Distribution();
-  Distribution(const char *name, compute_fun compute, update_fun update);
+  Distribution(const char *name, compute_fun compute, bool var_changes);
 };
 
 typedef std::unordered_map<std::string, Distribution*> dist_map_type;
@@ -80,7 +79,7 @@ int binseg
 class Split {
 public:
   int this_end;//index of last data point on the first/before segment.
-  MeanLoss before, after;
+  MeanVarLoss before, after;
   double set_mean_loss(Set &subtrain, int first, int end_i, int last);
 };
 

@@ -13,32 +13,49 @@ double Set::get_mean(int first, int last){
   total_weights = weights.get_sum(first, last);
   return total_weighted_data/total_weights;
 }
-void Set::set_mean_loss(int first, int last, double *mean, double *loss){
-  *mean = get_mean(first, last);
-  *loss = get_loss(first, last, *mean);
-}
-void Set::set_mean_loss(int first, int last, MeanLoss *ML){
-  set_mean_loss(first, last, &(ML->mean), &(ML->loss));
-}
-double Set::get_loss(int first, int last, double subtrain_mean){
-  total_weighted_data = weighted_data.get_sum(first, last);
+double Set::get_var(int first, int last){
   total_weights = weights.get_sum(first, last);
-  return instance_loss(total_weights, total_weighted_data, subtrain_mean);
+  total_weighted_data = weighted_data.get_sum(first, last);
+  total_weighted_squares = weighted_squares.get_sum(first, last);
+  double mean = total_weighted_data / total_weights;
+  return total_weighted_squares/total_weights +
+    mean*(mean-2*total_weighted_data/total_weights);
+}
+void Set::set_mean_var_loss
+(int first, int last, double *mean, double *var, double *loss){
+  *mean = get_mean(first, last);
+  *var  = get_var(first, last);
+  *loss = get_loss(first, last, *mean, *var);
+}
+void Set::set_mean_var_loss(int first, int last, MeanVarLoss *MVL){
+  set_mean_var_loss(first, last, &(MVL->mean), &(MVL->var), &(MVL->loss));
+}
+double Set::get_loss
+(int first, int last, double subtrain_mean, double subtrain_var){
+  total_weights = weights.get_sum(first, last);
+  total_weighted_data = weighted_data.get_sum(first, last);
+  total_weighted_squares = weighted_squares.get_sum(first, last);
+  return instance_loss
+    (total_weights, total_weighted_data, total_weighted_squares,
+     subtrain_mean, subtrain_var);
 }
 void Set::resize_cumsums(int vec_size){
   weights.cumsum_vec.resize(vec_size);
   weighted_data.cumsum_vec.resize(vec_size);
+  weighted_squares.cumsum_vec.resize(vec_size);
 }
 void Set::write_cumsums(int write_index){
   weights.cumsum_vec[write_index] = total_weights;
   weighted_data.cumsum_vec[write_index] = total_weighted_data;
+  weighted_squares.cumsum_vec[write_index] = total_weighted_squares;
 }
 
 static dist_map_type dist_map;
 Distribution::Distribution
-(const char *name, compute_fun compute, update_fun update){
+(const char *name, compute_fun compute, bool var_changes){
   compute_loss = compute;
-  update_loss = update;
+  param_name_vec.push_back("mean");
+  if(var_changes)param_name_vec.push_back("var");
   dist_map.emplace(name, this);
 }
 // we need get_dist_map in this file to query map contents from
@@ -48,18 +65,15 @@ dist_map_type* get_dist_map(void){
 }
 
 #define CONCAT(x,y) x##y
-#define DISTRIBUTION(NAME, COMPUTE, UPDATE, VARIANCE)		   \
-  double CONCAT(NAME,compute) (double N, double sum, double mean){ \
-  return COMPUTE;\
-  } \
-  void CONCAT(NAME,update) (double *loss, Set &set){ \
-  UPDATE; \
-  } \
-  static Distribution NAME( #NAME, CONCAT(NAME,compute), CONCAT(NAME,update) ); 
+#define DISTRIBUTION(NAME, COMPUTE, VARIANCE)		   \
+  double CONCAT(NAME,compute)				   \
+    (double N, double sum, double squares, double mean, double var){	\
+    return COMPUTE;					   \
+  }									\
+  static Distribution NAME( #NAME, CONCAT(NAME,compute), VARIANCE ); 
 
 DISTRIBUTION(mean_norm,
-             mean*(N*mean-2*sum), // square loss minus constant term.
-             *loss += set.total_weighted_squares,//add back constant.
+             mean*(N*mean-2*sum)+squares, 
 	     false) 
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
@@ -107,42 +121,41 @@ poisson loss with weights:
  */
 
 DISTRIBUTION(meanvar_norm,
-	     ,
-	     ,
+	     -(0.5*(mean*(mean-2*sum/N)+squares/N)/var + N*(log(sqrt(var))+0.5*log(2*M_PI))),
 	     true)
 
-double costFunction(int start, int end){
-        double lSum =  this -> summaryStatistics -> getLinearSum(start, end);
-        double sSum =  this -> summaryStatistics -> getQuadraticSum(start, end);
-        int N = end - start + 1;
-        double varN = (sSum - (lSum*lSum/N));
-        if(varN <= 0) return INFINITY;
-        return N*(log(varN/N) + log(2*M_PI) + 1);
-    }
-    void calcParams(int start, int mid, int end, int i,  double * param_mat, int cpts){
-        double meanLeft = this -> summaryStatistics -> getMean(start, mid);
-        double meanRight = this -> summaryStatistics -> getMean(mid + 1, end);
-        double varLeft = this -> summaryStatistics -> getVarianceN(start, mid, false);
-        double varRight = this -> summaryStatistics -> getVarianceN(mid + 1, end, false);
+// double costFunction(int start, int end){
+//         double lSum =  this -> summaryStatistics -> getLinearSum(start, end);
+//         double sSum =  this -> summaryStatistics -> getQuadraticSum(start, end);
+//         int N = end - start + 1;
+//         double varN = (sSum - (lSum*lSum/N));
+//         if(varN <= 0) return INFINITY;
+//         return N*(log(varN/N) + log(2*M_PI) + 1);
+//     }
+//     void calcParams(int start, int mid, int end, int i,  double * param_mat, int cpts){
+//         double meanLeft = this -> summaryStatistics -> getMean(start, mid);
+//         double meanRight = this -> summaryStatistics -> getMean(mid + 1, end);
+//         double varLeft = this -> summaryStatistics -> getVarianceN(start, mid, false);
+//         double varRight = this -> summaryStatistics -> getVarianceN(mid + 1, end, false);
 
-        param_mat[i + cpts * 5] = meanLeft;
-        param_mat[i + cpts * 6] = meanRight;
-        param_mat[i + cpts * 7] = varLeft / (mid - start + 1);
-        param_mat[i + cpts * 8] = varRight / (end - mid);
-    }
-    double getVarianceN(int start, int end, bool fixedMean){
-        double lSum = this -> getLinearSum(start, end);
-        double sSum =  this ->  getQuadraticSum(start, end);
-        int N = end - start + 1;
-        double mean = fixedMean ? this -> getTotalMean() : this -> getMean(start, end); // Fixed mean
-        double varN = (sSum - 2 * mean * lSum + N * pow(mean, 2)); // Variance of segment.
-        return varN;
-    }
+//         param_mat[i + cpts * 5] = meanLeft;
+//         param_mat[i + cpts * 6] = meanRight;
+//         param_mat[i + cpts * 7] = varLeft / (mid - start + 1);
+//         param_mat[i + cpts * 8] = varRight / (end - mid);
+//     }
+//     double getVarianceN(int start, int end, bool fixedMean){
+//         double lSum = this -> getLinearSum(start, end);
+//         double sSum =  this ->  getQuadraticSum(start, end);
+//         int N = end - start + 1;
+//         double mean = fixedMean ? this -> getTotalMean() : this -> getMean(start, end); // Fixed mean
+//         double varN = (sSum - 2 * mean * lSum + N * pow(mean, 2)); // Variance of segment.
+//         return varN;
+//     }
 
-double Split::set_mean_loss(Set &subtrain, int first, int end_i, int last){
+double Split::set_mean_var_loss(Set &subtrain, int first, int end_i, int last){
   this_end = end_i;
-  subtrain.set_mean_loss(first, end_i, &before);
-  subtrain.set_mean_loss(end_i+1, last, &after);
+  subtrain.set_mean_var_loss(first, end_i, &before);
+  subtrain.set_mean_var_loss(end_i+1, last, &after);
   return before.loss + after.loss;
 }
 
@@ -172,9 +185,9 @@ Segment::Segment
   best_decrease = best_loss_split - loss_no_split;
   // TODO combine this logic with Split class?
   before_validation_loss = validation.get_loss
-    (first_data, best_split.this_end, best_split.before.mean);
+    (first_data, best_split.this_end, best_split.before.mean, best_split.before.var);
   after_validation_loss = validation.get_loss
-    (best_split.this_end+1, last_data, best_split.after.mean);
+    (best_split.this_end+1, last_data, best_split.after.mean, best_split.after.var);
   double validation_loss_split =
     before_validation_loss + after_validation_loss;
   validation_decrease =
@@ -295,10 +308,12 @@ public:
           }else{
             this_set = &subtrain;
           }
-          this_set->total_weighted_data += data_value * weight_value;
+          this_set->total_weights +=
+	    weight_value;
+          this_set->total_weighted_data +=
+	    data_value * weight_value;
           this_set->total_weighted_squares +=
             data_value * data_value * weight_value;
-          this_set->total_weights += weight_value;
 	  read_index++;
 	}
         validation.write_cumsums(write_index);
@@ -406,7 +421,7 @@ int binseg
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  V.subtrain.set_mean_loss
+  V.subtrain.set_mean_var_loss
     (0, n_subtrain-1, before_mean, subtrain_loss);
   validation_loss[0] = V.validation.get_loss
     (0, n_subtrain-1, *before_mean);
@@ -474,10 +489,6 @@ int binseg
     // Erase at end because we need seg_ptr->values during maybe_add
     // inserts above.
     V.container_ptr->remove_best();
-  }
-  for(int seg_i=0; seg_i < max_segments; seg_i++){
-    dist_ptr->update_loss(subtrain_loss+seg_i, V.subtrain);
-    dist_ptr->update_loss(validation_loss+seg_i, V.validation);
   }
   return 0;//SUCCESS.
 }
