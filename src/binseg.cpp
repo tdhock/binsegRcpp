@@ -31,7 +31,7 @@ double Set::get_loss
   total_weights = weights.get_sum(first, last);
   total_weighted_data = weighted_data.get_sum(first, last);
   total_weighted_squares = weighted_squares.get_sum(first, last);
-  return instance_loss
+  return dist_ptr->compute_loss
     (total_weights, total_weighted_data, total_weighted_squares,
      mean, var);
 }
@@ -47,14 +47,6 @@ void Set::write_cumsums(int write_index){
 }
 
 static dist_map_type dist_map;
-Distribution::Distribution
-(const char *name, std::string desc, compute_fun compute, bool var_changes){
-  compute_loss = compute;
-  description = desc;
-  param_names_vec.push_back("mean");
-  if(var_changes)param_names_vec.push_back("var");
-  dist_map.emplace(name, this);
-}
 // we need get_dist_map in this file to query map contents from
 // interface.cpp
 dist_map_type* get_dist_map(void){
@@ -62,12 +54,22 @@ dist_map_type* get_dist_map(void){
 }
 
 #define CONCAT(x,y) x##y
-#define DISTRIBUTION(NAME, DESC, COMPUTE, VARIANCE)		   \
-  double CONCAT(NAME,compute)				   \
-    (double N, double sum, double squares, double mean, double var){	\
-    return COMPUTE;					   \
-  }									\
-  static Distribution NAME( #NAME, DESC, CONCAT(NAME,compute), VARIANCE ); 
+#define DISTRIBUTION(NAME, DESC, COMPUTE, VARIANCE)                     \
+  class CONCAT(NAME,Distribution) : public Distribution {               \
+public:                                                                 \
+ double compute_loss                                                    \
+ (double N, double sum, double squares, double mean, double var){	\
+   return COMPUTE;                                                      \
+ }									\
+ CONCAT(NAME,Distribution)                                              \
+ (const char *name, std::string desc, bool var_changes){                \
+ description = desc;                                                    \
+ param_names_vec.push_back("mean");                                     \
+ if(var_changes)param_names_vec.push_back("var");                       \
+ dist_map.emplace(name, this);                                          \
+ }                                                                      \
+  };                                                                    \
+ static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE ); 
 
 DISTRIBUTION(mean_norm,
              "change in normal mean with constant variance (L2/square loss)",
@@ -235,14 +237,14 @@ public:
   (const char *container_str,
    const double *data_vec, const double *weight_vec, const int n_data,
    const double *position_vec, const int *is_validation_vec,
-   double *subtrain_borders, compute_fun distribution_loss,
+   double *subtrain_borders, Distribution *dist_ptr,
    int min_segment_length_arg
    ){
     factory_ptr = factory_map.at(container_str);
     container_ptr = factory_ptr->construct_fun_ptr();
     min_segment_length = min_segment_length_arg;
-    subtrain.instance_loss = distribution_loss;
-    validation.instance_loss = distribution_loss;
+    subtrain.dist_ptr = dist_ptr;
+    validation.dist_ptr = dist_ptr;
     int n_validation = 0;
     for(int data_i=0; data_i<n_data; data_i++){
       if(is_validation_vec[data_i]){
@@ -442,7 +444,7 @@ int binseg
     n_subtrain = V.init
     (container_str,
      data_vec, weight_vec, n_data, position_vec, is_validation_vec,
-     subtrain_borders, dist_ptr->compute_loss, min_segment_length);
+     subtrain_borders, dist_ptr, min_segment_length);
   }
   catch(const std::out_of_range& err){
     return ERROR_UNRECOGNIZED_CONTAINER;

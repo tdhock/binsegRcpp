@@ -22,7 +22,14 @@ public:
   double mean, var, loss;
 };
 
-typedef double(*compute_fun)(double,double,double,double,double);
+typedef std::vector<std::string> param_names_type;
+param_names_type* get_param_names(const char*);
+class Distribution {
+public:
+  std::string description;
+  param_names_type param_names_vec;
+  virtual double compute_loss(double,double,double,double,double) = 0;
+};
 
 // This class computes and stores the statistics that we need to
 // compute the optimal loss/parameters of a segment from first to
@@ -30,7 +37,7 @@ typedef double(*compute_fun)(double,double,double,double,double);
 // the only statistic we need is the cumulative sum.
 class Cumsum {
 public:
-  compute_fun instance_loss;
+  Distribution *dist_ptr;
   std::vector<double> cumsum_vec;
   double get_sum(int first, int last);
 };
@@ -38,7 +45,7 @@ public:
 class Set {// either subtrain or validation.
 public:
   Cumsum weights, weighted_data, weighted_squares;
-  compute_fun instance_loss;
+  Distribution *dist_ptr;
   double total_weighted_data=0, total_weights=0, total_weighted_squares=0;
   double get_mean(int first, int last);
   double get_var(int first, int last);
@@ -48,17 +55,6 @@ public:
   double get_loss(int first, int last, double, double);
   void resize_cumsums(int vec_size);
   void write_cumsums(int write_index);
-};
-
-typedef std::vector<std::string> param_names_type;
-param_names_type* get_param_names(const char*);
-class Distribution {
-public:
-  compute_fun compute_loss;
-  std::string description;
-  param_names_type param_names_vec;
-  Distribution();
-  Distribution(const char *name, std::string desc, compute_fun compute, bool var_changes);
 };
 
 typedef std::unordered_map<std::string, Distribution*> dist_map_type;
