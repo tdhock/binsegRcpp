@@ -1,6 +1,4 @@
 #include "binseg.h"
-#include <math.h>//INFINITY
-#include <stdexcept>      // std::out_of_range
 
 double Cumsum::get_sum(int first, int last){
   double total = cumsum_vec[last];
@@ -10,58 +8,73 @@ double Cumsum::get_sum(int first, int last){
   return total;
 }
 
-double Set::get_mean(int first, int last){
-  total_weighted_data = weighted_data.get_sum(first, last);
+void Set::set_mean_var_loss
+(int first, int last, double *mean, double *var, double *loss){
   total_weights = weights.get_sum(first, last);
-  return total_weighted_data/total_weights;
-}
-void Set::set_mean_loss(int first, int last, double *mean, double *loss){
-  *mean = get_mean(first, last);
-  *loss = get_loss(first, last, *mean);
-}
-void Set::set_mean_loss(int first, int last, MeanLoss *ML){
-  set_mean_loss(first, last, &(ML->mean), &(ML->loss));
-}
-double Set::get_loss(int first, int last, double subtrain_mean){
   total_weighted_data = weighted_data.get_sum(first, last);
+  total_weighted_squares = weighted_squares.get_sum(first, last);
+  *mean = total_weighted_data/total_weights;
+  *var  = total_weighted_squares/total_weights +
+    (*mean)*((*mean)-2*total_weighted_data/total_weights);
+  *loss = get_loss(first, last, *mean, *var);
+}
+void Set::set_mean_var_loss(int first, int last, MeanVarLoss *MVL){
+  set_mean_var_loss(first, last, &(MVL->mean), &(MVL->var), &(MVL->loss));
+}
+double Set::get_loss
+(int first, int last, MeanVarLoss& subtrain_mvl){
+  return get_loss
+    (first, last, subtrain_mvl.mean, subtrain_mvl.var);
+}
+double Set::get_loss
+(int first, int last, double mean, double var){
   total_weights = weights.get_sum(first, last);
-  return instance_loss(total_weights, total_weighted_data, subtrain_mean);
+  total_weighted_data = weighted_data.get_sum(first, last);
+  total_weighted_squares = weighted_squares.get_sum(first, last);
+  return dist_ptr->compute_loss
+    (total_weights, total_weighted_data, total_weighted_squares,
+     mean, var);
 }
 void Set::resize_cumsums(int vec_size){
   weights.cumsum_vec.resize(vec_size);
   weighted_data.cumsum_vec.resize(vec_size);
+  weighted_squares.cumsum_vec.resize(vec_size);
 }
 void Set::write_cumsums(int write_index){
   weights.cumsum_vec[write_index] = total_weights;
   weighted_data.cumsum_vec[write_index] = total_weighted_data;
+  weighted_squares.cumsum_vec[write_index] = total_weighted_squares;
 }
 
 static dist_map_type dist_map;
-Distribution::Distribution
-(const char *name, compute_fun compute, update_fun update){
-  compute_loss = compute;
-  update_loss = update;
-  dist_map.emplace(name, this);
-}
 // we need get_dist_map in this file to query map contents from
 // interface.cpp
 dist_map_type* get_dist_map(void){
   return &dist_map;
 }
 
-#define FUN(x,y) x##y
-#define DISTRIBUTION(NAME, COMPUTE, UPDATE) \
-  double FUN(NAME,compute) (double N, double sum, double mean){ \
-  return COMPUTE;\
-  } \
-  void FUN(NAME,update) (double *loss, Set &set){ \
-  UPDATE; \
-  } \
-  static Distribution NAME( #NAME, FUN(NAME,compute), FUN(NAME,update) ); 
+#define CONCAT(x,y) x##y
+#define DISTRIBUTION(NAME, DESC, COMPUTE, VARIANCE)                     \
+  class CONCAT(NAME,Distribution) : public Distribution {               \
+  public:                                                               \
+    double compute_loss                                                 \
+      (double N, double sum, double squares, double mean, double var){	\
+      return COMPUTE;                                                   \
+    }									\
+    CONCAT(NAME,Distribution)                                           \
+      (const char *name, std::string desc, bool var_changes){           \
+      description = desc;                                               \
+      param_names_vec.push_back("mean");                                \
+      if(var_changes)param_names_vec.push_back("var");                  \
+      dist_map.emplace(name, this);                                     \
+    }                                                                   \
+  };                                                                    \
+  static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE ); 
 
 DISTRIBUTION(mean_norm,
-             mean*(N*mean-2*sum), // square loss minus constant term.
-             *loss += set.total_weighted_squares) //add back constant.
+             "change in normal mean with constant variance (L2/square loss)",
+             mean*(N*mean-2*sum)+squares, 
+	     false) 
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
 
@@ -88,9 +101,10 @@ DISTRIBUTION(mean_norm,
    
 */
 
-DISTRIBUTION(poisson, 
+DISTRIBUTION(poisson,
+             "change in poisson rate parameter (loss is negative log likelihood minus constant term)",
              mean*N - log(mean)*sum, // neg log lik minus constant term.
-             ) // dont add constant term to loss.
+             false) // dont add constant term to loss.
 /* poisson likelihood:
 
 prob_i = m^{x_i} * exp(-m) / (x_i !)
@@ -107,105 +121,131 @@ poisson loss with weights:
   
  */
 
-// Split class stores info for a single candidate split to consider.
-class Split {
+DISTRIBUTION(meanvar_norm,
+             "change in normal mean and variance (loss is negative log likelihood)",
+	     (var > 1e-15) ? (0.5*( (squares+mean*(N*mean-2*sum))/var + N*log(2*M_PI*var))) : INFINITY,
+	     true)
+/*
+meanvar_norm loss is negative log likelihood =
+
+0.5 [ (sum_i x_i^2 + M(NM-2 sum_i x_i))/var + log(2*pi*var) ]
+ */
+
+double Split::set_mean_var_loss(Set &subtrain, int first, int end_i, int last){
+  this_end = end_i;
+  subtrain.set_mean_var_loss(first, end_i, &before);
+  subtrain.set_mean_var_loss(end_i+1, last, &after);
+  return before.loss + after.loss;
+}
+
+int Segment::n_changes() const {
+  return last_i-first_i;
+}
+Segment::Segment
+(Set &subtrain, Set &validation,
+ int first_data, int last_data,
+ int first_candidate, int last_candidate,
+ int invalidates_after, int invalidates_index,
+ double loss_no_split, double validation_loss_no_split
+ ): first_i(first_data), last_i(last_data),
+    invalidates_index(invalidates_index),
+    invalidates_after(invalidates_after){
+  Split candidate_split;
+  double best_loss_split = INFINITY, loss_split;
+  // for loop over all possible splits on this Segment.
+  for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
+    loss_split = candidate_split.set_mean_var_loss
+      (subtrain, first_data, candidate, last_data);
+    if(loss_split < best_loss_split){
+      best_loss_split = loss_split;
+      best_split = candidate_split;
+    }
+  }
+  best_decrease = best_loss_split - loss_no_split;
+  before_validation_loss = validation.get_loss
+    (first_data, best_split.this_end, best_split.before);
+  after_validation_loss = validation.get_loss
+    (best_split.this_end+1, last_data, best_split.after);
+  double validation_loss_split =
+    before_validation_loss + after_validation_loss;
+  validation_decrease =
+    validation_loss_split - validation_loss_no_split;
+}
+
+template <typename T>
+class MyContainer : public Container {
 public:
-  int this_end;//index of last data point on the first/before segment.
-  MeanLoss before, after;
-  double set_mean_loss
-  (Set &subtrain, int first, int end_i, int last){
-    this_end = end_i;
-    subtrain.set_mean_loss(first, end_i, &before);
-    subtrain.set_mean_loss(end_i+1, last, &after);
-    return before.loss + after.loss;
+  T segment_container;
+  typename T::iterator best;
+  int get_size(void){
+    return segment_container.size();
+  }
+  void remove_best(void){
+    segment_container.erase(best);
+  }
+  virtual typename T::iterator get_best_it(void) = 0;  
+  const Segment* set_best(void){
+    best = get_best_it();
+    return &(*best);
   }
 };
 
-// Segment class stores information about a segment that could be
-// split.
-class Segment {
-public:
-  //indices of first/last data points on this segment.
-  int first_i, last_i;
-  //index and after indicator of a previous segment whose mean
-  //parameter is invalidated if this segment in included. For example
-  //invalidates_index=2 and invalidates_after=0 implies before_mean
-  //parameter at index 2 is invalidated; invalidates_index=1 and
-  //invalidates_after=1 implies after_mean parameter at index 1 is
-  //invalidated. It is necessary to store this information in order to
-  //recover the optimal mean parameters of any model size.
-  int invalidates_index, invalidates_after;
-  double best_decrease, validation_decrease;
-  double before_validation_loss, after_validation_loss;
-  Split best_split;
-  int n_changes() const {
-    return last_i-first_i;
-  }
-  // Segments are kept sorted by best_decrease value, so that we can
-  // find the best segment to split in constant O(1) time.
-  friend bool operator<(const Segment& l, const Segment& r)
-  {
-    if(l.best_decrease == r.best_decrease){
-      // if two segments are equally good to split in terms of the
-      // loss, then to save time we should split the larger.
-      return l.n_changes() > r.n_changes();
-    }else{
-      return l.best_decrease < r.best_decrease;
-    }
-  }
-  // constructor which considers all possible splits from first to
-  // last, and then stores the best split and loss decrease.
-  Segment
-  (Set &subtrain, Set &validation,
-   int first_data, int last_data,
-   int first_candidate, int last_candidate,
-   int invalidates_after, int invalidates_index,
-   double loss_no_split, double validation_loss_no_split
-   ): first_i(first_data), last_i(last_data),
-      invalidates_index(invalidates_index),
-      invalidates_after(invalidates_after)
-  {
-    Split candidate_split;
-    double best_loss_split = INFINITY, loss_split;
-    // for loop over all possible splits on this Segment.
-    for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
-      loss_split = candidate_split.set_mean_loss
-	(subtrain, first_data, candidate, last_data);
-      if(loss_split < best_loss_split){
-	best_loss_split = loss_split;
-	best_split = candidate_split;
-      }
-    }
-    best_decrease = best_loss_split - loss_no_split;
-    // TODO combine this logic with Split class?
-    before_validation_loss = validation.get_loss
-      (first_data, best_split.this_end, best_split.before.mean);
-    after_validation_loss = validation.get_loss
-      (best_split.this_end+1, last_data, best_split.after.mean);
-    double validation_loss_split =
-      before_validation_loss + after_validation_loss;
-    validation_decrease =
-      validation_loss_split - validation_loss_no_split;
-  }
-};
+static factory_map_type factory_map;
+ContainerFactory::ContainerFactory
+(const char *name, construct_fun_type construct, destruct_fun_type destruct){
+  construct_fun_ptr = construct;
+  destruct_fun_ptr = destruct;
+  factory_map.emplace(name, this);
+}
+factory_map_type* get_factory_map(void){
+  return &factory_map;
+}
 
-typedef std::multiset<Segment> segment_set_type;
+#define CMAKER(CONTAINER, INSERT, BEST) \
+  class CONCAT(CONTAINER,Wrapper) : public MyContainer< std::CONTAINER<Segment> > { \
+  public:                                                               \
+    void insert(Segment& new_seg){                                      \
+      segment_container.INSERT(new_seg);                                \
+    }                                                                   \
+    std::CONTAINER<Segment>::iterator get_best_it(void){                \
+      return BEST;                                                      \
+    }                                                                   \
+  };                                                                    \
+  Container* CONCAT(CONTAINER,construct) (){                            \
+    return new CONCAT(CONTAINER,Wrapper);                               \
+  }                                                                     \
+  void CONCAT(CONTAINER,destruct) (Container *c_ptr){                   \
+    delete static_cast< CONCAT(CONTAINER,Wrapper) * >(c_ptr);           \
+  }                                                                     \
+  static ContainerFactory CONCAT(CONTAINER,_instance)                   \
+    ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
+
+CMAKER(multiset, insert, segment_container.begin())
+
+CMAKER(list, push_back, std::min_element(segment_container.begin(),segment_container.end()))
 
 class Candidates {
 public:
-  segment_set_type segment_set;
+  ContainerFactory *factory_ptr;
+  Container *container_ptr = 0;
   Set subtrain, validation;
   int min_segment_length;
+  ~Candidates(){
+    if(container_ptr != 0)factory_ptr->destruct_fun_ptr(container_ptr);
+  }
   // computes the cumulative sum vectors in linear O(n_data) time.
   int init
-  (const double *data_vec, const double *weight_vec, const int n_data,
+  (const char *container_str,
+   const double *data_vec, const double *weight_vec, const int n_data,
    const double *position_vec, const int *is_validation_vec,
-   double *subtrain_borders, compute_fun distribution_loss,
+   double *subtrain_borders, Distribution *dist_ptr,
    int min_segment_length_arg
    ){
+    factory_ptr = factory_map.at(container_str);
+    container_ptr = factory_ptr->construct_fun_ptr();
     min_segment_length = min_segment_length_arg;
-    subtrain.instance_loss = distribution_loss;
-    validation.instance_loss = distribution_loss;
+    subtrain.dist_ptr = dist_ptr;
+    validation.dist_ptr = dist_ptr;
     int n_validation = 0;
     for(int data_i=0; data_i<n_data; data_i++){
       if(is_validation_vec[data_i]){
@@ -247,10 +287,12 @@ public:
           }else{
             this_set = &subtrain;
           }
-          this_set->total_weighted_data += data_value * weight_value;
+          this_set->total_weights +=
+	    weight_value;
+          this_set->total_weighted_data +=
+	    data_value * weight_value;
           this_set->total_weighted_squares +=
             data_value * data_value * weight_value;
-          this_set->total_weights += weight_value;
 	  read_index++;
 	}
         validation.write_cumsums(write_index);
@@ -273,15 +315,71 @@ public:
     int first_candidate = first_data + min_segment_length-1;
     int last_candidate = last_data - min_segment_length;
     if(first_candidate <= last_candidate){
-      // if it is possible to split (more than one data point on this
-      // segment) then insert new segment into the candidates set.
-      segment_set.emplace
+      // if it is possible to split then insert new segment into the
+      // candidates set.
+      Segment new_seg
 	(subtrain, validation, 
 	 first_data, last_data,
          first_candidate, last_candidate,
 	 invalidates_after, invalidates_index,
 	 loss_no_split, validation_loss_no_split);
+      if(new_seg.best_decrease < INFINITY){
+        container_ptr->insert(new_seg);
+      }
     }
+  }
+};
+
+class OutArrays {
+public:
+  int n_params, max_segments;
+  int *seg_end, *before_size, *after_size,
+    *invalidates_index, *invalidates_after;
+  double *subtrain_loss, *validation_loss,
+    *before_param_mat, *after_param_mat;
+  OutArrays
+  (Distribution *dist_ptr, int max_segments_,
+   int *seg_end_, double *subtrain_loss_, double *validation_loss_,
+   double *before_param_mat_, double *after_param_mat_,
+   int *before_size_, int *after_size_,
+   int *invalidates_index_, int *invalidates_after_){
+    n_params = dist_ptr->param_names_vec.size();
+    max_segments = max_segments_;
+    seg_end = seg_end_;
+    subtrain_loss = subtrain_loss_;
+    validation_loss = validation_loss_;
+    before_param_mat = before_param_mat_;
+    after_param_mat = after_param_mat_;
+    before_size = before_size_;
+    after_size = after_size_;
+    invalidates_index = invalidates_index_;
+    invalidates_after = invalidates_after_;
+  }
+  void save
+  (int seg_i,
+   double subtrain_loss_value,
+   double validation_loss_value,
+   int seg_end_value,
+   const MeanVarLoss &before_mvl,
+   const MeanVarLoss &after_mvl, 
+   int invalidates_index_value,
+   int invalidates_after_value,
+   int before_size_value,
+   int after_size_value
+   ){
+    subtrain_loss[seg_i] = subtrain_loss_value;
+    validation_loss[seg_i] = validation_loss_value;
+    seg_end[seg_i] = seg_end_value;
+    before_param_mat[seg_i] = before_mvl.mean;
+    after_param_mat[seg_i] = after_mvl.mean;
+    if(n_params == 2){
+      before_param_mat[seg_i+max_segments] = before_mvl.var;
+      after_param_mat[seg_i+max_segments] = after_mvl.var;
+    }
+    invalidates_index[seg_i] = invalidates_index_value;
+    invalidates_after[seg_i] = invalidates_after_value;
+    before_size[seg_i] = before_size_value;
+    after_size[seg_i]  = after_size_value;
   }
 };
 
@@ -319,9 +417,10 @@ int binseg
  const int n_data, const int max_segments, const int min_segment_length,
  const int *is_validation_vec, const double *position_vec,
  const char *distribution_str,
+ const char *container_str,
  double *subtrain_borders, 
  int *seg_end, double *subtrain_loss, double *validation_loss,
- double *before_mean, double *after_mean, 
+ double *before_param_mat, double *after_param_mat, 
  int *before_size, int *after_size,  
  int *invalidates_index, int *invalidates_after
  ){
@@ -333,33 +432,41 @@ int binseg
       return ERROR_POSITIONS_MUST_INCREASE;
     }
   }
-  Distribution* dist_ptr;
+  Distribution* dist_ptr = dist_map.at(distribution_str);
+  OutArrays out_arrays
+    (dist_ptr, max_segments,
+     seg_end, subtrain_loss, validation_loss,
+     before_param_mat, after_param_mat,
+     before_size, after_size,
+     invalidates_index, invalidates_after);
+  Candidates V;
+  int n_subtrain;
   try{
-    dist_ptr = dist_map.at(distribution_str);
+    n_subtrain = V.init
+    (container_str,
+     data_vec, weight_vec, n_data, position_vec, is_validation_vec,
+     subtrain_borders, dist_ptr, min_segment_length);
   }
   catch(const std::out_of_range& err){
-    return ERROR_UNRECOGNIZED_DISTRIBUTION;
+    return ERROR_UNRECOGNIZED_CONTAINER;
   }
-  Candidates V;
-  // Begin by initializing cumulative sum vectors.
-  int n_subtrain = V.init
-    (data_vec, weight_vec, n_data, position_vec, is_validation_vec,
-     subtrain_borders, dist_ptr->compute_loss, min_segment_length);
   if(n_subtrain < max_segments*min_segment_length){
     return ERROR_TOO_MANY_SEGMENTS;
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  V.subtrain.set_mean_loss
-    (0, n_subtrain-1, before_mean, subtrain_loss);
-  validation_loss[0] = V.validation.get_loss
-    (0, n_subtrain-1, *before_mean);
-  before_size[0] = n_subtrain;
-  seg_end[0] = n_subtrain-1;
-  after_mean[0] = INFINITY;
-  after_size[0] = -2; // unused/missing indicator.
-  invalidates_index[0]=-2;
-  invalidates_after[0]=-2;
+  MeanVarLoss full_mvl, missing_mvl;
+  missing_mvl.mean = INFINITY;
+  missing_mvl.var = INFINITY;
+  V.subtrain.set_mean_var_loss(0, n_subtrain-1, &full_mvl);
+  out_arrays.save
+    (0,
+     full_mvl.loss,
+     V.validation.get_loss(0, n_subtrain-1, full_mvl),
+     n_subtrain-1,
+     full_mvl,
+     missing_mvl,
+     -2, -2, n_subtrain, -2);
   // Add a segment and split to the set of candidates.
   V.maybe_add(0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0]);
   // initialize to infinite cost and missing values, which is
@@ -367,67 +474,42 @@ int binseg
   // max_segments: infinite cost rows are removed from the resulting
   // splits table in the R code.
   for(int seg_i=1; seg_i < max_segments; seg_i++){
-    subtrain_loss[seg_i] = INFINITY;
-    validation_loss[seg_i] = INFINITY;
-    seg_end[seg_i] = -2;
-    before_mean[seg_i] = INFINITY;
-    after_mean[seg_i] = INFINITY;
-    invalidates_index[seg_i] = -2;
-    invalidates_after[seg_i] = -2;
-    before_size[seg_i] = -2;
-    after_size[seg_i]  = -2;
+    out_arrays.save
+      (seg_i, INFINITY, INFINITY, -2, full_mvl, full_mvl, -2, -2, -2, -2);
   }
   // Loop over splits. During each iteration we find the Segment/split
   // which results in the best loss decrease, store the resulting
   // model parameters, and add new Segment/split candidates if
   // necessary.
-  segment_set_type::iterator it;
-  // The multiset is a red-black tree which is sorted in increasing
-  // order (by best_decrease values), so the first element is always
-  // the segment which results in the best loss decrease.
   int seg_i = 0;
-  while
-    ((it = V.segment_set.begin()) != V.segment_set.end() &&
-     ++seg_i < max_segments
-     ){
+  while(V.container_ptr->not_empty() && ++seg_i < max_segments){
     // Store loss and model parameters associated with this split.
-    subtrain_loss[seg_i] = subtrain_loss[seg_i-1] + it->best_decrease;
-    validation_loss[seg_i] =
-      validation_loss[seg_i-1] + it->validation_decrease;
-    seg_end[seg_i] = it->best_split.this_end;
-    before_mean[seg_i] = it->best_split.before.mean;
-    after_mean[seg_i] = it->best_split.after.mean;
-    // Also store invalidates index/after so we know which previous
-    // model parameters are no longer used because of this split.
-    invalidates_index[seg_i] = it->invalidates_index;
-    invalidates_after[seg_i] = it->invalidates_after;
-    // The sizes below are not strictly necessary to store (they can
-    // be derived from start/end) but it makes it easier to analyze
-    // the time complexity of the algorithm. Splits which result in
-    // equal sizes before/after make the algorithm run fastest: first
-    // split sizes N/2,N/2, second split sizes N/4,N/4, etc. Worst
-    // case is when first split sizes 1,N-1 second split sizes 1,N-2,
-    // etc.
-    before_size[seg_i] = it->best_split.this_end - it->first_i + 1;
-    after_size[seg_i]  = it->last_i - it->best_split.this_end;
+    const Segment *seg_ptr = V.container_ptr->set_best();
+    out_arrays.save
+      (seg_i, 
+       subtrain_loss[seg_i-1] + seg_ptr->best_decrease,
+       validation_loss[seg_i-1] + seg_ptr->validation_decrease,
+       seg_ptr->best_split.this_end,
+       seg_ptr->best_split.before,
+       seg_ptr->best_split.after,
+       seg_ptr->invalidates_index,
+       seg_ptr->invalidates_after,
+       seg_ptr->best_split.this_end - seg_ptr->first_i + 1,
+       seg_ptr->last_i - seg_ptr->best_split.this_end);
     // Finally add new split candidates if necessary.
     V.maybe_add
-      (it->first_i, it->best_split.this_end,
+      (seg_ptr->first_i, seg_ptr->best_split.this_end,
        0,//invalidates_after=0 => before_mean invalidated.
-       seg_i, it->best_split.before.loss,
-       it->before_validation_loss);
+       seg_i, seg_ptr->best_split.before.loss,
+       seg_ptr->before_validation_loss);
     V.maybe_add
-      (it->best_split.this_end+1, it->last_i,
+      (seg_ptr->best_split.this_end+1, seg_ptr->last_i,
        1,//invalidates_after=1 => after_mean invalidated.
-       seg_i, it->best_split.after.loss,
-       it->after_validation_loss);
-    // Erase at end because we need it->values during maybe_add
+       seg_i, seg_ptr->best_split.after.loss,
+       seg_ptr->after_validation_loss);
+    // Erase at end because we need seg_ptr->values during maybe_add
     // inserts above.
-    V.segment_set.erase(it);
-  }
-  for(int seg_i=0; seg_i < max_segments; seg_i++){
-    dist_ptr->update_loss(subtrain_loss+seg_i, V.subtrain);
-    dist_ptr->update_loss(validation_loss+seg_i, V.validation);
+    V.container_ptr->remove_best();
   }
   return 0;//SUCCESS.
 }
@@ -443,3 +525,7 @@ int get_n_subtrain
   return n_subtrain;
 }
   
+param_names_type* get_param_names
+(const char *distribution_str){
+  return &(dist_map.at(distribution_str)->param_names_vec);
+}

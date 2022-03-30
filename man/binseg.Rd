@@ -26,9 +26,10 @@ method.}
     position.vec = seq_along(data.vec), 
     weight.vec = rep(1, 
         length(data.vec)), 
-    min.segment.length = 1L)}
+    min.segment.length = 1L, 
+    container.str = "multiset")}
 \arguments{
-  \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_names}} to see
+  \item{distribution.str}{String indicating distribution, use get_distribution_names to see
 possible values.}
   \item{data.vec}{Vector of numeric data to segment.}
   \item{max.segments}{Maximum number of segments to compute, default=NULL which means to
@@ -41,6 +42,10 @@ set, default=all FALSE (no validation set).}
 default=1:length(\code{data.vec}).}
   \item{weight.vec}{Numeric vector of non-negative weights for each data point.}
   \item{min.segment.length}{Integer, minimum number of data points per segment.}
+  \item{container.str}{C++ container to use for storing breakpoints/cost. Most users
+should leave this at the default "multiset" for efficiency but you
+could use "list" if you want to study the time complexity of a
+slower implementation of binary segmentation.}
 }
 
 \value{list with elements subtrain.borders and splits.
@@ -48,8 +53,8 @@ default=1:length(\code{data.vec}).}
 \item{loss}{subtrain square loss}
 \item{validation.loss}{validation square loss}
 \item{end}{index of last data point per segment}
-\item{before.mean}{mean before changepoint}
-\item{after.mean}{mean after changepoint}
+\item{before}{mean before changepoint}
+\item{after}{mean after changepoint}
 \item{before.size}{number of data before changepoint}
 \item{after.size}{number of data after changepoint}
 \item{invalidates.index}{index of model parameter no longer used after this changepoint is used}}

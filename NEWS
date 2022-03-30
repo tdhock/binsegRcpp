@@ -2,8 +2,14 @@ TODOS
 
 re-order splits to show best case with max.segments < n.data?
 
+2022.3.29
+
 meanvar_norm distribution: generalize C++ code to more than one
 segment-specific parameter.
+
+2022.3.24
+
+container.str can be list (slow) or multimap (fast).
 
 2022.3.22
 

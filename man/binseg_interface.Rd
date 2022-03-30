@@ -6,7 +6,7 @@
     weight_vec, max_segments, 
     min_segment_length, 
     distribution_str, 
-    is_validation_vec, 
+    container_str, is_validation_vec, 
     position_vec)}
 \arguments{
   \item{data_vec}{
@@ -18,6 +18,8 @@
   \item{min_segment_length}{
 }
   \item{distribution_str}{
+}
+  \item{container_str}{
 }
   \item{is_validation_vec}{
 }

@@ -35,8 +35,13 @@ binseg <- structure(function # Binary segmentation
 ### default=1:length(data.vec).
   weight.vec=rep(1, length(data.vec)),
 ### Numeric vector of non-negative weights for each data point.
-  min.segment.length=1L
+  min.segment.length=1L,
 ### Integer, minimum number of data points per segment.
+  container.str="multiset"
+### C++ container to use for storing breakpoints/cost. Most users
+### should leave this at the default "multiset" for efficiency but you
+### could use "list" if you want to study the time complexity of a
+### slower implementation of binary segmentation.
 ){
   if(!(
     is.logical(is.validation.vec) &&
@@ -66,18 +71,20 @@ binseg <- structure(function # Binary segmentation
     data.vec, weight.vec, max.segments,
     min.segment.length,
     distribution.str,
+    container.str,
     is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
   ##value<< list with elements subtrain.borders and splits.
   dt <- with(result, list(
+    param.names=colnames(before.param.mat),
     subtrain.borders=subtrain.borders,
     splits=data.table(
       segments=1:max.segments,##<< number of parameters
       loss,##<< subtrain square loss
       validation.loss,##<< validation square loss
       end=end+1L,##<< index of last data point per segment
-      before.mean,##<< mean before changepoint
-      after.mean=ifelse(after.mean==Inf, NA, after.mean),##<< mean after changepoint
+      before=before.param.mat,##<< mean before changepoint
+      after=ifelse(after.param.mat==Inf, NA, after.param.mat),##<< mean after changepoint
       before.size,##<< number of data before changepoint
       after.size=na(after.size),##<< number of data after changepoint
       invalidates.index=na(invalidates.index+1L),##<< index of model parameter no longer used after this changepoint is used
@@ -239,20 +246,24 @@ coef.binsegRcpp <- function
   data.table(segments)[, {
     i <- 1:segments
     cum.fit <- object$splits[i]
-    means <- cum.fit[, c(before.mean, after.mean)]
-    means[
-      cum.fit[, .N*invalidates.after+invalidates.index]
-    ] <- NA
     ord <- order(cum.fit$end)
-    mean.mat <- matrix(means, 2, byrow=TRUE)[, ord]
-    cum.fit[ord, {
+    seg.dt <- cum.fit[ord, {
       start <- c(1L, end[-.N]+1L)
       data.table(
         start, end,
         start.pos=object$subtrain.borders[start],
-        end.pos=object$subtrain.borders[end+1],
-        mean=mean.mat[!is.na(mean.mat)])
+        end.pos=object$subtrain.borders[end+1])
     }]
+    for(param.name in object$param.names){
+      p <- function(b.or.a)cum.fit[[paste0(b.or.a, ".", param.name)]]
+      params <- c(p("before"),p("after"))
+      params[
+        cum.fit[, .N*invalidates.after+invalidates.index]
+      ] <- NA
+      param.mat <- matrix(params, 2, byrow=TRUE)[, ord]
+      set(seg.dt, j=param.name, value=param.mat[!is.na(param.mat)])
+    }
+    seg.dt
   }, by="segments"]
 ### data.table with one row for each segment.
 }

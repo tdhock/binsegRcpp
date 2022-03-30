@@ -2,10 +2,9 @@ library(binsegRcpp)
 library(testthat)
 
 test_that("one data point has zero loss", {
-  L <- binsegRcpp::binseg_normal(5)
-  fit <- L$splits
-  expect_identical(fit[["loss"]], 0)
-  expect_identical(fit[["before.mean"]], 5)
+  L <- binsegRcpp:::binseg_interface(5, weight_vec=1, max_segments=1, min_segment_length=1, distribution_str="mean_norm", container_str = "multiset", is_validation_vec = FALSE, position_vec = 1)
+  expect_identical(L[["loss"]], 0)
+  expect_identical(L[["before.param.mat"]], cbind(mean=5))
 })
 
 sloss <- function(m, x){
@@ -212,8 +211,8 @@ test_that("poisson ok with non-identity weights", {
 })
 
 test_that("at least one distribution", {
-  name.vec <- get_distribution_names()
-  expect_gt(length(name.vec), 0)
+  dist.df <- binsegRcpp::get_distribution_info()
+  expect_gt(nrow(dist.df), 0)
 })
 
 test_that("min seg length enforced", {
@@ -263,4 +262,26 @@ test_that("warning for consecutive data", {
   expect_warning({
     binsegRcpp::binseg("mean_norm", c(1,1))
   }, "some consecutive data values are identical in set=subtrain")
+})
+
+test_that("error for unrecognized container", {
+  expect_error({
+    binsegRcpp::binseg("mean_norm", 1:4, container.str="foo")
+  }, "unrecognized container")
+})
+
+test_that("variance estimates and loss correct", {
+  x <- c(0,0.1, 1,1.2)
+  fit <- binsegRcpp::binseg("meanvar_norm", x, max.segments=2L)
+  myvar <- function(y)mean((y-mean(y))^2)
+  expect_equal(fit$splits$before.mean, c(mean(x), mean(x[1:2])))
+  expect_equal(fit$splits$after.mean, c(NA, mean(x[3:4])))
+  expect_equal(fit$splits$before.var, c(myvar(x), myvar(x[1:2])))
+  expect_equal(fit$splits$after.var, c(NA, myvar(x[3:4])))
+  nll <- function(y)-sum(dnorm(y, mean(y), sqrt(myvar(y)), log=TRUE))
+  expect_equal(fit$splits$loss, c(nll(x), nll(x[1:2])+nll(x[3:4])))
+  seg.dt <- coef(fit, 2L)
+  expect_equal(seg.dt$end, c(2,4))
+  expect_equal(seg.dt$mean, c(mean(x[1:2]),mean(x[3:4])))
+  expect_equal(seg.dt$var, c(myvar(x[1:2]),myvar(x[3:4])))
 })
