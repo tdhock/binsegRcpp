@@ -82,9 +82,15 @@ binary segmentation model:
 Demo of change in mean and variance for normal distribution:
 
 #+begin_src R
-  sim <- function(mu,sigma)rnorm(10,mu,sigma)
-  data.vec <- c(sim(5,1), sim(0, 5))
-  binsegRcpp::binseg("meanvar_norm", data.vec)
+> sim <- function(mu,sigma)rnorm(10000,mu,sigma)
+> set.seed(1)
+> data.vec <- c(sim(5,1), sim(0, 5))
+> fit <- binsegRcpp::binseg("meanvar_norm", data.vec)
+> coef(fit, 2L)
+   segments start   end start.pos end.pos        mean       var
+      <int> <int> <int>     <num>   <num>       <num>     <num>
+1:        2     1 10000       0.5 10000.5  4.99346296  1.024763
+2:        2 10001 20000   10000.5 20000.5 -0.02095033 24.538556
 #+end_src
 
 ** Related work
