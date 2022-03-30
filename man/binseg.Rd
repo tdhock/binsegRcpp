@@ -29,7 +29,7 @@ method.}
     min.segment.length = 1L, 
     container.str = "multiset")}
 \arguments{
-  \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_names}} to see
+  \item{distribution.str}{String indicating distribution, use get_distribution_names to see
 possible values.}
   \item{data.vec}{Vector of numeric data to segment.}
   \item{max.segments}{Maximum number of segments to compute, default=NULL which means to

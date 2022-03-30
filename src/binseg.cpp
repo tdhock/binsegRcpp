@@ -48,8 +48,9 @@ void Set::write_cumsums(int write_index){
 
 static dist_map_type dist_map;
 Distribution::Distribution
-(const char *name, compute_fun compute, bool var_changes){
+(const char *name, std::string desc, compute_fun compute, bool var_changes){
   compute_loss = compute;
+  description = desc;
   param_names_vec.push_back("mean");
   if(var_changes)param_names_vec.push_back("var");
   dist_map.emplace(name, this);
@@ -61,14 +62,15 @@ dist_map_type* get_dist_map(void){
 }
 
 #define CONCAT(x,y) x##y
-#define DISTRIBUTION(NAME, COMPUTE, VARIANCE)		   \
+#define DISTRIBUTION(NAME, DESC, COMPUTE, VARIANCE)		   \
   double CONCAT(NAME,compute)				   \
     (double N, double sum, double squares, double mean, double var){	\
     return COMPUTE;					   \
   }									\
-  static Distribution NAME( #NAME, CONCAT(NAME,compute), VARIANCE ); 
+  static Distribution NAME( #NAME, DESC, CONCAT(NAME,compute), VARIANCE ); 
 
 DISTRIBUTION(mean_norm,
+             "change in normal mean with constant variance (L2/square loss)",
              mean*(N*mean-2*sum)+squares, 
 	     false) 
 /* Above we compute the square loss for a segment with sum of data = s
@@ -97,7 +99,8 @@ DISTRIBUTION(mean_norm,
    
 */
 
-DISTRIBUTION(poisson, 
+DISTRIBUTION(poisson,
+             "change in poisson rate parameter (loss is negative log likelihood minus constant term)",
              mean*N - log(mean)*sum, // neg log lik minus constant term.
              false) // dont add constant term to loss.
 /* poisson likelihood:
@@ -117,6 +120,7 @@ poisson loss with weights:
  */
 
 DISTRIBUTION(meanvar_norm,
+             "change in normal mean and variance (loss is negative log likelihood)",
 	     (var > 1e-15) ? (0.5*( (squares+mean*(N*mean-2*sum))/var + N*log(2*M_PI*var))) : INFINITY,
 	     true)
 /*

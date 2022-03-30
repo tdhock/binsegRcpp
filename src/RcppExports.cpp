@@ -10,13 +10,13 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// get_distribution_names
-Rcpp::CharacterVector get_distribution_names();
-RcppExport SEXP _binsegRcpp_get_distribution_names() {
+// get_distribution_info
+Rcpp::DataFrame get_distribution_info();
+RcppExport SEXP _binsegRcpp_get_distribution_info() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(get_distribution_names());
+    rcpp_result_gen = Rcpp::wrap(get_distribution_info());
     return rcpp_result_gen;
 END_RCPP
 }
@@ -40,7 +40,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_binsegRcpp_get_distribution_names", (DL_FUNC) &_binsegRcpp_get_distribution_names, 0},
+    {"_binsegRcpp_get_distribution_info", (DL_FUNC) &_binsegRcpp_get_distribution_info, 0},
     {"_binsegRcpp_binseg_interface", (DL_FUNC) &_binsegRcpp_binseg_interface, 8},
     {NULL, NULL, 0}
 };

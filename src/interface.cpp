@@ -1,17 +1,33 @@
 #include <Rcpp.h>
 #include "binseg.h"
+
+Rcpp::CharacterVector get_param_names_vec
+(std::string distribution_str){
+  return Rcpp::wrap(*get_param_names(distribution_str.c_str()));
+}
  
-//' Lookup the string values used to represent different distributions
+//' Compute a data.frame with one row for each distribution
+//' implemented in the C++ code, and columns distribution.str,
+//' parameters, description.
 // [[Rcpp::export]]
-Rcpp::CharacterVector get_distribution_names(){
+Rcpp::DataFrame get_distribution_info(){
   dist_map_type *dmap = get_dist_map();
   int n_items = dmap->size();
-  Rcpp::CharacterVector names(n_items);
+  Rcpp::CharacterVector dist_name_vec(n_items);
+  Rcpp::CharacterVector desc_vec(n_items);
+  Rcpp::List params_list(n_items);
+  params_list.attr("class") = "AsIs";
   int i=0;
   for(dist_map_type::iterator it=dmap->begin(); it != dmap->end(); it++){
-    names[i++] = it->first;
+    desc_vec[i] = it->second->description;
+    dist_name_vec[i] = it->first;
+    params_list[i] = get_param_names_vec(it->first);
+    i++;
   }
-  return names;
+  return Rcpp::DataFrame::create
+    (Rcpp::Named("distribution.str", dist_name_vec),
+     Rcpp::Named("parameters", params_list),
+     Rcpp::Named("description", desc_vec));
 }
 
 template < typename T >
@@ -66,20 +82,14 @@ Rcpp::List binseg_interface
   if(max_segments < 1){//keep below one subtrain error msg.
     Rcpp::stop("max_segments must be positive"); 
   }
-  param_names_type *param_names_ptr;
+  Rcpp::CharacterVector param_names_vec;
   try{
-    param_names_ptr = get_param_names(distribution_str.c_str());
+    param_names_vec = get_param_names_vec(distribution_str);
   }
   catch(const std::out_of_range& err){
     Rcpp::stop(unrecognized<dist_map_type>("distribution", get_dist_map));
   }
-  int n_params = param_names_ptr->size();
-  Rcpp::CharacterVector param_names_vec(n_params);
-  int param_i = 0;
-  for(param_names_type::iterator it=param_names_ptr->begin();
-      it != param_names_ptr->end(); it++){
-    param_names_vec[param_i++] = *it;
-  }
+  int n_params = param_names_vec.size();
   Rcpp::NumericVector subtrain_borders(n_subtrain+1);
   Rcpp::IntegerVector end(max_segments);
   Rcpp::NumericVector loss(max_segments);

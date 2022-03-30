@@ -55,9 +55,10 @@ param_names_type* get_param_names(const char*);
 class Distribution {
 public:
   compute_fun compute_loss;
+  std::string description;
   param_names_type param_names_vec;
   Distribution();
-  Distribution(const char *name, compute_fun compute, bool var_changes);
+  Distribution(const char *name, std::string desc, compute_fun compute, bool var_changes);
 };
 
 typedef std::unordered_map<std::string, Distribution*> dist_map_type;
