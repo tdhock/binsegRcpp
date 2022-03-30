@@ -18,7 +18,7 @@ binseg <- structure(function # Binary segmentation
 ### parameters for a single model in log-linear time, using coef
 ### method.
 (distribution.str,
-### String indicating distribution, use get_distribution_names to see
+### String indicating distribution, use get_distribution_info to see
 ### possible values.
   data.vec,
 ### Vector of numeric data to segment.
@@ -43,6 +43,7 @@ binseg <- structure(function # Binary segmentation
 ### could use "list" if you want to study the time complexity of a
 ### slower implementation of binary segmentation.
 ){
+  ##alias<< binsegRcpp
   if(!(
     is.logical(is.validation.vec) &&
     length(is.validation.vec)==length(data.vec) &&
