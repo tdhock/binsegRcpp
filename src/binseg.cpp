@@ -56,20 +56,20 @@ dist_map_type* get_dist_map(void){
 #define CONCAT(x,y) x##y
 #define DISTRIBUTION(NAME, DESC, COMPUTE, VARIANCE)                     \
   class CONCAT(NAME,Distribution) : public Distribution {               \
-public:                                                                 \
- double compute_loss                                                    \
- (double N, double sum, double squares, double mean, double var){	\
-   return COMPUTE;                                                      \
- }									\
- CONCAT(NAME,Distribution)                                              \
- (const char *name, std::string desc, bool var_changes){                \
- description = desc;                                                    \
- param_names_vec.push_back("mean");                                     \
- if(var_changes)param_names_vec.push_back("var");                       \
- dist_map.emplace(name, this);                                          \
- }                                                                      \
+  public:                                                               \
+    double compute_loss                                                 \
+      (double N, double sum, double squares, double mean, double var){	\
+      return COMPUTE;                                                   \
+    }									\
+    CONCAT(NAME,Distribution)                                           \
+      (const char *name, std::string desc, bool var_changes){           \
+      description = desc;                                               \
+      param_names_vec.push_back("mean");                                \
+      if(var_changes)param_names_vec.push_back("var");                  \
+      dist_map.emplace(name, this);                                     \
+    }                                                                   \
   };                                                                    \
- static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE ); 
+  static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE ); 
 
 DISTRIBUTION(mean_norm,
              "change in normal mean with constant variance (L2/square loss)",
@@ -203,21 +203,22 @@ factory_map_type* get_factory_map(void){
 
 #define CMAKER(CONTAINER, INSERT, BEST) \
   class CONCAT(CONTAINER,Wrapper) : public MyContainer< std::CONTAINER<Segment> > { \
-  public: \
-  void insert(Segment& new_seg){ \
-    segment_container.INSERT(new_seg);                          \
-  }                                                             \
-  std::CONTAINER<Segment>::iterator get_best_it(void){\
-  return BEST; \
-  }                                                             \
+  public:                                                               \
+    void insert(Segment& new_seg){                                      \
+      segment_container.INSERT(new_seg);                                \
+    }                                                                   \
+    std::CONTAINER<Segment>::iterator get_best_it(void){                \
+      return BEST;                                                      \
+    }                                                                   \
   };                                                                    \
-  Container* CONCAT(CONTAINER,construct) (){ \
+  Container* CONCAT(CONTAINER,construct) (){                            \
     return new CONCAT(CONTAINER,Wrapper);                               \
-  } \
-  void CONCAT(CONTAINER,destruct) (Container *c_ptr){ \
-    delete static_cast< CONCAT(CONTAINER,Wrapper) * >(c_ptr); \
-  } \
-  static ContainerFactory CONCAT(CONTAINER,_instance) ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
+  }                                                                     \
+  void CONCAT(CONTAINER,destruct) (Container *c_ptr){                   \
+    delete static_cast< CONCAT(CONTAINER,Wrapper) * >(c_ptr);           \
+  }                                                                     \
+  static ContainerFactory CONCAT(CONTAINER,_instance)                   \
+    ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
 
 CMAKER(multiset, insert, segment_container.begin())
 
