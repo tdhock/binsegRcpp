@@ -190,6 +190,7 @@ public:
   }
 };
 
+typedef std::multiset<Segment> segment_set_type;
 static factory_map_type factory_map;
 ContainerFactory::ContainerFactory
 (const char *name, construct_fun_type construct, destruct_fun_type destruct){
@@ -215,7 +216,7 @@ factory_map_type* get_factory_map(void){
     return new CONCAT(CONTAINER,Wrapper);                               \
   }                                                                     \
   void CONCAT(CONTAINER,destruct) (Container *c_ptr){                   \
-    delete static_cast< CONCAT(CONTAINER,Wrapper) * >(c_ptr);           \
+    delete c_ptr;           \
   }                                                                     \
   static ContainerFactory CONCAT(CONTAINER,_instance)                   \
     ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
