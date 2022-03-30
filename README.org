@@ -3,7 +3,7 @@ heuristic algorithm for changepoint detection, using C++
 std::multiset. Also contains functions for comparing empirical time
 complexity to best/worst case.
 
-| [[file:tests/testthat][tests]]                  | [[https://github.com/tdhock/binsegRcpp/actions][https://github.com/tdhock/binsegRcpp/workflows/R-CMD-check/badge.svg]]           |
+| [[file:tests/testthat][tests]]    | [[https://github.com/tdhock/binsegRcpp/actions][https://github.com/tdhock/binsegRcpp/workflows/R-CMD-check/badge.svg]]  |
 | [[https://github.com/jimhester/covr][coverage]] | [[https://app.codecov.io/gh/tdhock/binsegRcpp?branch=master][https://codecov.io/gh/tdhock/binsegRcpp/branch/master/graph/badge.svg]] |
 
 ** Installation
@@ -17,52 +17,48 @@ complexity to best/worst case.
 
 ** Usage
 
-The main function is =binseg_normal= which takes arguments:
+The main function is =binseg= for which you must at least specify the
+first two arguments:
+- =distribution.str= specifies the loss function to minimize.
 - =data.vec= is a numeric vector of data to segment.
-- =max.segments= is a positive integer, the maximum number of segments
-  to consider (by default equal to the number of data points).
 
 #+BEGIN_SRC R
-> x <- c(0.1, 0, 1, 1.1, 0.1, 0)
-> (models.dt <- binsegRcpp::binseg_normal(x))
-   segments         loss end before.mean after.mean before.size after.size
-1:        1 1.348333e+00   6   0.3833333         NA           6         NA
-2:        2 1.015000e+00   4   0.5500000       0.05           4          2
-3:        3 1.500000e-02   2   0.0500000       1.05           2          2
-4:        4 1.000000e-02   5   0.1000000       0.00           1          1
-5:        5 5.000000e-03   1   0.1000000       0.00           1          1
-6:        6 4.440892e-16   3   1.0000000       1.10           1          1
-   invalidates.index invalidates.after
-1:                NA                NA
-2:                 1                 0
-3:                 2                 0
-4:                 2                 1
-5:                 3                 0
-6:                 3                 1
-#+END_SRC R
+  > x <- c(0.1, 0, 1, 1.1, 0.1, 0)
+  > (models.dt <- binsegRcpp::binseg("mean_norm", x))
+  binary segmentation model:
+     segments   end          loss validation.loss
+	<int> <int>         <num>           <num>
+  1:        1     6  1.348333e+00               0
+  2:        2     4  1.015000e+00               0
+  3:        3     2  1.500000e-02               0
+  4:        4     3  1.000000e-02               0
+  5:        5     5  5.000000e-03               0
+  6:        6     1 -3.339343e-16               0
+#+END_SRC
 
-The table above contains all of the data that are computed during the
+The result above summarizes the data that are computed during the
 binary segmentation algorithm. It has a special class with dedicated
 methods:
 
 #+BEGIN_SRC R
-> class(models.dt)
-[1] "binseg_normal" "data.table"    "data.frame"   
-> methods(class="binseg_normal")
-[1] coef plot
-see '?methods' for accessing help and source code
+  > class(models.dt)
+  [1] "binsegRcpp" "list"      
+  > methods(class="binsegRcpp")
+  [1] coef  plot  print
+  see '?methods' for accessing help and source code
 #+END_SRC
 
 The coef methods returns a data table of segment means:
 
 #+BEGIN_SRC R
-> coef(models.dt, segments=2:3)
-   segments start end mean
-1:        2     1   4 0.55
-2:        2     5   6 0.05
-3:        3     1   2 0.05
-4:        3     3   4 1.05
-5:        3     5   6 0.05
+  > coef(models.dt, segments=2:3)
+     segments start   end start.pos end.pos  mean
+	<int> <int> <int>     <num>   <num> <num>
+  1:        2     1     4       0.5     4.5  0.55
+  2:        2     5     6       4.5     6.5  0.05
+  3:        3     1     2       0.5     2.5  0.05
+  4:        3     3     4       2.5     4.5  1.05
+  5:        3     5     6       4.5     6.5  0.05
 #+END_SRC
 
 Demo of poisson loss and non-uniform weights:
