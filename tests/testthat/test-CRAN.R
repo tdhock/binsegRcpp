@@ -285,3 +285,12 @@ test_that("variance estimates and loss correct", {
   expect_equal(seg.dt$mean, c(mean(x[1:2]),mean(x[3:4])))
   expect_equal(seg.dt$var, c(myvar(x[1:2]),myvar(x[3:4])))
 })
+
+test_that("meanvar_norm does not have segs with size 1", {
+  data.per.seg <- 10
+  sim <- function(mu,sigma)rnorm(data.per.seg,mu,sigma)
+  set.seed(1)
+  data.vec <- c(sim(10,1), sim(0, 5))
+  fit <- binsegRcpp::binseg("meanvar_norm", data.vec)
+  expect_lte(nrow(fit$splits), data.per.seg)
+})

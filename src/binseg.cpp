@@ -33,7 +33,7 @@ double Set::get_loss
   total_weighted_squares = weighted_squares.get_sum(first, last);
   return dist_ptr->compute_loss
     (total_weights, total_weighted_data, total_weighted_squares,
-     mean, var);
+     mean, var, max_zero_var);
 }
 void Set::resize_cumsums(int vec_size){
   weights.cumsum_vec.resize(vec_size);
@@ -58,7 +58,8 @@ dist_map_type* get_dist_map(void){
   class CONCAT(NAME,Distribution) : public Distribution {               \
   public:                                                               \
     double compute_loss                                                 \
-      (double N, double sum, double squares, double mean, double var){	\
+      (double N, double sum, double squares,				\
+       double mean, double var, double max_zero_var){			\
       return COMPUTE;                                                   \
     }									\
     CONCAT(NAME,Distribution)                                           \
@@ -123,7 +124,7 @@ poisson loss with weights:
 
 DISTRIBUTION(meanvar_norm,
              "change in normal mean and variance (loss is negative log likelihood)",
-	     (var > 1e-15) ? (0.5*( (squares+mean*(N*mean-2*sum))/var + N*log(2*M_PI*var))) : INFINITY,
+	     (var > max_zero_var) ? (0.5*( (squares+mean*(N*mean-2*sum))/var + N*log(2*M_PI*var))) : INFINITY,
 	     true)
 /*
 meanvar_norm loss is negative log likelihood =
@@ -306,6 +307,17 @@ public:
 	last_subtrain_i = data_i;
       }
     }
+    // analyze subtrain data to find what is the largest value that
+    // should be considered numerically zero for a variance estimate.
+    MeanVarLoss mvl;
+    subtrain.max_zero_var = 0;
+    for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
+      subtrain.set_mean_var_loss(subtrain_i, subtrain_i, &mvl);
+      if(subtrain.max_zero_var < mvl.var){
+	subtrain.max_zero_var = mvl.var;
+      }
+    }
+    validation.max_zero_var = subtrain.max_zero_var;
     return n_subtrain;
   }
   // Add a new Segment to candidates if it is big enough to split.

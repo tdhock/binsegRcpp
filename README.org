@@ -3,7 +3,7 @@ heuristic algorithm for changepoint detection, using C++
 std::multiset. Also contains functions for comparing empirical time
 complexity to best/worst case.
 
-| [[file:tests/testthat][tests]]                  | [[https://github.com/tdhock/nc/actions][https://github.com/tdhock/nc/workflows/R-CMD-check/badge.svg]]                               |
+| [[file:tests/testthat][tests]]                  | [[https://github.com/tdhock/binsegRcpp/actions][https://github.com/tdhock/binsegRcpp/workflows/R-CMD-check/badge.svg]]           |
 | [[https://github.com/jimhester/covr][coverage]] | [[https://app.codecov.io/gh/tdhock/binsegRcpp?branch=master][https://codecov.io/gh/tdhock/binsegRcpp/branch/master/graph/badge.svg]] |
 
 ** Installation
@@ -77,6 +77,14 @@ binary segmentation model:
 2:        2     3 -411.6347               0
 3:        3     2 -413.9416               0
 4:        4     1 -414.0133               0
+#+end_src
+
+Demo of change in mean and variance for normal distribution:
+
+#+begin_src R
+  sim <- function(mu,sigma)rnorm(10,mu,sigma)
+  data.vec <- c(sim(5,1), sim(0, 5))
+  binsegRcpp::binseg("meanvar_norm", data.vec)
 #+end_src
 
 ** Related work

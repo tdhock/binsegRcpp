@@ -28,13 +28,11 @@ class Distribution {
 public:
   std::string description;
   param_names_type param_names_vec;
-  virtual double compute_loss(double,double,double,double,double) = 0;
+  virtual double compute_loss(double,double,double,double,double,double) = 0;
 };
 
-// This class computes and stores the statistics that we need to
-// compute the optimal loss/parameters of a segment from first to
-// last. In the case of normal change in mean with constant variance
-// the only statistic we need is the cumulative sum.
+// This class computes and stores a cumsum that we need to compute the
+// optimal loss/parameters of a segment from first to last.
 class Cumsum {
 public:
   Distribution *dist_ptr;
@@ -45,6 +43,7 @@ public:
 class Set {// either subtrain or validation.
 public:
   Cumsum weights, weighted_data, weighted_squares;
+  double max_zero_var;
   Distribution *dist_ptr;
   double total_weighted_data=0, total_weights=0, total_weighted_squares=0;
   double get_mean(int first, int last);
