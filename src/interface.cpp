@@ -46,15 +46,40 @@ Rcpp::List binseg_interface
   if(n_subtrain == 0){
     Rcpp::stop("need at least one subtrain data");
   }
-  if(max_segments < 1){
+  if(max_segments < 1){//keep below one subtrain error msg.
     Rcpp::stop("max_segments must be positive"); 
+  }
+  param_names_type *param_names_ptr;
+  try{
+    param_names_ptr = get_param_names(distribution_str.c_str());
+  }
+  catch(const std::out_of_range& err){
+    std::string msg = "unrecognized distribution, try one of: ";
+    dist_map_type *dmap = get_dist_map();
+    dist_map_type::iterator it=dmap->begin();
+    while(1){
+      msg += it->first;
+      if(++it != dmap->end()){
+	msg += ", ";
+      }else break;
+    }
+    Rcpp::stop(msg);
+  }
+  int n_params = param_names_ptr->size();
+  Rcpp::CharacterVector param_names_vec(n_params);
+  int param_i = 0;
+  for(param_names_type::iterator it=param_names_ptr->begin();
+      it != param_names_ptr->end(); it++){
+    param_names_vec[param_i++] = *it;
   }
   Rcpp::NumericVector subtrain_borders(n_subtrain+1);
   Rcpp::IntegerVector end(max_segments);
   Rcpp::NumericVector loss(max_segments);
   Rcpp::NumericVector validation_loss(max_segments);
-  Rcpp::NumericVector before_mean(max_segments);
-  Rcpp::NumericVector after_mean(max_segments);
+  Rcpp::NumericMatrix before_param_mat(max_segments, n_params);
+  Rcpp::colnames(before_param_mat) = param_names_vec;
+  Rcpp::NumericMatrix after_param_mat(max_segments, n_params);
+  Rcpp::colnames(after_param_mat) = param_names_vec;
   Rcpp::IntegerVector before_size(max_segments);
   Rcpp::IntegerVector after_size(max_segments);
   Rcpp::IntegerVector invalidates_index(max_segments);
@@ -68,21 +93,9 @@ Rcpp::List binseg_interface
      //inputs above, outputs below.
      &subtrain_borders[0],
      &end[0], &loss[0], &validation_loss[0],
-     &before_mean[0], &after_mean[0],
+     &before_param_mat[0], &after_param_mat[0],
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
-  if(status == ERROR_UNRECOGNIZED_DISTRIBUTION){
-    std::string msg = "unrecognized distribution, try one of: ";
-    dist_map_type *dmap = get_dist_map();
-    dist_map_type::iterator it=dmap->begin();
-    while(1){
-      msg += it->first;
-      if(++it != dmap->end()){
-	msg += ", ";
-      }else break;
-    }
-    Rcpp::stop(msg); 
-  }
   if(status == ERROR_UNRECOGNIZED_CONTAINER){
     std::string msg = "unrecognized container, try one of: ";
     factory_map_type *fmap = get_factory_map();
@@ -109,8 +122,8 @@ Rcpp::List binseg_interface
      Rcpp::Named("end", end),
      Rcpp::Named("loss", loss),
      Rcpp::Named("validation.loss", validation_loss),
-     Rcpp::Named("before.mean", before_mean),
-     Rcpp::Named("after.mean", after_mean),
+     Rcpp::Named("before.param.mat", before_param_mat),
+     Rcpp::Named("after.param.mat", after_param_mat),
      Rcpp::Named("before.size", before_size),
      Rcpp::Named("after.size", after_size),
      Rcpp::Named("invalidates.index", invalidates_index),

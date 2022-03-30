@@ -2,10 +2,9 @@ library(binsegRcpp)
 library(testthat)
 
 test_that("one data point has zero loss", {
-  L <- binsegRcpp::binseg_normal(5)
-  fit <- L$splits
-  expect_identical(fit[["loss"]], 0)
-  expect_identical(fit[["before.mean"]], 5)
+  L <- binsegRcpp:::binseg_interface(5, weight_vec=1, max_segments=1, min_segment_length=1, distribution_str="mean_norm", container_str = "multiset", is_validation_vec = FALSE, position_vec = 1)
+  expect_identical(L[["loss"]], 0)
+  expect_identical(L[["before.param.mat"]], cbind(mean=5))
 })
 
 sloss <- function(m, x){

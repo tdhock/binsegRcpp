@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <vector>
 #define ERROR_TOO_MANY_SEGMENTS 2
-#define ERROR_UNRECOGNIZED_DISTRIBUTION 3
 #define ERROR_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE 5
 #define ERROR_UNRECOGNIZED_CONTAINER 6
 #define ERROR_POSITIONS_MUST_INCREASE -4
@@ -51,10 +50,12 @@ public:
   void write_cumsums(int write_index);
 };
 
+typedef std::vector<std::string> param_names_type;
+param_names_type* get_param_names(const char*);
 class Distribution {
 public:
   compute_fun compute_loss;
-  std::vector<std::string> param_name_vec;
+  param_names_type param_names_vec;
   Distribution();
   Distribution(const char *name, compute_fun compute, bool var_changes);
 };

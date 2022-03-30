@@ -50,8 +50,8 @@ static dist_map_type dist_map;
 Distribution::Distribution
 (const char *name, compute_fun compute, bool var_changes){
   compute_loss = compute;
-  param_name_vec.push_back("mean");
-  if(var_changes)param_name_vec.push_back("var");
+  param_names_vec.push_back("mean");
+  if(var_changes)param_names_vec.push_back("var");
   dist_map.emplace(name, this);
 }
 // we need get_dist_map in this file to query map contents from
@@ -382,7 +382,7 @@ int binseg
  const char *container_str,
  double *subtrain_borders, 
  int *seg_end, double *subtrain_loss, double *validation_loss,
- double *before_mean, double *after_mean, 
+ double *before_param_mat, double *after_param_mat, 
  int *before_size, int *after_size,  
  int *invalidates_index, int *invalidates_after
  ){
@@ -394,13 +394,7 @@ int binseg
       return ERROR_POSITIONS_MUST_INCREASE;
     }
   }
-  Distribution* dist_ptr;
-  try{
-    dist_ptr = dist_map.at(distribution_str);
-  }
-  catch(const std::out_of_range& err){
-    return ERROR_UNRECOGNIZED_DISTRIBUTION;
-  }
+  Distribution* dist_ptr = dist_map.at(distribution_str);
   Candidates V;
   int n_subtrain;
   try{
@@ -419,13 +413,13 @@ int binseg
   // first and ends at the last data point).
   MeanVarLoss full_mvl;
   V.subtrain.set_mean_var_loss(0, n_subtrain-1, &full_mvl);
-  *before_mean = full_mvl.mean;
+  *before_param_mat = full_mvl.mean;
   *subtrain_loss = full_mvl.loss;
   validation_loss[0] = V.validation.get_loss
     (0, n_subtrain-1, full_mvl);
   before_size[0] = n_subtrain;
   seg_end[0] = n_subtrain-1;
-  after_mean[0] = INFINITY;
+  after_param_mat[0] = INFINITY;
   after_size[0] = -2; // unused/missing indicator.
   invalidates_index[0]=-2;
   invalidates_after[0]=-2;
@@ -439,8 +433,8 @@ int binseg
     subtrain_loss[seg_i] = INFINITY;
     validation_loss[seg_i] = INFINITY;
     seg_end[seg_i] = -2;
-    before_mean[seg_i] = INFINITY;
-    after_mean[seg_i] = INFINITY;
+    before_param_mat[seg_i] = INFINITY;
+    after_param_mat[seg_i] = INFINITY;
     invalidates_index[seg_i] = -2;
     invalidates_after[seg_i] = -2;
     before_size[seg_i] = -2;
@@ -458,8 +452,8 @@ int binseg
     validation_loss[seg_i] =
       validation_loss[seg_i-1] + seg_ptr->validation_decrease;
     seg_end[seg_i] = seg_ptr->best_split.this_end;
-    before_mean[seg_i] = seg_ptr->best_split.before.mean;
-    after_mean[seg_i] = seg_ptr->best_split.after.mean;
+    before_param_mat[seg_i] = seg_ptr->best_split.before.mean;
+    after_param_mat[seg_i] = seg_ptr->best_split.after.mean;
     // Also store invalidates index/after so we know which previous
     // model parameters are no longer used because of this split.
     invalidates_index[seg_i] = seg_ptr->invalidates_index;
@@ -502,3 +496,7 @@ int get_n_subtrain
   return n_subtrain;
 }
   
+param_names_type* get_param_names
+(const char *distribution_str){
+  return &(dist_map.at(distribution_str)->param_names_vec);
+}
