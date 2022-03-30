@@ -8,36 +8,32 @@ double Cumsum::get_sum(int first, int last){
   return total;
 }
 
-double Set::get_mean(int first, int last){
-  total_weighted_data = weighted_data.get_sum(first, last);
-  total_weights = weights.get_sum(first, last);
-  return total_weighted_data/total_weights;
-}
-double Set::get_var(int first, int last){
+void Set::set_mean_var_loss
+(int first, int last, double *mean, double *var, double *loss){
   total_weights = weights.get_sum(first, last);
   total_weighted_data = weighted_data.get_sum(first, last);
   total_weighted_squares = weighted_squares.get_sum(first, last);
-  double mean = total_weighted_data / total_weights;
-  return total_weighted_squares/total_weights +
-    mean*(mean-2*total_weighted_data/total_weights);
-}
-void Set::set_mean_var_loss
-(int first, int last, double *mean, double *var, double *loss){
-  *mean = get_mean(first, last);
-  *var  = get_var(first, last);
+  *mean = total_weighted_data/total_weights;
+  *var  = total_weighted_squares/total_weights +
+    (*mean)*((*mean)-2*total_weighted_data/total_weights);
   *loss = get_loss(first, last, *mean, *var);
 }
 void Set::set_mean_var_loss(int first, int last, MeanVarLoss *MVL){
   set_mean_var_loss(first, last, &(MVL->mean), &(MVL->var), &(MVL->loss));
 }
 double Set::get_loss
-(int first, int last, double subtrain_mean, double subtrain_var){
+(int first, int last, MeanVarLoss& subtrain_mvl){
+  return get_loss
+    (first, last, subtrain_mvl.mean, subtrain_mvl.var);
+}
+double Set::get_loss
+(int first, int last, double mean, double var){
   total_weights = weights.get_sum(first, last);
   total_weighted_data = weighted_data.get_sum(first, last);
   total_weighted_squares = weighted_squares.get_sum(first, last);
   return instance_loss
     (total_weights, total_weighted_data, total_weighted_squares,
-     subtrain_mean, subtrain_var);
+     mean, var);
 }
 void Set::resize_cumsums(int vec_size){
   weights.cumsum_vec.resize(vec_size);
@@ -175,7 +171,7 @@ Segment::Segment
   double best_loss_split = INFINITY, loss_split;
   // for loop over all possible splits on this Segment.
   for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
-    loss_split = candidate_split.set_mean_loss
+    loss_split = candidate_split.set_mean_var_loss
       (subtrain, first_data, candidate, last_data);
     if(loss_split < best_loss_split){
       best_loss_split = loss_split;
@@ -185,9 +181,9 @@ Segment::Segment
   best_decrease = best_loss_split - loss_no_split;
   // TODO combine this logic with Split class?
   before_validation_loss = validation.get_loss
-    (first_data, best_split.this_end, best_split.before.mean, best_split.before.var);
+    (first_data, best_split.this_end, best_split.before);
   after_validation_loss = validation.get_loss
-    (best_split.this_end+1, last_data, best_split.after.mean, best_split.after.var);
+    (best_split.this_end+1, last_data, best_split.after);
   double validation_loss_split =
     before_validation_loss + after_validation_loss;
   validation_decrease =
@@ -421,10 +417,12 @@ int binseg
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  V.subtrain.set_mean_var_loss
-    (0, n_subtrain-1, before_mean, subtrain_loss);
+  MeanVarLoss full_mvl;
+  V.subtrain.set_mean_var_loss(0, n_subtrain-1, &full_mvl);
+  *before_mean = full_mvl.mean;
+  *subtrain_loss = full_mvl.loss;
   validation_loss[0] = V.validation.get_loss
-    (0, n_subtrain-1, *before_mean);
+    (0, n_subtrain-1, full_mvl);
   before_size[0] = n_subtrain;
   seg_end[0] = n_subtrain-1;
   after_mean[0] = INFINITY;

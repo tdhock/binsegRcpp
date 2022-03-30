@@ -45,7 +45,8 @@ public:
   double get_var(int first, int last);
   void set_mean_var_loss(int first, int last, double *mean, double *var, double *loss);
   void set_mean_var_loss(int first, int last, MeanVarLoss*);
-  double get_loss(int first, int last, double subtrain_mean, double subtrain_var);
+  double get_loss(int first, int last, MeanVarLoss&);
+  double get_loss(int first, int last, double, double);
   void resize_cumsums(int vec_size);
   void write_cumsums(int write_index);
 };
@@ -80,7 +81,7 @@ class Split {
 public:
   int this_end;//index of last data point on the first/before segment.
   MeanVarLoss before, after;
-  double set_mean_loss(Set &subtrain, int first, int end_i, int last);
+  double set_mean_var_loss(Set &subtrain, int first, int end_i, int last);
 };
 
 class Segment {
