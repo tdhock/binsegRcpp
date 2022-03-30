@@ -14,6 +14,23 @@ Rcpp::CharacterVector get_distribution_names(){
   return names;
 }
 
+template < typename T >
+std::string unrecognized
+(std::string what, T* (*get_map)(void)){
+  std::string msg = "unrecognized ";
+  msg += what;
+  msg += ", try one of: ";
+  T *map = get_map();
+  typename T::iterator it=map->begin();
+  while(1){
+    msg += it->first;
+    if(++it != map->end()){
+      msg += ", ";
+    }else break;
+  }
+  return msg;
+}
+
 //' Low-level interface to binary segmentation algorithm.
 // [[Rcpp::export]]
 Rcpp::List binseg_interface
@@ -54,16 +71,7 @@ Rcpp::List binseg_interface
     param_names_ptr = get_param_names(distribution_str.c_str());
   }
   catch(const std::out_of_range& err){
-    std::string msg = "unrecognized distribution, try one of: ";
-    dist_map_type *dmap = get_dist_map();
-    dist_map_type::iterator it=dmap->begin();
-    while(1){
-      msg += it->first;
-      if(++it != dmap->end()){
-	msg += ", ";
-      }else break;
-    }
-    Rcpp::stop(msg);
+    Rcpp::stop(unrecognized<dist_map_type>("distribution", get_dist_map));
   }
   int n_params = param_names_ptr->size();
   Rcpp::CharacterVector param_names_vec(n_params);
@@ -97,16 +105,7 @@ Rcpp::List binseg_interface
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
   if(status == ERROR_UNRECOGNIZED_CONTAINER){
-    std::string msg = "unrecognized container, try one of: ";
-    factory_map_type *fmap = get_factory_map();
-    factory_map_type::iterator it=fmap->begin();
-    while(1){
-      msg += it->first;
-      if(++it != fmap->end()){
-	msg += ", ";
-      }else break;
-    }
-    Rcpp::stop(msg); 
+    Rcpp::stop(unrecognized<factory_map_type>("container", get_factory_map));
   }
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments, max_segments=%d and min_segment_length=%d which would require at least %d data but n_subtrain=%d", max_segments, min_segment_length, max_segments*min_segment_length, n_subtrain); 
