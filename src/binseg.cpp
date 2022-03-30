@@ -345,6 +345,59 @@ public:
   }
 };
 
+class OutArrays {
+public:
+  int n_params, max_segments;
+  int *seg_end, *before_size, *after_size,
+    *invalidates_index, *invalidates_after;
+  double *subtrain_loss, *validation_loss,
+    *before_param_mat, *after_param_mat;
+  OutArrays
+  (Distribution *dist_ptr, int max_segments_,
+   int *seg_end_, double *subtrain_loss_, double *validation_loss_,
+   double *before_param_mat_, double *after_param_mat_,
+   int *before_size_, int *after_size_,
+   int *invalidates_index_, int *invalidates_after_){
+    n_params = dist_ptr->param_names_vec.size();
+    max_segments = max_segments_;
+    seg_end = seg_end_;
+    subtrain_loss = subtrain_loss_;
+    validation_loss = validation_loss_;
+    before_param_mat = before_param_mat_;
+    after_param_mat = after_param_mat_;
+    before_size = before_size_;
+    after_size = after_size_;
+    invalidates_index = invalidates_index_;
+    invalidates_after = invalidates_after_;
+  }
+  void save
+  (int seg_i,
+   double subtrain_loss_value,
+   double validation_loss_value,
+   int seg_end_value,
+   const MeanVarLoss &before_mvl,
+   const MeanVarLoss &after_mvl,
+   int invalidates_index_value,
+   int invalidates_after_value,
+   int before_size_value,
+   int after_size_value
+   ){
+    subtrain_loss[seg_i] = subtrain_loss_value;
+    validation_loss[seg_i] = validation_loss_value;
+    seg_end[seg_i] = seg_end_value;
+    before_param_mat[seg_i] = before_mvl.mean;
+    after_param_mat[seg_i] = after_mvl.mean;
+    if(n_params == 2){
+      before_param_mat[seg_i+max_segments] = before_mvl.var;
+      after_param_mat[seg_i+max_segments] = after_mvl.var;
+    }
+    invalidates_index[seg_i] = invalidates_index_value;
+    invalidates_after[seg_i] = invalidates_after_value;
+    before_size[seg_i] = before_size_value;
+    after_size[seg_i]  = after_size_value;
+  }
+};
+
 /* Binary segmentation algorithm.
 
    This code assumes all array parameters are allocated by the code
@@ -395,6 +448,12 @@ int binseg
     }
   }
   Distribution* dist_ptr = dist_map.at(distribution_str);
+  OutArrays out_arrays
+    (dist_ptr, max_segments,
+     seg_end, subtrain_loss, validation_loss,
+     before_param_mat, after_param_mat,
+     before_size, after_size,
+     invalidates_index, invalidates_after);
   Candidates V;
   int n_subtrain;
   try{
@@ -411,18 +470,18 @@ int binseg
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  MeanVarLoss full_mvl;
+  MeanVarLoss full_mvl, missing_mvl;
+  missing_mvl.mean = INFINITY;
+  missing_mvl.var = INFINITY;
   V.subtrain.set_mean_var_loss(0, n_subtrain-1, &full_mvl);
-  *before_param_mat = full_mvl.mean;
-  *subtrain_loss = full_mvl.loss;
-  validation_loss[0] = V.validation.get_loss
-    (0, n_subtrain-1, full_mvl);
-  before_size[0] = n_subtrain;
-  seg_end[0] = n_subtrain-1;
-  after_param_mat[0] = INFINITY;
-  after_size[0] = -2; // unused/missing indicator.
-  invalidates_index[0]=-2;
-  invalidates_after[0]=-2;
+  out_arrays.save
+    (0,
+     full_mvl.loss,
+     V.validation.get_loss(0, n_subtrain-1, full_mvl),
+     n_subtrain-1,
+     full_mvl,
+     missing_mvl,
+     -2, -2, n_subtrain, -2);
   // Add a segment and split to the set of candidates.
   V.maybe_add(0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0]);
   // initialize to infinite cost and missing values, which is
@@ -430,15 +489,8 @@ int binseg
   // max_segments: infinite cost rows are removed from the resulting
   // splits table in the R code.
   for(int seg_i=1; seg_i < max_segments; seg_i++){
-    subtrain_loss[seg_i] = INFINITY;
-    validation_loss[seg_i] = INFINITY;
-    seg_end[seg_i] = -2;
-    before_param_mat[seg_i] = INFINITY;
-    after_param_mat[seg_i] = INFINITY;
-    invalidates_index[seg_i] = -2;
-    invalidates_after[seg_i] = -2;
-    before_size[seg_i] = -2;
-    after_size[seg_i]  = -2;
+    out_arrays.save
+      (seg_i, INFINITY, INFINITY, -2, full_mvl, full_mvl, -2, -2, -2, -2);
   }
   // Loop over splits. During each iteration we find the Segment/split
   // which results in the best loss decrease, store the resulting
@@ -448,25 +500,17 @@ int binseg
   while(V.container_ptr->not_empty() && ++seg_i < max_segments){
     // Store loss and model parameters associated with this split.
     const Segment *seg_ptr = V.container_ptr->set_best();
-    subtrain_loss[seg_i] = subtrain_loss[seg_i-1] + seg_ptr->best_decrease;
-    validation_loss[seg_i] =
-      validation_loss[seg_i-1] + seg_ptr->validation_decrease;
-    seg_end[seg_i] = seg_ptr->best_split.this_end;
-    before_param_mat[seg_i] = seg_ptr->best_split.before.mean;
-    after_param_mat[seg_i] = seg_ptr->best_split.after.mean;
-    // Also store invalidates index/after so we know which previous
-    // model parameters are no longer used because of this split.
-    invalidates_index[seg_i] = seg_ptr->invalidates_index;
-    invalidates_after[seg_i] = seg_ptr->invalidates_after;
-    // The sizes below are not strictly necessary to store (they can
-    // be derived from start/end) but it makes it easier to analyze
-    // the time complexity of the algorithm. Splits which result in
-    // equal sizes before/after make the algorithm run fastest: first
-    // split sizes N/2,N/2, second split sizes N/4,N/4, etc. Worst
-    // case is when first split sizes 1,N-1 second split sizes 1,N-2,
-    // etc.
-    before_size[seg_i] = seg_ptr->best_split.this_end - seg_ptr->first_i + 1;
-    after_size[seg_i]  = seg_ptr->last_i - seg_ptr->best_split.this_end;
+    out_arrays.save
+      (seg_i, 
+       subtrain_loss[seg_i-1] + seg_ptr->best_decrease,
+       validation_loss[seg_i-1] + seg_ptr->validation_decrease,
+       seg_ptr->best_split.this_end,
+       seg_ptr->best_split.before,
+       seg_ptr->best_split.after,
+       seg_ptr->invalidates_index,
+       seg_ptr->invalidates_after,
+       seg_ptr->best_split.this_end - seg_ptr->first_i + 1,
+       seg_ptr->last_i - seg_ptr->best_split.this_end);
     // Finally add new split candidates if necessary.
     V.maybe_add
       (seg_ptr->first_i, seg_ptr->best_split.this_end,
