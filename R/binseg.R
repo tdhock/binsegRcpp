@@ -76,6 +76,7 @@ binseg <- structure(function # Binary segmentation
   na <- function(x)ifelse(x<0, NA, x)
   ##value<< list with elements subtrain.borders and splits.
   dt <- with(result, list(
+    param.names=colnames(before.param.mat),
     subtrain.borders=subtrain.borders,
     splits=data.table(
       segments=1:max.segments,##<< number of parameters
@@ -245,20 +246,24 @@ coef.binsegRcpp <- function
   data.table(segments)[, {
     i <- 1:segments
     cum.fit <- object$splits[i]
-    means <- cum.fit[, c(before.mean, after.mean)]
-    means[
-      cum.fit[, .N*invalidates.after+invalidates.index]
-    ] <- NA
     ord <- order(cum.fit$end)
-    mean.mat <- matrix(means, 2, byrow=TRUE)[, ord]
-    cum.fit[ord, {
+    seg.dt <- cum.fit[ord, {
       start <- c(1L, end[-.N]+1L)
       data.table(
         start, end,
         start.pos=object$subtrain.borders[start],
-        end.pos=object$subtrain.borders[end+1],
-        mean=mean.mat[!is.na(mean.mat)])
+        end.pos=object$subtrain.borders[end+1])
     }]
+    for(param.name in object$param.names){
+      p <- function(b.or.a)cum.fit[[paste0(b.or.a, ".", param.name)]]
+      params <- c(p("before"),p("after"))
+      params[
+        cum.fit[, .N*invalidates.after+invalidates.index]
+      ] <- NA
+      param.mat <- matrix(params, 2, byrow=TRUE)[, ord]
+      set(seg.dt, j=param.name, value=param.mat[!is.na(param.mat)])
+    }
+    seg.dt
   }, by="segments"]
 ### data.table with one row for each segment.
 }

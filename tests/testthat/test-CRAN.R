@@ -270,7 +270,7 @@ test_that("error for unrecognized container", {
   }, "unrecognized container")
 })
 
-test_that("variance estimates correct", {
+test_that("variance estimates and loss correct", {
   x <- c(0,0.1, 1,1.2)
   fit <- binsegRcpp::binseg("meanvar_norm", x, max.segments=2L)
   myvar <- function(y)mean((y-mean(y))^2)
@@ -280,4 +280,8 @@ test_that("variance estimates correct", {
   expect_equal(fit$splits$after.var, c(NA, myvar(x[3:4])))
   nll <- function(y)-sum(dnorm(y, mean(y), sqrt(myvar(y)), log=TRUE))
   expect_equal(fit$splits$loss, c(nll(x), nll(x[1:2])+nll(x[3:4])))
+  seg.dt <- coef(fit, 2L)
+  expect_equal(seg.dt$end, c(2,4))
+  expect_equal(seg.dt$mean, c(mean(x[1:2]),mean(x[3:4])))
+  expect_equal(seg.dt$var, c(myvar(x[1:2]),myvar(x[3:4])))
 })
