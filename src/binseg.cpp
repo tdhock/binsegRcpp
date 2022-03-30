@@ -162,6 +162,7 @@ Segment::Segment
     }
   }
   best_decrease = best_loss_split - loss_no_split;
+  if(best_decrease == INFINITY)return;
   before_validation_loss = validation.get_loss
     (first_data, best_split.this_end, best_split.before);
   after_validation_loss = validation.get_loss
@@ -403,12 +404,12 @@ public:
    - seg_end: end of segment/split.
    - subtrain_loss: subtrain loss of each split.
    - validation_loss: validation loss of each split.
-   - before_mean: mean before split.
-   - after_mean: mean after split.
+   - before_param_mat: params before split.
+   - after_param_mat: params after split.
    - before_size: number of data before this split.
    - after_size: number of data after this split.
-   - invalidates_index: index of mean invalidated by this split.
-   - invalidates_after: indicates if after mean invalidated by this split.
+   - invalidates_index: index of params invalidated by this split.
+   - invalidates_after: indicates if before/after params invalidated by this split.
 
    See coef method in R code for a procedure that uses these output
    arrays to efficiently compute the segment means for any model size.

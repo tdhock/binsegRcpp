@@ -74,23 +74,24 @@ binseg <- structure(function # Binary segmentation
     container.str,
     is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
-  ##value<< list with elements subtrain.borders and splits.
+  ##value<< list of class binsegRcpp with elements param.names,
+  ##subtrain.borders and splits, which is a data.table with columns:
   dt <- with(result, list(
     param.names=colnames(before.param.mat),
     subtrain.borders=subtrain.borders,
     splits=data.table(
-      segments=1:max.segments,##<< number of parameters
-      loss,##<< subtrain square loss
-      validation.loss,##<< validation square loss
+      segments=1:max.segments,##<< number of segments
+      loss,##<< subtrain loss
+      validation.loss,##<< validation loss
       end=end+1L,##<< index of last data point per segment
-      before=before.param.mat,##<< mean before changepoint
-      after=ifelse(after.param.mat==Inf, NA, after.param.mat),##<< mean after changepoint
+      before=before.param.mat,##<< params before changepoint
+      after=ifelse(after.param.mat==Inf, NA, after.param.mat),##<< params after changepoint
       before.size,##<< number of data before changepoint
       after.size=na(after.size),##<< number of data after changepoint
-      invalidates.index=na(invalidates.index+1L),##<< index of model parameter no longer used after this changepoint is used
-      invalidates.after=na(invalidates.after)
+      invalidates.index=na(invalidates.index+1L),##<< index of param invalidated by this split.
+      invalidates.after=na(invalidates.after)##<< indicates if before/after params invalidated by this split.
     )[loss < Inf]
-  ))##<< idem
+  ))
   class(dt) <- c("binsegRcpp", class(dt))
   dt
   ##end<<

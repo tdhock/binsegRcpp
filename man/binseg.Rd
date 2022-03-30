@@ -48,16 +48,18 @@ could use "list" if you want to study the time complexity of a
 slower implementation of binary segmentation.}
 }
 
-\value{list with elements subtrain.borders and splits.
-\item{segments}{number of parameters}
-\item{loss}{subtrain square loss}
-\item{validation.loss}{validation square loss}
+\value{list of class binsegRcpp with elements param.names,
+subtrain.borders and splits, which is a data.table with columns:
+\item{segments}{number of segments}
+\item{loss}{subtrain loss}
+\item{validation.loss}{validation loss}
 \item{end}{index of last data point per segment}
-\item{before}{mean before changepoint}
-\item{after}{mean after changepoint}
+\item{before}{params before changepoint}
+\item{after}{params after changepoint}
 \item{before.size}{number of data before changepoint}
 \item{after.size}{number of data after changepoint}
-\item{invalidates.index}{index of model parameter no longer used after this changepoint is used}}
+\item{invalidates.index}{index of param invalidated by this split.}
+\item{invalidates.after}{indicates if before/after params invalidated by this split.}}
 
 \author{Toby Dylan Hocking}
 
