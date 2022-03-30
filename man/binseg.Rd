@@ -53,8 +53,8 @@ slower implementation of binary segmentation.}
 \item{loss}{subtrain square loss}
 \item{validation.loss}{validation square loss}
 \item{end}{index of last data point per segment}
-\item{before.mean}{mean before changepoint}
-\item{after.mean}{mean after changepoint}
+\item{before}{mean before changepoint}
+\item{after}{mean after changepoint}
 \item{before.size}{number of data before changepoint}
 \item{after.size}{number of data after changepoint}
 \item{invalidates.index}{index of model parameter no longer used after this changepoint is used}}
