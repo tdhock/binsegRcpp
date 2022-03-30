@@ -269,3 +269,15 @@ test_that("error for unrecognized container", {
     binsegRcpp::binseg("mean_norm", 1:4, container.str="foo")
   }, "unrecognized container")
 })
+
+test_that("variance estimates correct", {
+  x <- c(0,0.1, 1,1.2)
+  fit <- binsegRcpp::binseg("meanvar_norm", x, max.segments=2L)
+  myvar <- function(y)mean((y-mean(y))^2)
+  expect_equal(fit$splits$before.mean, c(mean(x), mean(x[1:2])))
+  expect_equal(fit$splits$after.mean, c(NA, mean(x[3:4])))
+  expect_equal(fit$splits$before.var, c(myvar(x), myvar(x[1:2])))
+  expect_equal(fit$splits$after.var, c(NA, myvar(x[3:4])))
+  nll <- function(y)-sum(dnorm(y, mean(y), sqrt(myvar(y)), log=TRUE))
+  expect_equal(fit$splits$loss, c(nll(x), nll(x[1:2])+nll(x[3:4])))
+})

@@ -117,36 +117,13 @@ poisson loss with weights:
  */
 
 DISTRIBUTION(meanvar_norm,
-	     0.5*(mean*(mean-2*sum/N)+squares/N)/var + N*(log(sqrt(var))+0.5*log(2*M_PI)),
+	     (var > 1e-15) ? (0.5*( (squares+mean*(N*mean-2*sum))/var + N*log(2*M_PI*var))) : INFINITY,
 	     true)
+/*
+meanvar_norm loss is negative log likelihood =
 
-// double costFunction(int start, int end){
-//         double lSum =  this -> summaryStatistics -> getLinearSum(start, end);
-//         double sSum =  this -> summaryStatistics -> getQuadraticSum(start, end);
-//         int N = end - start + 1;
-//         double varN = (sSum - (lSum*lSum/N));
-//         if(varN <= 0) return INFINITY;
-//         return N*(log(varN/N) + log(2*M_PI) + 1);
-//     }
-//     void calcParams(int start, int mid, int end, int i,  double * param_mat, int cpts){
-//         double meanLeft = this -> summaryStatistics -> getMean(start, mid);
-//         double meanRight = this -> summaryStatistics -> getMean(mid + 1, end);
-//         double varLeft = this -> summaryStatistics -> getVarianceN(start, mid, false);
-//         double varRight = this -> summaryStatistics -> getVarianceN(mid + 1, end, false);
-
-//         param_mat[i + cpts * 5] = meanLeft;
-//         param_mat[i + cpts * 6] = meanRight;
-//         param_mat[i + cpts * 7] = varLeft / (mid - start + 1);
-//         param_mat[i + cpts * 8] = varRight / (end - mid);
-//     }
-//     double getVarianceN(int start, int end, bool fixedMean){
-//         double lSum = this -> getLinearSum(start, end);
-//         double sSum =  this ->  getQuadraticSum(start, end);
-//         int N = end - start + 1;
-//         double mean = fixedMean ? this -> getTotalMean() : this -> getMean(start, end); // Fixed mean
-//         double varN = (sSum - 2 * mean * lSum + N * pow(mean, 2)); // Variance of segment.
-//         return varN;
-//     }
+0.5 [ (sum_i x_i^2 + M(NM-2 sum_i x_i))/var + log(2*pi*var) ]
+ */
 
 double Split::set_mean_var_loss(Set &subtrain, int first, int end_i, int last){
   this_end = end_i;
@@ -179,7 +156,6 @@ Segment::Segment
     }
   }
   best_decrease = best_loss_split - loss_no_split;
-  // TODO combine this logic with Split class?
   before_validation_loss = validation.get_loss
     (first_data, best_split.this_end, best_split.before);
   after_validation_loss = validation.get_loss
@@ -332,15 +308,17 @@ public:
     int first_candidate = first_data + min_segment_length-1;
     int last_candidate = last_data - min_segment_length;
     if(first_candidate <= last_candidate){
-      // if it is possible to split (more than one data point on this
-      // segment) then insert new segment into the candidates set.
+      // if it is possible to split then insert new segment into the
+      // candidates set.
       Segment new_seg
 	(subtrain, validation, 
 	 first_data, last_data,
          first_candidate, last_candidate,
 	 invalidates_after, invalidates_index,
 	 loss_no_split, validation_loss_no_split);
-      container_ptr->insert(new_seg);
+      if(new_seg.best_decrease < INFINITY){
+        container_ptr->insert(new_seg);
+      }
     }
   }
 };
@@ -376,7 +354,7 @@ public:
    double validation_loss_value,
    int seg_end_value,
    const MeanVarLoss &before_mvl,
-   const MeanVarLoss &after_mvl,
+   const MeanVarLoss &after_mvl, 
    int invalidates_index_value,
    int invalidates_after_value,
    int before_size_value,
