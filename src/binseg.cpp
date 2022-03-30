@@ -121,7 +121,7 @@ poisson loss with weights:
  */
 
 DISTRIBUTION(meanvar_norm,
-	     -(0.5*(mean*(mean-2*sum/N)+squares/N)/var + N*(log(sqrt(var))+0.5*log(2*M_PI))),
+	     0.5*(mean*(mean-2*sum/N)+squares/N)/var + N*(log(sqrt(var))+0.5*log(2*M_PI)),
 	     true)
 
 // double costFunction(int start, int end){
