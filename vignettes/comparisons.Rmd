@@ -109,7 +109,7 @@ try(changepoint::cpt.meanvar(
   x, penalty="CROPS", method="BinSeg", pen.value = c(0, Inf)))
 ```
 
-Instead we could do an for loop over potential penalty values,
+Instead we could write a for loop over potential penalty values,
 
 ```{r}
 pen.changepoint.list <- list()
