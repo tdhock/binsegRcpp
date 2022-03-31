@@ -1,0 +1,165 @@
+<!--
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Comparisons with other packages}
+-->
+
+# Comparisons
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Comparing loss/parameters to changepoint
+
+The code below shows how to run the binary segmentation algorithm for
+the model with a change in normal mean and variance.
+
+```{r}
+x <- c(0,0.3,0.2,0.1, 10,11,12,13)
+(bs.fit <- binsegRcpp::binseg("meanvar_norm", x))
+```
+
+The code below computes the theoretical expected loss, which is the
+same as computed by binsegRcpp:
+
+```{r}
+myvar <- function(y)mean((y-mean(y))^2)
+nll <- function(y)-sum(dnorm(y, mean(y), sqrt(myvar(y)), log=TRUE))
+expected.loss <- c(
+  nll(x),
+  nll(x[1:4])+nll(x[5:8]),
+  nll(x[1:4])+nll(x[5:6])+nll(x[7:8]),
+  nll(x[1:2])+nll(x[3:4])+nll(x[5:6])+nll(x[7:8]))
+rbind(binsegRcpp=bs.fit$splits$loss, expected=expected.loss)
+```
+
+The code below runs binary segmentation from the changepoint package
+for comparison:
+
+```{r}
+cpt.fit <- changepoint::cpt.meanvar(
+  x, penalty="Manual", pen.value=0, method="BinSeg")
+changepoint::logLik(cpt.fit)
+```
+
+The code above shows that the changepoint package logLik method
+returns NaN rather than a finite value.
+
+```{r}
+changepoint::param.est(cpt.fit)
+coef(bs.fit, 2L)
+```
+
+The code above shows that changepoint and binsegRcpp mean/variance
+estimates (for 2 segments) are consistent, but changepoint result
+contains extra 0/NA values.
+
+```{r}
+cpt.fit1 <- changepoint::cpt.meanvar(
+  x, penalty="Manual", pen.value=0, method="BinSeg", Q=1)
+changepoint::param.est(cpt.fit1)
+```
+
+The code above shows that changepoint package binary segmentation
+returns reasonable parameter estimates if Q=1 changepoint is
+specified.
+
+```{r}
+rbind(
+  changepoint=changepoint::logLik(cpt.fit1)/2,
+  binsegRcpp=bs.fit$splits$loss[2])
+```
+
+The code above shows that the changepoint loss (negative log
+likelihood) differs from binsegRcpp/dnorm by a factor of 2.
+
+Note below that binsegRcpp also can compute parameter estimates for
+other model sizes (not limited to 2 segments in this data set),
+  
+```{r}
+coef(bs.fit)
+```
+
+# Penalized model selection with binsegRcpp and changepoint
+
+Sometimes we don't know the desired number of changepoints/segments,
+but we can specify a non-negative penalty value, and we want to select
+the number of changes which minimizes the total cost (loss + penalty *
+number of changes). In that case we can do the following:
+
+```{r}
+penaltyLearning::modelSelection(
+  bs.fit$splits[, .(loss,segments)], "loss", "segments")
+```
+
+The code above computes a model selection data frame, where every row
+is a model size, and the min.lambda/max.lambda columns indicate the
+penalty values which select that model size. For example if you wanted
+to use a penalty value of 5 then that select the model with 2
+segments, since 5 is between min.lambda=3.21 and max.lambda=22.28.
+
+How could we do something similar with changepoint package? We could
+try the CROPS penalty, but that only works with the PELT method (not
+binary segmentation),
+
+```{r}
+try(changepoint::cpt.meanvar(
+  x, penalty="CROPS", method="BinSeg", pen.value = c(0, Inf)))
+```
+
+Instead we could do an for loop over potential penalty values,
+
+```{r}
+pen.changepoint.list <- list()
+for(penalty in seq(0, 50)){
+  pen.fit <- changepoint::cpt.meanvar(
+    x, penalty="Manual", method="BinSeg", pen.value=penalty)
+  pen.changepoint.list[[paste(penalty)]] <- data.table(
+    package="changepoint",
+    segments=length(changepoint::cpts(pen.fit))+1L,
+    penalty)
+}
+pen.changepoint <- do.call(rbind, pen.changepoint.list)
+library(ggplot2)
+(gg.penalty <- ggplot()+
+  geom_point(aes(
+    penalty, segments, color=package),
+    shape=1,
+    data=pen.changepoint))
+```
+
+The figure above shows that the changepoint package returns 1 segment
+for large penalty values, 2 segments for intermediate penalty values,
+and 6 segments (with 0/NA values) when penalty=0. The method above
+involves running the binary segmentation algorithm for each penalty
+value, which is not necessary. It is more efficient to run the binary
+segmentation algorithm once, and then analyze the loss values to
+determine which penalty values select which model sizes, as is done
+below with binsegRcpp and penaltyLearning. We re-run the
+modelSelection function below for direct comparison with the
+changepoint results (changepoint loss/penalty values are off by a
+factor of two),
+
+```{r}
+bs.fit$splits[, changepoint.loss := loss*2]
+(pen.df <- penaltyLearning::modelSelection(
+  bs.fit$splits[, .(
+    package="binsegRcpp+penaltyLearning",
+    changepoint.loss, segments
+  )], "changepoint.loss", "segments"))
+gg.penalty+
+  geom_segment(aes(
+    min.lambda, segments,
+    color=package,
+    xend=max.lambda, yend=segments),
+    size=1,
+    data=pen.df)
+``` 
+
+The figure above shows that binsegRcpp+modelSelection and changepoint
+packages are consistent for penalties larger than about 10. However
+for some small penalty values, between 0 and 6, changepoint returns 2
+segments whereas binsegRcpp+penaltyLearning select 3 or 4 segments.

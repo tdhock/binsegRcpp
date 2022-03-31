@@ -70,11 +70,13 @@ dist_map_type* get_dist_map(void){
       dist_map.emplace(name, this);                                     \
     }                                                                   \
   };                                                                    \
-  static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE ); 
+  static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE );
+
+#define RSS (mean*(N*mean-2*sum)+squares)
 
 DISTRIBUTION(mean_norm,
              "change in normal mean with constant variance (L2/square loss)",
-             mean*(N*mean-2*sum)+squares, 
+             RSS, 
 	     false) 
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
@@ -124,7 +126,7 @@ poisson loss with weights:
 
 DISTRIBUTION(meanvar_norm,
              "change in normal mean and variance (loss is negative log likelihood)",
-	     (var > max_zero_var) ? (0.5*( (squares+mean*(N*mean-2*sum))/var + N*log(2*M_PI*var))) : INFINITY,
+	     (var>max_zero_var) ? (RSS/var+N*log(2*M_PI*var))/2 : INFINITY,
 	     true)
 /*
 meanvar_norm loss is negative log likelihood =

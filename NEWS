@@ -2,6 +2,17 @@ TODOS
 
 re-order splits to show best case with max.segments < n.data?
 
+2022.3.30
+
+comparisons vignette.
+
+max_zero_var computed based on the max estimated variance of all
+single data points, which should be zero, but are sometimes small
+non-zero values (for example 1e-15 or 1e-13) due to numerical
+issues. mean_zero_var used in meanvar_norm loss function to determine
+if cost is finite. Segments with an infinite cost best split are not
+stored in the container for later splitting.
+
 2022.3.29
 
 meanvar_norm distribution: generalize C++ code to more than one
