@@ -21,6 +21,7 @@ Suggests:
     testthat,
     knitr,
     markdown,
-    neuroblastoma
+    neuroblastoma,
+    changepoint
 VignetteBuilder: knitr
 RoxygenNote: 7.1.2
