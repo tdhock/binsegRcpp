@@ -91,8 +91,7 @@ the number of changes which minimizes the total cost (loss + penalty *
 number of changes). In that case we can do the following:
 
 ```{r}
-penaltyLearning::modelSelection(
-  bs.fit$splits[, .(loss,segments)], "loss", "segments")
+penaltyLearning::modelSelection(bs.fit$splits, "loss", "segments")
 ```
 
 The code above computes a model selection data frame, where every row
@@ -117,7 +116,7 @@ pen.changepoint.list <- list()
 for(penalty in seq(0, 50)){
   pen.fit <- changepoint::cpt.meanvar(
     x, penalty="Manual", method="BinSeg", pen.value=penalty)
-  pen.changepoint.list[[paste(penalty)]] <- data.table(
+  pen.changepoint.list[[paste(penalty)]] <- data.frame(
     package="changepoint",
     segments=length(changepoint::cpts(pen.fit))+1L,
     penalty)
@@ -144,12 +143,12 @@ changepoint results (changepoint loss/penalty values are off by a
 factor of two),
 
 ```{r}
-bs.fit$splits[, changepoint.loss := loss*2]
-(pen.df <- penaltyLearning::modelSelection(
-  bs.fit$splits[, .(
-    package="binsegRcpp+penaltyLearning",
-    changepoint.loss, segments
-  )], "changepoint.loss", "segments"))
+library(data.table)
+models <- data.table(
+  package="binsegRcpp+penaltyLearning",
+  bs.fit$splits
+)[, cpt.loss := loss*2]
+pen.df <- penaltyLearning::modelSelection(models, "cpt.loss", "segments")
 gg.penalty+
   geom_segment(aes(
     min.lambda, segments,
