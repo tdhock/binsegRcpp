@@ -19,7 +19,9 @@
 // models (e.g., normal change in mean and variance).
 class MeanVarLoss {
 public:
-  double mean, var, loss;
+  double loss;
+  std::unordered_map<std::string, double> param_map;
+  MeanVarLoss();
 };
 
 typedef std::vector<std::string> param_names_type;
@@ -49,7 +51,7 @@ public:
   double get_mean(int first, int last);
   double get_var(int first, int last);
   void set_mean_var_loss(int first, int last, double *mean, double *var, double *loss);
-  void set_mean_var_loss(int first, int last, MeanVarLoss*);
+  void set_mvl(int first, int last, MeanVarLoss*);
   double get_loss(int first, int last, MeanVarLoss&);
   double get_loss(int first, int last, double, double);
   void resize_cumsums(int vec_size);
@@ -78,7 +80,7 @@ class Split {
 public:
   int this_end;//index of last data point on the first/before segment.
   MeanVarLoss before, after;
-  double set_mean_var_loss(Set &subtrain, int first, int end_i, int last);
+  double get_split_loss(Set &subtrain, int first, int end_i, int last);
 };
 
 class Segment {

@@ -1,5 +1,10 @@
 #include "binseg.h"
 
+MeanVarLoss::MeanVarLoss(){
+  param_map["mean"] = INFINITY;
+  param_map["var"] = INFINITY;
+}
+
 double Cumsum::get_sum(int first, int last){
   double total = cumsum_vec[last];
   if(0 < first){
@@ -12,19 +17,19 @@ void Set::set_mean_var_loss
 (int first, int last, double *mean, double *var, double *loss){
   total_weights = weights.get_sum(first, last);
   total_weighted_data = weighted_data.get_sum(first, last);
-  total_weighted_squares = weighted_squares.get_sum(first, last);
+  total_weighted_squares = weighted_squares.get_sum(first, last); 
   *mean = total_weighted_data/total_weights;
   *var  = total_weighted_squares/total_weights +
     (*mean)*((*mean)-2*total_weighted_data/total_weights);
   *loss = get_loss(first, last, *mean, *var);
 }
-void Set::set_mean_var_loss(int first, int last, MeanVarLoss *MVL){
-  set_mean_var_loss(first, last, &(MVL->mean), &(MVL->var), &(MVL->loss));
+void Set::set_mvl(int first, int last, MeanVarLoss *MVL){
+  set_mean_var_loss(first, last, &(MVL->param_map["mean"]), &(MVL->param_map["var"]), &(MVL->loss));
 }
 double Set::get_loss
 (int first, int last, MeanVarLoss& subtrain_mvl){
   return get_loss
-    (first, last, subtrain_mvl.mean, subtrain_mvl.var);
+    (first, last, subtrain_mvl.param_map["mean"], subtrain_mvl.param_map["var"]);
 }
 double Set::get_loss
 (int first, int last, double mean, double var){
@@ -134,10 +139,10 @@ meanvar_norm loss is negative log likelihood =
 0.5 [ (sum_i x_i^2 + M(NM-2 sum_i x_i))/var + log(2*pi*var) ]
  */
 
-double Split::set_mean_var_loss(Set &subtrain, int first, int end_i, int last){
+double Split::get_split_loss(Set &subtrain, int first, int end_i, int last){
   this_end = end_i;
-  subtrain.set_mean_var_loss(first, end_i, &before);
-  subtrain.set_mean_var_loss(end_i+1, last, &after);
+  subtrain.set_mvl(first, end_i, &before);
+  subtrain.set_mvl(end_i+1, last, &after);
   return before.loss + after.loss;
 }
 
@@ -157,7 +162,7 @@ Segment::Segment
   double best_loss_split = INFINITY, loss_split;
   // for loop over all possible splits on this Segment.
   for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
-    loss_split = candidate_split.set_mean_var_loss
+    loss_split = candidate_split.get_split_loss
       (subtrain, first_data, candidate, last_data);
     if(loss_split < best_loss_split){
       best_loss_split = loss_split;
@@ -314,9 +319,9 @@ public:
     MeanVarLoss mvl;
     subtrain.max_zero_var = 0;
     for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
-      subtrain.set_mean_var_loss(subtrain_i, subtrain_i, &mvl);
-      if(subtrain.max_zero_var < mvl.var){
-	subtrain.max_zero_var = mvl.var;
+      subtrain.set_mvl(subtrain_i, subtrain_i, &mvl);
+      if(subtrain.max_zero_var < mvl.param_map["var"]){
+	subtrain.max_zero_var = mvl.param_map["var"];
       }
     }
     validation.max_zero_var = subtrain.max_zero_var;
@@ -348,18 +353,19 @@ public:
 
 class OutArrays {
 public:
-  int n_params, max_segments;
+  Distribution *dist_ptr;
+  int max_segments;
   int *seg_end, *before_size, *after_size,
     *invalidates_index, *invalidates_after;
   double *subtrain_loss, *validation_loss,
     *before_param_mat, *after_param_mat;
   OutArrays
-  (Distribution *dist_ptr, int max_segments_,
+  (Distribution *dist_ptr_, int max_segments_,
    int *seg_end_, double *subtrain_loss_, double *validation_loss_,
    double *before_param_mat_, double *after_param_mat_,
    int *before_size_, int *after_size_,
    int *invalidates_index_, int *invalidates_after_){
-    n_params = dist_ptr->param_names_vec.size();
+    dist_ptr = dist_ptr_;
     max_segments = max_segments_;
     seg_end = seg_end_;
     subtrain_loss = subtrain_loss_;
@@ -386,11 +392,14 @@ public:
     subtrain_loss[seg_i] = subtrain_loss_value;
     validation_loss[seg_i] = validation_loss_value;
     seg_end[seg_i] = seg_end_value;
-    before_param_mat[seg_i] = before_mvl.mean;
-    after_param_mat[seg_i] = after_mvl.mean;
-    if(n_params == 2){
-      before_param_mat[seg_i+max_segments] = before_mvl.var;
-      after_param_mat[seg_i+max_segments] = after_mvl.var;
+    int param_i=0;
+    for
+      (param_names_type::iterator it=dist_ptr->param_names_vec.begin();
+       it != dist_ptr->param_names_vec.end();
+       it++){
+      int out_i = seg_i+max_segments*param_i++;
+      before_param_mat[out_i] = before_mvl.param_map.find(*it)->second;
+      after_param_mat[out_i] = after_mvl.param_map.find(*it)->second;
     }
     invalidates_index[seg_i] = invalidates_index_value;
     invalidates_after[seg_i] = invalidates_after_value;
@@ -472,9 +481,7 @@ int binseg
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
   MeanVarLoss full_mvl, missing_mvl;
-  missing_mvl.mean = INFINITY;
-  missing_mvl.var = INFINITY;
-  V.subtrain.set_mean_var_loss(0, n_subtrain-1, &full_mvl);
+  V.subtrain.set_mvl(0, n_subtrain-1, &full_mvl);
   out_arrays.save
     (0,
      full_mvl.loss,
