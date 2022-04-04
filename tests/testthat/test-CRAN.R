@@ -294,3 +294,33 @@ test_that("meanvar_norm does not have segs with size 1", {
   fit <- binsegRcpp::binseg("meanvar_norm", data.vec)
   expect_lte(nrow(fit$splits), data.per.seg)
 })
+
+test_that("l1loss param is median", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  l1fit <- binsegRcpp::binseg("l1", data.vec, max.segments=2L)
+  seg.dt <- coef(l1fit)
+  expected.median <- c(
+    median(data.vec),
+    median(data.vec[1:3]),
+    median(data.vec[4:6]))
+  expect_equal(seg.dt$median, expected.median)
+  expected.loss <- sum(abs(median(data.vec)-data.vec))
+  expect_equal(l1fit$splits$loss[1], expected.loss)
+})
+
+test_that("laplace params median,scale", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  l1fit <- binsegRcpp::binseg("laplace", data.vec, max.segments=2L)
+  seg.dt <- coef(l1fit)
+  expected.median <- c(
+    median(data.vec),
+    median(data.vec[1:3]),
+    median(data.vec[4:6]))
+  expect_equal(seg.dt$median, expected.median)
+  sum.abs.dev <- sum(abs(median(data.vec)-data.vec))
+  N.data <- length(data.vec)
+  est.scale <- sum.abs.dev/N.data
+  expect_equal(l1fit$splits$before.scale[1], est.scale)
+  expected.loss <- N.data*log(2*est.scale)+sum.abs.dev/est.scale
+  expect_equal(l1fit$splits$loss[1], expected.loss)
+})

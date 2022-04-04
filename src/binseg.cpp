@@ -61,7 +61,6 @@ public:
         (subtrain, candidate+1, last_data);
       best_split.maybe_update(candidate_split);
     }
-    Rprintf("get_best_split sizes=%d,%d\n", best_split.before.param_map.size(), best_split.after.param_map.size());
     return best_split;
   }
   MeanVarLoss estimate_params(Set &subtrain, int first, int last){
@@ -98,7 +97,7 @@ public:
 };  
 
 #define CONCAT(x,y) x##y
-#define DISTRIBUTION(NAME, DESC, COMPUTE, VARIANCE)                     \
+#define CUM_DIST(NAME, DESC, COMPUTE, VARIANCE)                     \
   class CONCAT(NAME,Distribution) : public CumDistribution {            \
   public:                                                               \
     double compute_loss                                                 \
@@ -117,13 +116,13 @@ public:
   };                                                                    \
   static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE );
 
-class l1lossDistribution : public Distribution {
+class absDistribution : public Distribution {
   public:
-  l1lossDistribution(){
-    var_changes = false;
-    description = "l1loss";
-    param_names_vec.push_back("median");
-    dist_map.emplace("l1loss", this);
+  double adjust(double sum_abs_dev, double N){
+    if(var_changes==false)return sum_abs_dev;
+    if(sum_abs_dev==0)return INFINITY;
+    double scale_est = sum_abs_dev/N;
+    return N*(log(2*scale_est) + 1);
   }
   Split get_best_split
   (Set &subtrain,
@@ -133,29 +132,35 @@ class l1lossDistribution : public Distribution {
     int n_insertions = last_candidate-first_data+1;
     double *before_median_vec = new double[n_candidates];
     double *before_loss_vec = new double[n_candidates];
+    double *before_weight_vec = new double[n_candidates];
     double *after_median_vec = new double[n_candidates];
     double *after_loss_vec = new double[n_candidates];
+    double *after_weight_vec = new double[n_candidates];
     for(int direction=0; direction<2; direction++){
       PiecewiseFunction function;
       int start, increment, offset;
-      double *loss_ptr, *median_ptr;
+      double *loss_ptr, *median_ptr, *weight_ptr;
       if(direction==0){
         start = first_data;
         increment = 1;
         loss_ptr = before_loss_vec;
         median_ptr = before_median_vec;
+        weight_ptr = before_weight_vec;
         offset = 0;
       }else{
         start = last_data;
         increment = -1;
         loss_ptr = after_loss_vec;
         median_ptr = after_median_vec;
+        weight_ptr = after_weight_vec;
         offset = 1;
       }
       int out_i = 0;
+      double total_weight = 0;
       for(int iteration=0; iteration < n_insertions; iteration++){
         int data_i = start + iteration*increment;
         double weight_value = subtrain.weights.get_sum(data_i,data_i);
+        total_weight += weight_value;
         double weighted_data = subtrain.weighted_data.get_sum(data_i,data_i);
         double data_value = weighted_data/weight_value;
         function.insert_l1(data_value, weight_value);
@@ -164,6 +169,7 @@ class l1lossDistribution : public Distribution {
            data_i <= last_candidate+offset){
           median_ptr[out_i] = function.get_minimum_position();
           loss_ptr[out_i] = function.get_minimum_value();
+          weight_ptr[out_i] = total_weight;
           out_i++;
         }
       }//for(iteration
@@ -177,50 +183,81 @@ class l1lossDistribution : public Distribution {
       candidate_split.this_end = first_candidate+before_i;
       candidate_split.before.param_map["median"] = before_median_vec[before_i];
       candidate_split.after.param_map["median"] = after_median_vec[after_i];
-      candidate_split.before.loss = before_loss_vec[before_i];
-      candidate_split.after.loss = after_loss_vec[after_i];
+      if(var_changes){
+        candidate_split.before.param_map["scale"] =
+          before_loss_vec[before_i]/before_weight_vec[before_i];
+        candidate_split.after.param_map["scale"] =
+          after_loss_vec[after_i]/after_weight_vec[after_i];
+      }        
+      candidate_split.before.loss =
+        adjust(before_loss_vec[before_i], before_weight_vec[before_i]);
+      candidate_split.after.loss =
+        adjust(after_loss_vec[after_i], after_weight_vec[after_i]);
       best_split.maybe_update(candidate_split);
     }
     delete before_median_vec;
     delete after_median_vec;
     delete before_loss_vec;
     delete after_loss_vec;
+    delete before_weight_vec;
+    delete after_weight_vec;
     return best_split;
   }
   double loss_for_params
   (Set &validation, MeanVarLoss &mvl, int first, int last){
-    double total_loss = 0.0;
+    double total_loss=0, total_weight=0;
     double median = mvl.param_map["median"];
     for(int data_i=first; data_i <= last; data_i++){
       double weight_value = validation.weights.get_sum(data_i,data_i);
+      total_weight += weight_value;
       double weighted_data = validation.weighted_data.get_sum(data_i,data_i);
       double data_value = weighted_data/weight_value;
       total_loss += abs(median - data_value)*weight_value;
     }
-    return total_loss;
+    return adjust(total_loss, total_weight);
   }
   MeanVarLoss estimate_params(Set &subtrain, int first, int last){
     MeanVarLoss mvl;
     PiecewiseFunction function;
+    double total_weight = 0;
     for(int data_i=first; data_i <= last; data_i++){
       double weight_value = subtrain.weights.get_sum(data_i,data_i);
       double weighted_data = subtrain.weighted_data.get_sum(data_i,data_i);
       double data_value = weighted_data/weight_value;
       function.insert_l1(data_value, weight_value);
+      total_weight += weight_value;
     }
     mvl.param_map["median"] = function.get_minimum_position();
-    mvl.loss = function.get_minimum_value();
+    double sum_abs_dev = function.get_minimum_value();
+    mvl.loss = adjust(sum_abs_dev, total_weight);
+    if(var_changes)mvl.param_map["scale"] = sum_abs_dev/total_weight;
     return mvl;
   }
 };
-static l1lossDistribution l1loss;
+
+#define ABS_DIST(NAME, DESC, VARIANCE)                          \
+  class CONCAT(NAME, Distribution) : public absDistribution {   \
+  public:                                                       \
+    CONCAT(NAME, Distribution) (){                              \
+      var_changes = VARIANCE;                                   \
+      description = DESC;                                       \
+      param_names_vec.push_back("median");                      \
+      if(var_changes)param_names_vec.push_back("scale");        \
+      dist_map.emplace( #NAME, this );                          \
+    }                                                           \
+  };                                                            \
+static CONCAT(NAME, Distribution) NAME;
+
+ABS_DIST(l1, "change in median, loss function is total absolute deviation", false)
+
+ABS_DIST(laplace, "change in Laplace median and scale, loss function is negative log likelihood", true)
 
 #define RSS (mean*(N*mean-2*sum)+squares)
 
-DISTRIBUTION(mean_norm,
-             "change in normal mean with constant variance (L2/square loss)",
-             RSS, 
-	     false) 
+CUM_DIST(mean_norm,
+         "change in normal mean with constant variance (L2/square loss)",
+         RSS, 
+         false) 
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
 
@@ -247,10 +284,10 @@ DISTRIBUTION(mean_norm,
    
 */
 
-DISTRIBUTION(poisson,
-             "change in poisson rate parameter (loss is negative log likelihood minus constant term)",
-             mean*N - log(mean)*sum, // neg log lik minus constant term.
-             false) // dont add constant term to loss.
+CUM_DIST(poisson,
+         "change in poisson rate parameter (loss is negative log likelihood minus constant term)",
+         mean*N - log(mean)*sum, // neg log lik minus constant term.
+         false) // dont add constant term to loss.
 /* poisson likelihood:
 
 prob_i = m^{x_i} * exp(-m) / (x_i !)
@@ -267,10 +304,10 @@ poisson loss with weights:
   
  */
 
-DISTRIBUTION(meanvar_norm,
-             "change in normal mean and variance (loss is negative log likelihood)",
-	     (var>max_zero_var) ? (RSS/var+N*log(2*M_PI*var))/2 : INFINITY,
-	     true)
+CUM_DIST(meanvar_norm,
+         "change in normal mean and variance (loss is negative log likelihood)",
+         (var>max_zero_var) ? (RSS/var+N*log(2*M_PI*var))/2 : INFINITY,
+         true)
 /*
 meanvar_norm loss is negative log likelihood =
 
@@ -292,7 +329,6 @@ Segment::Segment
   best_split = subtrain.dist_ptr->get_best_split
     (subtrain, first_data, last_data, first_candidate, last_candidate);
   best_decrease = best_split.get_loss() - loss_no_split;
-  Rprintf("best_decrease=%f\n", best_decrease);
   if(best_decrease == INFINITY)return;
   before_validation_loss = validation.dist_ptr->loss_for_params
     (validation, best_split.before, first_data, best_split.this_end);
@@ -523,7 +559,6 @@ public:
        it != dist_ptr->param_names_vec.end();
        it++){
       int out_i = seg_i+max_segments*param_i++;
-      Rprintf("out_i=%d param=%s sizes=%d,%d\n", out_i, it->c_str(), before_mvl.param_map.size(), after_mvl.param_map.size());
       before_param_mat[out_i] = before_mvl.param_map.find(*it)->second;
       after_param_mat[out_i] = after_mvl.param_map.find(*it)->second;
     }

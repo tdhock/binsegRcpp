@@ -1,4 +1,3 @@
-#include <R.h>
 #include <math.h>//INFINITY
 #include <stdexcept>      // std::out_of_range
 #include <string>
@@ -40,7 +39,6 @@ public:
   }
   void maybe_update(Split &candidate) {
     if(candidate.get_loss() < get_loss()){
-      Rprintf("loss old=%f new=%d\n", get_loss(), candidate.get_loss());
       *this = candidate;
     }
   }
