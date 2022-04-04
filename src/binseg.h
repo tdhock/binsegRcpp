@@ -1,3 +1,4 @@
+#include <R.h>
 #include <math.h>//INFINITY
 #include <stdexcept>      // std::out_of_range
 #include <string>
@@ -12,15 +13,7 @@
 #define ERROR_UNRECOGNIZED_CONTAINER 6
 #define ERROR_POSITIONS_MUST_INCREASE -4
 
-typedef std::vector<std::string> param_names_type;
-param_names_type* get_param_names(const char*);
-class Distribution {
-public:
-  bool var_changes;
-  std::string description;
-  param_names_type param_names_vec;
-  virtual double compute_loss(double,double,double,double,double,double) = 0;
-};
+class Distribution;
 
 // This class saves the optimal parameters/loss value for each segment
 // (before and after) resulting from a split. Currently there is only
@@ -30,12 +23,28 @@ public:
 class MeanVarLoss {
 public:
   MeanVarLoss(Distribution*);
-  MeanVarLoss() {}
+  MeanVarLoss() {
+    loss = INFINITY;
+  }
   double loss;
   std::unordered_map<std::string, double> param_map;
 };
 
-
+// Split class stores info for a single candidate split to consider.
+class Split {
+public:
+  int this_end;//index of last data point on the first/before segment.
+  MeanVarLoss before, after;
+  double get_loss(void) const {
+    return before.loss + after.loss;
+  }
+  void maybe_update(Split &candidate) {
+    if(candidate.get_loss() < get_loss()){
+      Rprintf("loss old=%f new=%d\n", get_loss(), candidate.get_loss());
+      *this = candidate;
+    }
+  }
+};
 
 // This class computes and stores a cumsum that we need to compute the
 // optimal loss/parameters of a segment from first to last.
@@ -48,18 +57,27 @@ public:
 
 class Set {// either subtrain or validation.
 public:
+  Distribution *dist_ptr;
   Cumsum weights, weighted_data, weighted_squares;
   double max_zero_var;
-  Distribution *dist_ptr;
   double total_weighted_data=0, total_weights=0, total_weighted_squares=0;
   double get_mean(int first, int last);
   double get_var(int first, int last);
-  void set_mean_var_loss(int first, int last, double *mean, double *var, double *loss);
-  void set_mvl(int first, int last, MeanVarLoss*);
-  double get_loss(int first, int last, MeanVarLoss&);
-  double get_loss(int first, int last, double, double);
+  void set_totals(int first, int last);
   void resize_cumsums(int vec_size);
   void write_cumsums(int write_index);
+};
+
+typedef std::vector<std::string> param_names_type;
+param_names_type* get_param_names(const char*);
+class Distribution {
+public:
+  bool var_changes;
+  std::string description;
+  param_names_type param_names_vec;
+  virtual Split get_best_split(Set&,int,int,int,int) = 0;
+  virtual double loss_for_params(Set&,MeanVarLoss&,int,int) = 0;
+  virtual MeanVarLoss estimate_params(Set&,int,int) = 0;
 };
 
 typedef std::unordered_map<std::string, Distribution*> dist_map_type;
@@ -78,14 +96,6 @@ int binseg
  double *before_mean, double *after_mean,
  int *, int *,
  int *invalidates_index, int *invalidates_before);
-
-// Split class stores info for a single candidate split to consider.
-class Split {
-public:
-  int this_end;//index of last data point on the first/before segment.
-  MeanVarLoss before, after;
-  double get_split_loss(Set &subtrain, int first, int end_i, int last);
-};
 
 class Segment {
 public:
