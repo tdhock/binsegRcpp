@@ -1,10 +1,14 @@
 #include "binseg.h"
 
-MeanVarLoss::MeanVarLoss(){
-  param_map["mean"] = INFINITY;
-  param_map["var"] = INFINITY;
+MeanVarLoss::MeanVarLoss(Distribution *dist_ptr){
+  for
+    (param_names_type::iterator it=dist_ptr->param_names_vec.begin();
+     it != dist_ptr->param_names_vec.end();
+     it++){
+    param_map[*it] = INFINITY;
+  }
 }
-
+ 
 double Cumsum::get_sum(int first, int last){
   double total = cumsum_vec[last];
   if(0 < first){
@@ -24,12 +28,18 @@ void Set::set_mean_var_loss
   *loss = get_loss(first, last, *mean, *var);
 }
 void Set::set_mvl(int first, int last, MeanVarLoss *MVL){
-  set_mean_var_loss(first, last, &(MVL->param_map["mean"]), &(MVL->param_map["var"]), &(MVL->loss));
+  set_mean_var_loss
+    (first, last,
+     &(MVL->param_map["mean"]),
+     &(MVL->param_map["var"]),
+     &(MVL->loss));
 }
 double Set::get_loss
 (int first, int last, MeanVarLoss& subtrain_mvl){
   return get_loss
-    (first, last, subtrain_mvl.param_map["mean"], subtrain_mvl.param_map["var"]);
+    (first, last,
+     subtrain_mvl.param_map["mean"],
+     subtrain_mvl.param_map["var"]);
 }
 double Set::get_loss
 (int first, int last, double mean, double var){
@@ -68,7 +78,8 @@ dist_map_type* get_dist_map(void){
       return COMPUTE;                                                   \
     }									\
     CONCAT(NAME,Distribution)                                           \
-      (const char *name, std::string desc, bool var_changes){           \
+      (const char *name, std::string desc, bool var_changes_){          \
+      var_changes = var_changes_;                                       \
       description = desc;                                               \
       param_names_vec.push_back("mean");                                \
       if(var_changes)param_names_vec.push_back("var");                  \
@@ -317,14 +328,16 @@ public:
     // analyze subtrain data to find what is the largest value that
     // should be considered numerically zero for a variance estimate.
     MeanVarLoss mvl;
-    subtrain.max_zero_var = 0;
-    for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
-      subtrain.set_mvl(subtrain_i, subtrain_i, &mvl);
-      if(subtrain.max_zero_var < mvl.param_map["var"]){
-	subtrain.max_zero_var = mvl.param_map["var"];
+    if(dist_ptr->var_changes){
+      subtrain.max_zero_var = 0;
+      for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
+        subtrain.set_mvl(subtrain_i, subtrain_i, &mvl);
+        if(subtrain.max_zero_var < mvl.param_map["var"]){
+          subtrain.max_zero_var = mvl.param_map["var"];
+        }
       }
+      validation.max_zero_var = subtrain.max_zero_var;
     }
-    validation.max_zero_var = subtrain.max_zero_var;
     return n_subtrain;
   }
   // Add a new Segment to candidates if it is big enough to split.
@@ -480,7 +493,7 @@ int binseg
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  MeanVarLoss full_mvl, missing_mvl;
+  MeanVarLoss full_mvl, missing_mvl(dist_ptr);
   V.subtrain.set_mvl(0, n_subtrain-1, &full_mvl);
   out_arrays.save
     (0,
@@ -498,7 +511,8 @@ int binseg
   // splits table in the R code.
   for(int seg_i=1; seg_i < max_segments; seg_i++){
     out_arrays.save
-      (seg_i, INFINITY, INFINITY, -2, full_mvl, full_mvl, -2, -2, -2, -2);
+      (seg_i, INFINITY, INFINITY, -2,
+       missing_mvl, missing_mvl, -2, -2, -2, -2);
   }
   // Loop over splits. During each iteration we find the Segment/split
   // which results in the best loss decrease, store the resulting

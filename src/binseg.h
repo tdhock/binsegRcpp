@@ -12,6 +12,16 @@
 #define ERROR_UNRECOGNIZED_CONTAINER 6
 #define ERROR_POSITIONS_MUST_INCREASE -4
 
+typedef std::vector<std::string> param_names_type;
+param_names_type* get_param_names(const char*);
+class Distribution {
+public:
+  bool var_changes;
+  std::string description;
+  param_names_type param_names_vec;
+  virtual double compute_loss(double,double,double,double,double,double) = 0;
+};
+
 // This class saves the optimal parameters/loss value for each segment
 // (before and after) resulting from a split. Currently there is only
 // one parameter (mean) because the model is normal change in mean
@@ -19,19 +29,13 @@
 // models (e.g., normal change in mean and variance).
 class MeanVarLoss {
 public:
+  MeanVarLoss(Distribution*);
+  MeanVarLoss() {}
   double loss;
   std::unordered_map<std::string, double> param_map;
-  MeanVarLoss();
 };
 
-typedef std::vector<std::string> param_names_type;
-param_names_type* get_param_names(const char*);
-class Distribution {
-public:
-  std::string description;
-  param_names_type param_names_vec;
-  virtual double compute_loss(double,double,double,double,double,double) = 0;
-};
+
 
 // This class computes and stores a cumsum that we need to compute the
 // optimal loss/parameters of a segment from first to last.
