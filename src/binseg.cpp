@@ -104,16 +104,15 @@ public:
        double mean, double var, double max_zero_var){			\
       return COMPUTE;                                                   \
     }									\
-    CONCAT(NAME,Distribution)                                           \
-      (const char *name, std::string desc, bool var_changes_){          \
-      var_changes = var_changes_;                                       \
-      description = desc;                                               \
+    CONCAT(NAME,Distribution) () {					\
+      var_changes = VARIANCE;						\
+      description = DESC;                                               \
       param_names_vec.push_back("mean");                                \
       if(var_changes)param_names_vec.push_back("var");                  \
-      dist_map.emplace(name, this);                                     \
+      dist_map.emplace( #NAME, this );					\
     }                                                                   \
   };                                                                    \
-  static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE );
+  static CONCAT(NAME,Distribution) NAME;
 
 class absDistribution : public Distribution {
   public:
