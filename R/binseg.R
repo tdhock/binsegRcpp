@@ -1,22 +1,8 @@
 binseg <- structure(function # Binary segmentation
-### Efficient implementation of binary segmentation for a sequence of
-### N data. Each iteration involves first computing and storing the
-### best split point on one or two segments, then looking up the
-### segment with the best split so far. The best case time complexity
-### occurs when splits are equal (N data split into two segments of
-### size N/2), and the worst case is when splits are unequal (N data
-### split into one big segment with N-1 data and one small segment
-### with 1 data point). Looking up the segment with the best split so
-### far is a constant O(1) time operation using C++ multimap, so O(K)
-### overall for K iterations/segments. Storage of a new best split
-### point/cost involves the multimap insert method which is
-### logarithmic time in the size of the multimap, overall O(K log K)
-### for equal splits and O(K) for unequal splits. Computing the cost
-### values, and overall time complexity, is best case O(N log K) time
-### for equal splits and worst case O(N K) time for unequal
-### splits. Output includes columns which can be used to compute
-### parameters for a single model in log-linear time, using coef
-### method.
+### Efficient C++ implementation of the classic binary segmentation
+### algorithm for finding changepoints in a sequence of N data. Output
+### includes columns which can be used to compute parameters for a
+### single model in log-linear time, using coef method.
 (distribution.str,
 ### String indicating distribution, use get_distribution_info to see
 ### possible values.
@@ -68,6 +54,24 @@ binseg <- structure(function # Binary segmentation
   if(is.null(max.segments)){
     max.segments <- floor(sum(!is.validation.vec)/min.segment.length)
   }
+  ##details<< Each iteration involves first computing and storing the
+  ## best split point on one or two segments, then looking up the
+  ## segment with the best split so far. The best case time complexity
+  ## occurs when splits are equal (N data split into two segments of
+  ## size N/2), and the worst case is when splits are unequal (N data
+  ## split into one big segment with N-1 data and one small segment
+  ## with 1 data point). Looking up the segment with the best split so
+  ## far is a constant O(1) time operation using C++ multimap, so O(K)
+  ## overall for K iterations/segments. Storage of a new best split
+  ## point/cost involves the multimap insert method which is
+  ## logarithmic time in the size of the multimap, overall O(K log K)
+  ## for equal splits and O(K) for unequal splits. Computing the cost
+  ## values, and overall time complexity, depends on the loss. For
+  ## normal and poisson distributions the best case O(N log K) time
+  ## for equal splits and worst case O(N K) time for unequal
+  ## splits. For l1/laplace distributions the best case is O(N log N
+  ## log K) time for equal splits and worst case is O(N log N K) time
+  ## for unequal splits.
   result <- binseg_interface(
     data.vec, weight.vec, max.segments,
     min.segment.length,
@@ -75,8 +79,9 @@ binseg <- structure(function # Binary segmentation
     container.str,
     is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
-  ##value<< list of class binsegRcpp with elements param.names,
-  ##subtrain.borders and splits, which is a data.table with columns:
+  ##value<< list of class binsegRcpp with elements distribution.str,
+  ##param.names, subtrain.borders and splits, which is a data.table
+  ##with columns:
   dt <- with(result, list(
     distribution.str=distribution.str,
     param.names=colnames(before.param.mat),
