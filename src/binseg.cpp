@@ -1,5 +1,10 @@
+#include <R.h>
 #include "binseg.h"
 #include "PiecewiseFunction.h"
+
+void Set::set_max_zero_var(void){
+  max_zero_var = dist_ptr->get_max_zero_var(*this);
+}
 
 ParamsLoss::ParamsLoss(Distribution *dist_ptr){
   for
@@ -62,6 +67,18 @@ public:
     }
     return best_split;
   }
+  double get_max_zero_var(Set &subtrain){
+    int n_subtrain = subtrain.weights.cumsum_vec.size();
+    double max_zero_var = 0;
+    for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
+      ParamsLoss ploss =
+	subtrain.dist_ptr->estimate_params(subtrain, subtrain_i, subtrain_i);
+      if(max_zero_var < ploss.param_map["var"]){
+	max_zero_var = ploss.param_map["var"];
+      }
+    }
+    return max_zero_var;
+  }    
   ParamsLoss estimate_params(Set &subtrain, int first, int last){
     subtrain.set_totals(first, last);
     ParamsLoss ploss;
@@ -105,10 +122,10 @@ public:
       return COMPUTE;                                                   \
     }									\
     CONCAT(NAME,Distribution) () {					\
-      var_changes = VARIANCE;						\
+      var_param = VARIANCE;						\
       description = DESC;                                               \
       param_names_vec.push_back("mean");                                \
-      if(var_changes)param_names_vec.push_back("var");                  \
+      if(var_param)param_names_vec.push_back("var");                  \
       dist_map.emplace( #NAME, this );					\
     }                                                                   \
   };                                                                    \
@@ -117,9 +134,12 @@ public:
 class absDistribution : public Distribution {
   public:
   double adjust(double sum_abs_dev, double N, double scale_est){
-    if(var_changes==false)return sum_abs_dev;
+    if(var_param==false)return sum_abs_dev;
     if(scale_est==0)return INFINITY;
     return N*log(2*scale_est) + sum_abs_dev/scale_est;
+  }
+  double get_max_zero_var(Set &subtrain){
+    return 0;
   }
   Split get_best_split
   (Set &subtrain,
@@ -236,10 +256,10 @@ class absDistribution : public Distribution {
   class CONCAT(NAME, Distribution) : public absDistribution {   \
   public:                                                       \
     CONCAT(NAME, Distribution) (){                              \
-      var_changes = VARIANCE;                                   \
+      var_param = VARIANCE;                                   \
       description = DESC;                                       \
       param_names_vec.push_back("median");                      \
-      if(var_changes)param_names_vec.push_back("scale");        \
+      if(var_param)param_names_vec.push_back("scale");        \
       dist_map.emplace( #NAME, this );                          \
     }                                                           \
   };                                                            \
@@ -472,15 +492,8 @@ public:
     }
     // analyze subtrain data to find what is the largest value that
     // should be considered numerically zero for a variance estimate.
-    if(dist_ptr->var_changes){
-      subtrain.max_zero_var = 0;
-      for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
-        ParamsLoss ploss =
-          dist_ptr->estimate_params(subtrain, subtrain_i, subtrain_i);
-        if(subtrain.max_zero_var < ploss.param_map["var"]){
-          subtrain.max_zero_var = ploss.param_map["var"];
-        }
-      }
+    if(dist_ptr->var_param){
+      subtrain.set_max_zero_var();
       validation.max_zero_var = subtrain.max_zero_var;
     }
     return n_subtrain;

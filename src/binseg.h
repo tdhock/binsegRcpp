@@ -64,18 +64,20 @@ public:
   void set_totals(int first, int last);
   void resize_cumsums(int vec_size);
   void write_cumsums(int write_index);
+  void set_max_zero_var();
 };
 
 typedef std::vector<std::string> param_names_type;
 param_names_type* get_param_names(const char*);
 class Distribution {
 public:
-  bool var_changes;
+  bool var_param;
   std::string description;
   param_names_type param_names_vec;
   virtual Split get_best_split(Set&,int,int,int,int) = 0;
   virtual double loss_for_params(Set&,ParamsLoss&,int,int) = 0;
   virtual ParamsLoss estimate_params(Set&,int,int) = 0;
+  virtual double get_max_zero_var(Set &subtrain) = 0;
 };
 
 typedef std::unordered_map<std::string, Distribution*> dist_map_type;
