@@ -1,5 +1,6 @@
 library(binsegRcpp)
 library(testthat)
+myvar <- function(y)mean((y-mean(y))^2)
 
 test_that("one data point has zero loss", {
   L <- binsegRcpp:::binseg_interface(5, weight_vec=1, max_segments=1, min_segment_length=1, distribution_str="mean_norm", container_str = "multiset", is_validation_vec = FALSE, position_vec = 1)
@@ -273,7 +274,6 @@ test_that("error for unrecognized container", {
 test_that("variance estimates and loss correct", {
   x <- c(0,0.1, 1,1.2)
   fit <- binsegRcpp::binseg("meanvar_norm", x, max.segments=2L)
-  myvar <- function(y)mean((y-mean(y))^2)
   expect_equal(fit$splits$before.mean, c(mean(x), mean(x[1:2])))
   expect_equal(fit$splits$after.mean, c(NA, mean(x[3:4])))
   expect_equal(fit$splits$before.var, c(myvar(x), myvar(x[1:2])))
@@ -324,3 +324,44 @@ test_that("laplace params median,scale", {
   expected.loss <- N.data*log(2*est.scale)+sum.abs.dev/est.scale
   expect_equal(l1fit$splits$loss[1], expected.loss)
 })
+
+test_that("laplace validation loss ok", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  is.validation.vec <- c(FALSE,FALSE,TRUE,TRUE,FALSE,FALSE)
+  l1fit <- binsegRcpp::binseg(
+    "laplace", data.vec, max.segments=2L,
+    is.validation.vec = is.validation.vec)
+  subtrain.vec <- data.vec[!is.validation.vec]
+  est.median <- median(subtrain.vec)
+  est.scale <- sum(abs(est.median-subtrain.vec))/length(subtrain.vec)
+  sum.abs.dev <- sum(abs(est.median-data.vec[is.validation.vec]))
+  vloss1 <- sum(is.validation.vec)*log(2*est.scale)+sum.abs.dev/est.scale
+  expect_equal(l1fit$splits$validation.loss[1], vloss1)
+})
+
+test_that("meanvar_norm validation loss ok", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  is.validation.vec <- c(FALSE,FALSE,TRUE,TRUE,FALSE,FALSE)
+  l1fit <- binsegRcpp::binseg(
+    "meanvar_norm", data.vec, max.segments=2L,
+    is.validation.vec = is.validation.vec)
+  subtrain.vec <- data.vec[!is.validation.vec]
+  vloss1 <- -sum(dnorm(
+    data.vec[is.validation.vec],
+    mean(subtrain.vec),
+    sqrt(myvar(subtrain.vec)),
+    log=TRUE))
+  expect_equal(l1fit$splits$validation.loss[1], vloss1)
+})
+
+test_that("l1 validation loss ok", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  is.validation.vec <- c(FALSE,FALSE,TRUE,TRUE,FALSE,FALSE)
+  l1fit <- binsegRcpp::binseg(
+    "l1", data.vec, max.segments=2L,
+    is.validation.vec = is.validation.vec)
+  vloss1 <- sum(abs(
+    data.vec[is.validation.vec]-median(data.vec[!is.validation.vec])))
+  expect_equal(l1fit$splits$validation.loss[1], vloss1)
+})
+

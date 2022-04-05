@@ -78,6 +78,7 @@ binseg <- structure(function # Binary segmentation
   ##value<< list of class binsegRcpp with elements param.names,
   ##subtrain.borders and splits, which is a data.table with columns:
   dt <- with(result, list(
+    distribution.str=distribution.str,
     param.names=colnames(before.param.mat),
     subtrain.borders=subtrain.borders,
     splits=data.table(

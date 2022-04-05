@@ -118,11 +118,10 @@ public:
 
 class absDistribution : public Distribution {
   public:
-  double adjust(double sum_abs_dev, double N){
+  double adjust(double sum_abs_dev, double N, double scale_est){
     if(var_changes==false)return sum_abs_dev;
-    if(sum_abs_dev==0)return INFINITY;
-    double scale_est = sum_abs_dev/N;
-    return N*(log(2*scale_est) + 1);
+    if(scale_est==0)return INFINITY;
+    return N*log(2*scale_est) + sum_abs_dev/scale_est;
   }
   Split get_best_split
   (Set &subtrain,
@@ -183,16 +182,18 @@ class absDistribution : public Distribution {
       candidate_split.this_end = first_candidate+before_i;
       candidate_split.before.param_map["median"] = before_median_vec[before_i];
       candidate_split.after.param_map["median"] = after_median_vec[after_i];
-      if(var_changes){
-        candidate_split.before.param_map["scale"] =
-          before_loss_vec[before_i]/before_weight_vec[before_i];
-        candidate_split.after.param_map["scale"] =
-          after_loss_vec[after_i]/after_weight_vec[after_i];
-      }        
-      candidate_split.before.loss =
-        adjust(before_loss_vec[before_i], before_weight_vec[before_i]);
-      candidate_split.after.loss =
-        adjust(after_loss_vec[after_i], after_weight_vec[after_i]);
+      candidate_split.before.param_map["scale"] =
+        before_loss_vec[before_i]/before_weight_vec[before_i];
+      candidate_split.after.param_map["scale"] =
+        after_loss_vec[after_i]/after_weight_vec[after_i];
+      candidate_split.before.loss = adjust
+        (before_loss_vec[before_i],
+         before_weight_vec[before_i],
+         candidate_split.before.param_map["scale"]);
+      candidate_split.after.loss = adjust
+        (after_loss_vec[after_i],
+         after_weight_vec[after_i],
+         candidate_split.after.param_map["scale"]);
       best_split.maybe_update(candidate_split);
     }
     delete before_median_vec;
@@ -209,12 +210,14 @@ class absDistribution : public Distribution {
     double median = mvl.param_map["median"];
     for(int data_i=first; data_i <= last; data_i++){
       double weight_value = validation.weights.get_sum(data_i,data_i);
-      total_weight += weight_value;
-      double weighted_data = validation.weighted_data.get_sum(data_i,data_i);
-      double data_value = weighted_data/weight_value;
-      total_loss += abs(median - data_value)*weight_value;
+      if(0 < weight_value){
+        total_weight += weight_value;
+        double weighted_data = validation.weighted_data.get_sum(data_i,data_i);
+        double data_value = weighted_data/weight_value;
+        total_loss += abs(median - data_value)*weight_value;
+      }
     }
-    return adjust(total_loss, total_weight);
+    return adjust(total_loss, total_weight, mvl.param_map["scale"]);
   }
   MeanVarLoss estimate_params(Set &subtrain, int first, int last){
     MeanVarLoss mvl;
@@ -229,8 +232,8 @@ class absDistribution : public Distribution {
     }
     mvl.param_map["median"] = function.get_minimum_position();
     double sum_abs_dev = function.get_minimum_value();
-    mvl.loss = adjust(sum_abs_dev, total_weight);
-    if(var_changes)mvl.param_map["scale"] = sum_abs_dev/total_weight;
+    mvl.param_map["scale"] = sum_abs_dev/total_weight;
+    mvl.loss = adjust(sum_abs_dev, total_weight, mvl.param_map["scale"]);
     return mvl;
   }
 };
