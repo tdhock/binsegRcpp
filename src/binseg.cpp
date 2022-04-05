@@ -129,29 +129,29 @@ class absDistribution : public Distribution {
    int first_candidate, int last_candidate){
     int n_candidates = last_candidate-first_candidate+1;
     int n_insertions = last_candidate-first_data+1;
-    double *before_median_vec = new double[n_candidates];
-    double *before_loss_vec = new double[n_candidates];
-    double *before_weight_vec = new double[n_candidates];
-    double *after_median_vec = new double[n_candidates];
-    double *after_loss_vec = new double[n_candidates];
-    double *after_weight_vec = new double[n_candidates];
+    std::vector<double> before_median_vec(n_candidates);
+    std::vector<double> before_loss_vec(n_candidates);
+    std::vector<double> before_weight_vec(n_candidates);
+    std::vector<double> after_median_vec(n_candidates);
+    std::vector<double> after_loss_vec(n_candidates);
+    std::vector<double> after_weight_vec(n_candidates);
     for(int direction=0; direction<2; direction++){
       PiecewiseFunction function;
       int start, increment, offset;
-      double *loss_ptr, *median_ptr, *weight_ptr;
+      std::vector<double> *loss_ptr, *median_ptr, *weight_ptr;
       if(direction==0){
         start = first_data;
         increment = 1;
-        loss_ptr = before_loss_vec;
-        median_ptr = before_median_vec;
-        weight_ptr = before_weight_vec;
+        loss_ptr = &before_loss_vec;
+        median_ptr = &before_median_vec;
+        weight_ptr = &before_weight_vec;
         offset = 0;
       }else{
         start = last_data;
         increment = -1;
-        loss_ptr = after_loss_vec;
-        median_ptr = after_median_vec;
-        weight_ptr = after_weight_vec;
+        loss_ptr = &after_loss_vec;
+        median_ptr = &after_median_vec;
+        weight_ptr = &after_weight_vec;
         offset = 1;
       }
       int out_i = 0;
@@ -166,9 +166,9 @@ class absDistribution : public Distribution {
         if
           (first_candidate+offset <= data_i &&
            data_i <= last_candidate+offset){
-          median_ptr[out_i] = function.get_minimum_position();
-          loss_ptr[out_i] = function.get_minimum_value();
-          weight_ptr[out_i] = total_weight;
+          (*median_ptr)[out_i] = function.get_minimum_position();
+          (*loss_ptr)[out_i] = function.get_minimum_value();
+          (*weight_ptr)[out_i] = total_weight;
           out_i++;
         }
       }//for(iteration
@@ -196,12 +196,6 @@ class absDistribution : public Distribution {
          candidate_split.after.param_map["scale"]);
       best_split.maybe_update(candidate_split);
     }
-    delete before_median_vec;
-    delete after_median_vec;
-    delete before_loss_vec;
-    delete after_loss_vec;
-    delete before_weight_vec;
-    delete after_weight_vec;
     return best_split;
   }
   double loss_for_params
@@ -387,7 +381,7 @@ factory_map_type* get_factory_map(void){
     return new CONCAT(CONTAINER,Wrapper);                               \
   }                                                                     \
   void CONCAT(CONTAINER,destruct) (Container *c_ptr){                   \
-    delete c_ptr;           \
+    delete c_ptr;                                                       \
   }                                                                     \
   static ContainerFactory CONCAT(CONTAINER,_instance)                   \
     ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
