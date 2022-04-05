@@ -13,15 +13,76 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-#ifndef MMIT_PIECEWISE_FUNCTION_H
-#define MMIT_PIECEWISE_FUNCTION_H
-
+#include <cmath>
+#include <cstdlib>
+#include <iostream>
+#define TOL 1e-9
 #include <map>
 #include <set>
-//#include <Rcpp.h>
 
-#include "coefficients.h"
-#include "double_utils.h"
+class Coefficients{
+public:
+    double quadratic;
+    double linear;
+    double constant;
+
+    Coefficients(){this->quadratic = 0; this->linear = 0; this->constant = 0;}
+    Coefficients(double a, double b, double c){this->quadratic = a; this->linear = b; this->constant = c;}
+    Coefficients operator+(Coefficients &other);
+    void operator+=(Coefficients &other);
+    Coefficients operator-(Coefficients &other);
+    void operator-=(Coefficients &other);
+    Coefficients operator*(double scalar);
+    void operator*=(double scalar);
+    Coefficients operator/(double scalar);
+    void operator/=(double scalar);
+    bool operator==(Coefficients &other);
+};
+
+inline bool equal(double x, double y){
+    if(std::isinf(x) || std::isinf(y)){
+        return x == y;
+    }
+    else{
+        return std::abs(x - y) <= TOL;
+    }
+}
+
+inline bool not_equal(double x, double y){
+    return !equal(x, y);
+}
+
+inline bool greater(double x, double y){
+    if(std::isinf(x) || std::isinf(y)){
+        return x > y;
+    }
+    else{
+        return !equal(x, y) && x > y;
+    }
+}
+
+inline bool less(double x, double y){
+    if(std::isinf(x) || std::isinf(y)){
+        return x < y;
+    }
+    else{
+        return !equal(x, y) && x < y;
+    }
+}
+
+class DoubleComparatorLess : public std::binary_function<double,double,bool>
+{
+public:
+    bool operator()( const double &left, const double &right  ) const
+    {
+        return less(left, right);
+    }
+};
+
+enum FunctionType{
+    linear_hinge,
+    squared_hinge
+};
 
 typedef std::map<double, Coefficients, DoubleComparatorLess> breakpoint_list_t;
 typedef std::pair<double, Coefficients> breakpoint_t;
@@ -78,4 +139,4 @@ public:
 };
 
 
-#endif //MMIT_PIECEWISE_FUNCTION_H
+
