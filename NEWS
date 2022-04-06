@@ -2,6 +2,10 @@ TODOS
 
 re-order splits to show best case with max.segments < n.data?
 
+2022.4.6
+
+complexity funs handle min segment length.
+
 2022.4.4
 
 new l1 and laplace loss functions.

@@ -1,4 +1,4 @@
-#include <R.h>
+#include <R.h> 
 #include "binseg.h"
 #include "PiecewiseFunction.h"
 

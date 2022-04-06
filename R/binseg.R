@@ -21,8 +21,9 @@ binseg <- structure(function # Binary segmentation
 ### default=1:length(data.vec).
   weight.vec=rep(1, length(data.vec)),
 ### Numeric vector of non-negative weights for each data point.
-  min.segment.length=1L,
-### Integer, minimum number of data points per segment.
+  min.segment.length=NULL,
+### Positive integer, minimum number of data points per
+### segment. Default NULL means to use min given distribution.str.
   container.str="multiset"
 ### C++ container to use for storing breakpoints/cost. Most users
 ### should leave this at the default "multiset" for efficiency but you
@@ -44,6 +45,12 @@ binseg <- structure(function # Binary segmentation
     if(any(1 < L$lengths)){
       warning(sprintf("some consecutive data values are identical in set=%s, so you could get speedups by converting your data to use a run length encoding, for example L=rle(data.vec);binseg(data.vec=L$values, weight.vec=L$lengths)", set.name))
     }
+  }
+  if(is.null(min.segment.length)){
+    dist.df <- binsegRcpp::get_distribution_info()
+    dist.row <- dist.df[dist.df$dist==distribution.str,]
+    dist.params <- if(nrow(dist.row))dist.row$parameters[[1]] else c()
+    min.segment.length <- if(length(dist.params)==2)2L else 1L
   }
   if(!(
     is.integer(min.segment.length) &&
@@ -79,10 +86,11 @@ binseg <- structure(function # Binary segmentation
     container.str,
     is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
-  ##value<< list of class binsegRcpp with elements distribution.str,
-  ##param.names, subtrain.borders and splits, which is a data.table
-  ##with columns:
+  ##value<< list of class binsegRcpp with elements min.segment.length,
+  ##distribution.str, param.names, subtrain.borders and splits, which
+  ##is a data.table with columns:
   dt <- with(result, list(
+    min.segment.length=min.segment.length,
     distribution.str=distribution.str,
     param.names=colnames(before.param.mat),
     subtrain.borders=subtrain.borders,

@@ -151,7 +151,6 @@ test_that("error for unrecognized distribution", {
   }, "unrecognized distribution")
 })
 
-
 ploss <- function (count, seg.mean, weight = 1){
     stopifnot(is.numeric(count))
     stopifnot(is.numeric(seg.mean))
@@ -386,4 +385,18 @@ test_that("error for poisson loss with bad data", {
   expect_error({
     binsegRcpp::binseg("poisson", -2L)
   }, "data must be non-negative for poisson loss")
+})
+
+test_that("get_complexity respects min.segment.length", {
+  n.data <- 8
+  zero.one <- rep(0:1, l=n.data)
+  fit <- binsegRcpp::binseg("mean_norm", zero.one)
+  clist <- binsegRcpp::get_complexity(fit)
+  worst <- clist$iterations[case=="worst"]
+  expect_equal(worst$splits, seq(n.data-1, 0))
+  zero.ten <- rep(c(0,1,10,11), l=n.data)
+  mvfit <- binsegRcpp::binseg("meanvar_norm", zero.ten)
+  mvlist <- binsegRcpp::get_complexity(mvfit)
+  mvworst <- mvlist$iterations[case=="worst"]
+  expect_equal(mvworst$splits, c(5,3,1,0))
 })
