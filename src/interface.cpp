@@ -114,6 +114,12 @@ Rcpp::List binseg_interface
      &before_param_mat[0], &after_param_mat[0],
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
+  if(status == ERROR_DATA_MUST_BE_INTEGER_FOR_POISSON_LOSS){
+    Rcpp::stop("data must be integer for poisson loss");
+  }
+  if(status == ERROR_DATA_MUST_BE_NON_NEGATIVE_FOR_POISSON_LOSS){
+    Rcpp::stop("data must be non-negative for poisson loss");
+  }
   if(status == ERROR_UNRECOGNIZED_CONTAINER){
     Rcpp::stop(unrecognized<factory_map_type>("container", get_factory_map));
   }

@@ -378,3 +378,12 @@ test_that("poisson loss ok for simple ex with zero", {
   segs <- coef(fit)
   expect_equal(segs$mean, c(mu, data.vec))
 })
+
+test_that("error for poisson loss with bad data", {
+  expect_error({
+    binsegRcpp::binseg("poisson", 0.1)
+  }, "data must be integer for poisson loss")
+  expect_error({
+    binsegRcpp::binseg("poisson", -2L)
+  }, "data must be non-negative for poisson loss")
+})

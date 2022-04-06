@@ -10,6 +10,8 @@
 #define ERROR_TOO_MANY_SEGMENTS 2
 #define ERROR_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE 5
 #define ERROR_UNRECOGNIZED_CONTAINER 6
+#define ERROR_DATA_MUST_BE_INTEGER_FOR_POISSON_LOSS 7
+#define ERROR_DATA_MUST_BE_NON_NEGATIVE_FOR_POISSON_LOSS 8
 #define ERROR_POSITIONS_MUST_INCREASE -4
 
 class Distribution;
@@ -74,6 +76,7 @@ public:
   bool var_param;
   std::string description;
   param_names_type param_names_vec;
+  virtual int check_data(double value) = 0;
   virtual Split get_best_split(Set&,int,int,int,int) = 0;
   virtual double loss_for_params(Set&,ParamsLoss&,int,int) = 0;
   virtual ParamsLoss estimate_params(Set&,int,int) = 0;

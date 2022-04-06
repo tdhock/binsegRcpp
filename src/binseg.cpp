@@ -113,9 +113,13 @@ public:
 };  
 
 #define CONCAT(x,y) x##y
-#define CUM_DIST(NAME, DESC, COMPUTE, VARIANCE)                     \
+#define CUM_DIST(NAME, DESC, COMPUTE, ERROR, VARIANCE)			\
   class CONCAT(NAME,Distribution) : public CumDistribution {            \
   public:                                                               \
+    int check_data(double value){					\
+      ERROR;								\
+      return 0;								\
+    }									\
     double compute_loss                                                 \
       (double N, double sum, double squares,				\
        double mean, double var, double max_zero_var){			\
@@ -133,6 +137,9 @@ public:
 
 class absDistribution : public Distribution {
   public:
+  int check_data(double value){
+    return 0;
+  }
   double adjust(double sum_abs_dev, double N, double scale_est){
     if(var_param==false)return sum_abs_dev;
     if(scale_est==0)return INFINITY;
@@ -273,7 +280,8 @@ ABS_DIST(laplace, "change in Laplace median and scale (loss is negative log like
 
 CUM_DIST(mean_norm,
          "change in normal mean with constant variance (L2/square loss)",
-         RSS, 
+         RSS,
+	 ,
          false) 
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
@@ -304,6 +312,7 @@ CUM_DIST(mean_norm,
 CUM_DIST(poisson,
          "change in Poisson rate parameter (loss is negative log likelihood minus constant term)",
          (mean>0) ? (mean*N - log(mean)*sum) : ( (sum==0) ? 0 : INFINITY ),
+	 if(round(value)!=value)return ERROR_DATA_MUST_BE_INTEGER_FOR_POISSON_LOSS;if(value < 0)return ERROR_DATA_MUST_BE_NON_NEGATIVE_FOR_POISSON_LOSS;,
          false)
 /* poisson likelihood:
 
@@ -324,6 +333,7 @@ poisson loss with weights:
 CUM_DIST(meanvar_norm,
          "change in normal mean and variance (loss is negative log likelihood)",
          (var>max_zero_var) ? (RSS/var+N*log(2*M_PI*var))/2 : INFINITY,
+	 ,
          true)
 /*
 meanvar_norm loss is negative log likelihood =
@@ -629,6 +639,12 @@ int binseg
     }
   }
   Distribution* dist_ptr = dist_map.at(distribution_str);
+  for(int data_i=0; data_i<n_data; data_i++){
+    int status = dist_ptr->check_data(data_vec[data_i]);
+    if(status != 0){
+      return status;
+    }
+  }
   OutArrays out_arrays
     (dist_ptr, max_segments,
      seg_end, subtrain_loss, validation_loss,
