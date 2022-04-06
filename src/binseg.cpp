@@ -245,9 +245,9 @@ class absDistribution : public Distribution {
   };                                                            \
 static CONCAT(NAME, Distribution) NAME;
 
-ABS_DIST(l1, "change in median, loss function is total absolute deviation", false)
+ABS_DIST(l1, "change in median (loss is total absolute deviation)", false)
 
-ABS_DIST(laplace, "change in Laplace median and scale, loss function is negative log likelihood", true)
+ABS_DIST(laplace, "change in Laplace median and scale (loss is negative log likelihood)", true)
 
 #define RSS (mean*(N*mean-2*sum)+squares)
 
@@ -282,7 +282,7 @@ CUM_DIST(mean_norm,
 */
 
 CUM_DIST(poisson,
-         "change in poisson rate parameter (loss is negative log likelihood minus constant term)",
+         "change in Poisson rate parameter (loss is negative log likelihood minus constant term)",
          mean*N - log(mean)*sum, // neg log lik minus constant term.
          false) // dont add constant term to loss.
 /* poisson likelihood:
