@@ -303,8 +303,8 @@ CUM_DIST(mean_norm,
 
 CUM_DIST(poisson,
          "change in Poisson rate parameter (loss is negative log likelihood minus constant term)",
-         mean*N - log(mean)*sum, // neg log lik minus constant term.
-         false) // dont add constant term to loss.
+         (mean>0) ? (mean*N - log(mean)*sum) : ( (sum==0) ? 0 : INFINITY ),
+         false)
 /* poisson likelihood:
 
 prob_i = m^{x_i} * exp(-m) / (x_i !)

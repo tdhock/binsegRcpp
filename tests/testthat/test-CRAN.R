@@ -365,3 +365,16 @@ test_that("l1 validation loss ok", {
   expect_equal(l1fit$splits$validation.loss[1], vloss1)
 })
 
+test_that("poisson loss ok for simple ex with zero", {
+  data.vec <- 0:1
+  N.data <- length(data.vec)
+  mu <- mean(data.vec)
+  expected.loss <- c(
+    N.data*mu - log(mu)*sum(data.vec),
+    1)
+  fit <- binsegRcpp::binseg("poisson", data.vec)
+  expect_equal(fit$splits$end, 2:1)
+  expect_equal(fit$splits$loss, expected.loss)
+  segs <- coef(fit)
+  expect_equal(segs$mean, c(mu, data.vec))
+})
