@@ -400,3 +400,10 @@ test_that("get_complexity respects min.segment.length", {
   mvworst <- mvlist$iterations[case=="worst"]
   expect_equal(mvworst$splits, c(5,3,1,0))
 })
+
+test_that("empirical splits not negative", {
+  fit <- binsegRcpp::binseg("meanvar_norm", 1:8)
+  clist <- binsegRcpp::get_complexity(fit)
+  esplits <- clist$iterations[case=="empirical", splits]
+  expect_equal(esplits, c(5,2,0,0))
+})

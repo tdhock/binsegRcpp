@@ -43,14 +43,12 @@ get_complexity_extreme <- function
   size.before.split <- rep(size.mat, times.mat)
   smaller.size.after <- size.before.split %/% 2
   other.size.after <- smaller.size.after + size.before.split %% 2
-  thresh <- function(size){
-    s <- size_to_splits(size,min.segment.length)
-    ifelse(s<0, 0, s)
-  }
+  first.splits <- size_to_splits(N.data,min.segment.length)
   some.best.splits <- c(
-    thresh(N.data),
-    thresh(smaller.size.after)+thresh(other.size.after))
-  worst.splits <- c(seq(thresh(N.data), 1, by=-min.segment.length),0)
+    first.splits,
+    size_to_splits(smaller.size.after,min.segment.length)+
+    size_to_splits(other.size.after,min.segment.length))
+  worst.splits <- c(seq(first.splits, 1, by=-min.segment.length), 0)
   segments <- seq_along(worst.splits)
   best.splits <- some.best.splits[segments]
   best.splits[is.na(best.splits)] <- 0
@@ -73,7 +71,8 @@ size_to_splits <- function
   min.segment.length
 ### Minimum segment length, positive integer.
 ){
-  1+size-min.segment.length*2
+  s <- 1+size-min.segment.length*2
+  ifelse(s<0, 0, s)
 ### Number of splits, integer.
 }
 
