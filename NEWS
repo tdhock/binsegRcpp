@@ -6,6 +6,10 @@ re-order splits to show best case with max.segments < n.data?
 
 complexity funs handle min segment length.
 
+operator< now correctly breaks ties: previously used segment size
+(end-start), now use max distance from start and end, to encourage
+equal splits and best case time complexity.
+
 2022.4.4
 
 new l1 and laplace loss functions.

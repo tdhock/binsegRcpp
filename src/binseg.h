@@ -106,12 +106,12 @@ public:
   double best_decrease, validation_decrease;
   double before_validation_loss, after_validation_loss;
   Split best_split;
-  int n_changes(void) const;
   friend bool operator<(const Segment& l, const Segment& r){
     if(l.best_decrease == r.best_decrease){
       // if two segments are equally good to split in terms of the
-      // loss, then to save time we should split the larger.
-      return l.n_changes() > r.n_changes();
+      // loss, then to save time we should split whichever would
+      // result in larger child segments.
+      return l.best_split.dist_from_edges > r.best_split.dist_from_edges;
     }else{
       return l.best_decrease < r.best_decrease;
     }

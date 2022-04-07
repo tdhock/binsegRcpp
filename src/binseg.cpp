@@ -358,9 +358,6 @@ meanvar_norm loss is negative log likelihood =
 0.5 [ (sum_i x_i^2 + M(NM-2 sum_i x_i))/var + log(2*pi*var) ]
  */
 
-int Segment::n_changes() const {
-  return last_i-first_i;
-}
 Segment::Segment
 (Set &subtrain, Set &validation,
  int first_data, int last_data,

@@ -412,3 +412,21 @@ test_that("l1 loss chooses even split if equal loss", {
   fit <- binsegRcpp::binseg("l1", 1:8, max.segments=2L)
   expect_equal(fit$splits$end, c(8,4))
 })
+
+test_that("l1 loss chooses even splits after storage", {
+  d <- sqrt(81/12)
+  up.down <- c(-d,d,-d,d)
+  binsegRcpp::binseg_normal(up.down, max.segments=2L)
+  linear <- c(-2,-1,1,2)+10
+  binsegRcpp::binseg_normal(linear, max.segments=2L)
+  data.vec <- c(-up.down,linear,up.down,-linear)
+  plot(data.vec)
+  expected.ends <- c(16,12,4,8,6,14)
+  fit <- binsegRcpp::binseg_normal(data.vec, max.segments=6L)
+  expect_equal(sort(fit$splits$end), sort(expected.ends))
+  rev.vec <- rev(data.vec)
+  plot(rev.vec)
+  fit.rev <- binsegRcpp::binseg_normal(rev.vec, max.segments=6L)
+  expected.rev <- c(16,12,4,8,2,10)
+  expect_equal(sort(fit.rev$splits$end), sort(expected.rev))
+})
