@@ -11,11 +11,11 @@ segmentation algorithm.}
   \item{y.increment}{Offset for y column values of totals output table.}
 }
 
-\value{List with elements iterations and totals. iterations is a data
-table with one row per model size, and column splits with number
-of splits to check after computing that model size. totals is a
-data table with total number of splits for each case. Column case
-has values best, worst, empirical.}
+\value{List of class "complexity" which has a plot method. Elements
+include "iterations" which is a data table with one row per model
+size, and column splits with number of splits to check after
+computing that model size; "totals" which is a data table with
+total number of splits for each case. }
 
 \author{Toby Dylan Hocking}
 

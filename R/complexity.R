@@ -129,11 +129,11 @@ get_complexity <- structure(function
   out <- list(iterations=iterations, totals=totals)
   class(out) <- c("complexity", class(out))
   out
-### List with elements iterations and totals. iterations is a data
-### table with one row per model size, and column splits with number
-### of splits to check after computing that model size. totals is a
-### data table with total number of splits for each case. Column case
-### has values best, worst, empirical.
+### List of class "complexity" which has a plot method. Elements
+### include "iterations" which is a data table with one row per model
+### size, and column splits with number of splits to check after
+### computing that model size; "totals" which is a data table with
+### total number of splits for each case. 
 }, ex=function(){
 
   ## Example 1: empirical=worst case.
