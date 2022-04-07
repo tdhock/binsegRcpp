@@ -1,7 +1,8 @@
 \name{get_complexity_empirical}
 \alias{get_complexity_empirical}
 \title{get complexity empirical}
-\description{Get empirical split counts.}
+\description{Get empirical split counts. This is a sub-routine of
+\code{\link{get_complexity}}, which should typically be used instead.}
 \usage{get_complexity_empirical(model.dt, 
     min.segment.length = 1L)}
 \arguments{

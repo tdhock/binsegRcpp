@@ -1,17 +1,14 @@
 \name{binseg_normal}
 \alias{binseg_normal}
 \title{Binary segmentation, normal change in mean}
-\description{Efficient implementation of binary segmentation for change in
-mean, max normal likelihood = min square loss. Output includes
-columns which can be used to compute parameters for a single model
-in log-linear time.}
+\description{Calls \code{\link{binseg}} to compute a binary segmentation model for change in
+mean with constant variance, max normal likelihood = min square
+loss.}
 \usage{binseg_normal(data.vec, 
     max.segments = sum(!is.validation.vec), 
     is.validation.vec = rep(FALSE, 
         length(data.vec)), 
-    position.vec = seq_along(data.vec), 
-    weight.vec = rep(1, 
-        length(data.vec)))}
+    position.vec = seq_along(data.vec))}
 \arguments{
   \item{data.vec}{Vector of numeric data to segment.}
   \item{max.segments}{Maximum number of segments to compute, default=number of FALSE
@@ -20,10 +17,10 @@ entries in \code{is.validation.vec}.}
 set, default=all FALSE (no validation set).}
   \item{position.vec}{integer vector of positions at which data are measured,
 default=1:length(\code{data.vec}).}
-  \item{weight.vec}{Numeric vector of non-negative weights for each data point.}
 }
 
-
+\value{List output from \code{\link{binseg}} which represents a binary segmentation
+model.}
 
 \author{Toby Dylan Hocking}
 

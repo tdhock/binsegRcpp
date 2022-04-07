@@ -71,13 +71,14 @@ size_to_splits <- function
   min.segment.length
 ### Minimum segment length, positive integer.
 ){
-  s <- 1+size-min.segment.length*2
-  ifelse(s<0, 0, s)
+  splits <- 1+size-min.segment.length*2
+  ifelse(splits<0, 0, splits)
 ### Number of splits, integer.
 }
 
 get_complexity_empirical <- function
-### Get empirical split counts.
+### Get empirical split counts. This is a sub-routine of
+### get_complexity, which should typically be used instead.
 (model.dt,
 ### data.table from binseg_normal.
   min.segment.length=1L 
@@ -102,9 +103,13 @@ case.colors <- c(worst="deepskyblue", empirical="black", best="red")
 case.sizes <- c(worst=1.5, empirical=1, best=3)
 
 get_complexity <- structure(function
-### Get empirical and extreme split counts.
-(models
-### data.table from binseg_normal.
+### Get empirical and extreme split counts, in order to compare the
+### empirical and theoretical time complexity of the binary
+### segmentation algorithm.
+(models,
+### result of binseg.
+  y.increment=0.1
+### Offset for y column values of totals output table.
 ){
   segments <- end <- . <- splits <- y <- label <- case <- NULL
   ## above to avoid CRAN NOTE.
@@ -119,18 +124,20 @@ get_complexity <- structure(function
     x=n.data,
     splits=sum(splits)
   ), by=.EACHI, on="case"]
-  totals[, y := n.data*(1-.I*0.1)]
+  totals[, y := n.data*(1-.I*y.increment)]
   totals[, label := sprintf("%s case total splits=%d", case, splits)]
   out <- list(iterations=iterations, totals=totals)
   class(out) <- c("complexity", class(out))
   out
-### data.table with one row per model size, and column splits with
-### number of splits to check after computing that model size. Column
-### case has values best, worst, empirical.
+### List with elements iterations and totals. iterations is a data
+### table with one row per model size, and column splits with number
+### of splits to check after computing that model size. totals is a
+### data table with total number of splits for each case. Column case
+### has values best, worst, empirical.
 }, ex=function(){
 
   ## Example 1: empirical=worst case.
-  data.vec <- rep(c(0,1), l=10)
+  data.vec <- rep(0:1, l=10)
   plot(data.vec)
   bs.model <- binsegRcpp::binseg_normal(data.vec)
   split.counts <- binsegRcpp::get_complexity(bs.model)
@@ -144,29 +151,41 @@ get_complexity <- structure(function
   plot(split.counts)
 
   ## Example 3: empirical case between best/worst.
-  seg.mean.vec <- 1:5
-  data.mean.vec <- rep(seg.mean.vec, each=10)
-  set.seed(1)
-  data.vec <- rnorm(length(data.mean.vec), data.mean.vec, 0.2)
+  data.vec <- rep(c(0,1,10,11),8)
   plot(data.vec)
-  bs.model <- binsegRcpp::binseg_normal(data.vec)
-  split.counts <- binsegRcpp::get_complexity(bs.model)
-  plot(split.counts)
+  m.model <- binsegRcpp::binseg_normal(data.vec)
+  m.splits <- binsegRcpp::get_complexity(m.model)
+  plot(m.splits)
 
+  ## Example 4: worst case for normal change in mean and variance
+  ## model.
+  mv.model <- binsegRcpp::binseg("meanvar_norm", data.vec)
+  mv.splits <- binsegRcpp::get_complexity(mv.model)
+  plot(mv.splits)
+
+  ## Compare the two models using ggplot2.
   if(require("ggplot2")){
+    library(data.table)
+    splits.list <- list()
+    for(data.type in names(m.splits)){
+      splits.list[[data.type]] <- rbind(
+        data.table(model="mean and variance", mv.splits[[data.type]]),
+        data.table(model="mean only", m.splits[[data.type]]))
+    }
     ggplot()+
+      facet_grid(model ~ .)+
       geom_line(aes(
         segments, splits, color=case, size=case),
-        data=split.counts$iterations[case!="empirical"])+
+        data=splits.list$iterations[case!="empirical"])+
       geom_point(aes(
         segments, splits, color=case),
-        data=split.counts$iterations[case=="empirical"])+
+        data=splits.list$iterations[case=="empirical"])+
       geom_text(aes(
         x, y,
         label=label,
         color=case),
         hjust=1,
-        data=split.counts$totals)+
+        data=splits.list$totals)+
       scale_color_manual(
         values=binsegRcpp::case.colors,
         guide="none")+
