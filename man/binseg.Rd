@@ -13,7 +13,7 @@ single model in log-linear time, using coef method.}
     position.vec = seq_along(data.vec), 
     weight.vec = rep(1, 
         length(data.vec)), 
-    min.segment.length = 1L, 
+    min.segment.length = NULL, 
     container.str = "multiset")}
 \arguments{
   \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_info}} to see
@@ -28,7 +28,8 @@ set, default=all FALSE (no validation set).}
   \item{position.vec}{integer vector of positions at which data are measured,
 default=1:length(\code{data.vec}).}
   \item{weight.vec}{Numeric vector of non-negative weights for each data point.}
-  \item{min.segment.length}{Integer, minimum number of data points per segment.}
+  \item{min.segment.length}{Positive integer, minimum number of data points per
+segment. Default NULL means to use min given \code{distribution.str}.}
   \item{container.str}{C++ container to use for storing breakpoints/cost. Most users
 should leave this at the default "multiset" for efficiency but you
 could use "list" if you want to study the time complexity of a
@@ -52,9 +53,9 @@ for equal splits and worst case O(N K) time for unequal
 splits. For l1/laplace distributions the best case is O(N log N
 log K) time for equal splits and worst case is O(N log N K) time
 for unequal splits.}
-\value{list of class binsegRcpp with elements \code{distribution.str},
-param.names, subtrain.borders and splits, which is a data.table
-with columns:
+\value{list of class binsegRcpp with elements \code{min.segment.length},
+\code{distribution.str}, param.names, subtrain.borders and splits, which
+is a data.table with columns:
 \item{segments}{number of segments}
 \item{loss}{subtrain loss}
 \item{validation.loss}{validation loss}
