@@ -407,3 +407,8 @@ test_that("empirical splits not negative", {
   esplits <- clist$iterations[case=="empirical", splits]
   expect_equal(esplits, c(5,2,0,0))
 })
+
+test_that("l1 loss chooses even split if equal loss", {
+  fit <- binsegRcpp::binseg("l1", 1:8, max.segments=2L)
+  expect_equal(fit$splits$end, c(8,4))
+})

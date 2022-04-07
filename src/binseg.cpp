@@ -2,6 +2,25 @@
 #include "binseg.h"
 #include "PiecewiseFunction.h"
 
+Split::Split() {}
+
+Split::Split(int first, int end, int last){
+  // first=1, last=4, possible end values are 1-3, 2 is best.
+  this_end = end;
+  int dist_first = end-first;
+  int dist_last = last-end-1;
+  dist_from_edges = (dist_first < dist_last) ? dist_first : dist_last;
+}
+
+void Split::maybe_update(Split &candidate){
+  double loss_diff = get_loss() - candidate.get_loss();
+  bool bigger_dist = 
+    loss_diff == 0 && dist_from_edges < candidate.dist_from_edges;
+  if(loss_diff > 0 || bigger_dist){
+    *this = candidate;
+  }
+}
+
 void Set::set_max_zero_var(void){
   max_zero_var = dist_ptr->get_max_zero_var(*this);
 }
@@ -55,8 +74,7 @@ public:
    int first_candidate, int last_candidate){
     Split best_split;
     for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
-      Split candidate_split;
-      candidate_split.this_end = candidate;
+      Split candidate_split(first_data, candidate, last_data);
       //CumDistribution::estimate_params is O(1) so get_best_split is
       //linear in the number of candidates.
       candidate_split.before = estimate_params
@@ -203,8 +221,7 @@ class absDistribution : public Distribution {
     Split best_split;
     for(int before_i=0; before_i<n_candidates; before_i++){
       int after_i = n_candidates-1-before_i;
-      Split candidate_split;
-      candidate_split.this_end = first_candidate+before_i;
+      Split candidate_split(first_data, first_candidate+before_i, last_data);
       candidate_split.before.param_map["median"] = before_median_vec[before_i];
       candidate_split.after.param_map["median"] = after_median_vec[after_i];
       candidate_split.before.param_map["scale"] =

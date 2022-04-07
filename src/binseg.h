@@ -35,15 +35,14 @@ public:
 class Split {
 public:
   int this_end;//index of last data point on the first/before segment.
+  int dist_from_edges;
   ParamsLoss before, after;
   double get_loss(void) const {
     return before.loss + after.loss;
   }
-  void maybe_update(Split &candidate) {
-    if(candidate.get_loss() < get_loss()){
-      *this = candidate;
-    }
-  }
+  Split(int,int,int);
+  Split();
+  void maybe_update(Split &candidate);
 };
 
 // This class computes and stores a cumsum that we need to compute the
