@@ -430,3 +430,21 @@ test_that("l1 loss chooses even splits after storage", {
   expected.rev <- c(16,12,4,8,2,10)
   expect_equal(sort(fit.rev$splits$end), sort(expected.rev))
 })
+
+test_that("poisson split is not in middle", {
+  N.max <- 8
+  data.vec <- 1:N.max
+  fit <- binsegRcpp::binseg("poisson", data.vec, max.segments=2L)
+  seg <- function(first,last){
+    sdata <- data.vec[first:last]
+    ploss(sdata, mean(sdata))
+  }
+  two.segs <- function(end){
+    sum(c(seg(1,end),seg(end+1,N.max)))
+  }
+  loss.vec <- sapply(1:7, two.segs)
+  expected.loss <- c(seg(1,N.max),min(loss.vec))
+  expect_equal(fit$splits$loss, expected.loss)
+  expected.end <- c(N.max,which.min(loss.vec))
+  expect_equal(fit$splits$end, expected.end)
+})
