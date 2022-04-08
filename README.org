@@ -94,7 +94,7 @@ Demo of change in mean and variance for normal distribution:
 Other implementations of binary segmentation include
 [[https://github.com/rkillick/changepoint/][changepoint::cpt.mean(method="BinSeg")]] (quadratic storage in max
 number of segments), [[https://github.com/diego-urgell/BinSeg][BinSeg::BinSegModel()]] (same linear storage as
-binsegRcpp), and [[https://github.com/deepcharles/ruptures][ruptures.Binseg()]] (unknown storage).
+binsegRcpp), and [[https://github.com/deepcharles/ruptures][ruptures.Binseg()]] (unknown storage). [[https://github.com/tdhock/binseg-model-selection][Figures comparing the timings]].
 
 This version uses the [[http://www.rcpp.org/][Rcpp]]/.Call interface whereas the [[https://github.com/tdhock/binseg][binseg]] package
 uses the .C interface.
