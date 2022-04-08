@@ -409,7 +409,17 @@ test_that("empirical splits not negative", {
 })
 
 test_that("l1 loss chooses even split if equal loss", {
-  fit <- binsegRcpp::binseg("l1", 1:8, max.segments=2L)
+  N.max <- 8
+  data.vec <- 1:N.max
+  seg <- function(first,last){
+    sdata <- data.vec[first:last]
+    sum(abs(median(sdata)-sdata))
+  }
+  two.segs <- function(end){
+    sum(c(seg(1,end),seg(end+1,N.max)))
+  }
+  sapply(seq(1,N.max-1), two.segs)
+  fit <- binsegRcpp::binseg("l1", data.vec, max.segments=2L)
   expect_equal(fit$splits$end, c(8,4))
 })
 
