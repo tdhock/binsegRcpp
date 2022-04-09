@@ -448,3 +448,18 @@ test_that("poisson split is not in middle", {
   expected.end <- c(N.max,which.min(loss.vec))
   expect_equal(fit$splits$end, expected.end)
 })
+
+test_that("max_segs=N/2 possible for N=2^10", {
+  N.data <- 2^10 #does not work for 2^19, max_zero_var too large.
+  data.vec <- as.numeric(1:N.data)
+  cum.data <- cumsum(data.vec)
+  cum.squares <- cumsum(data.vec^2)
+  mu <- data.vec
+  v <- data.vec^2 + data.vec*(data.vec-2*data.vec)
+  fit <- binsegRcpp::binseg("meanvar_norm",data.vec)
+  max.segs <- fit$splits[.N, segments]
+  seg.dt <- coef(fit, max.segs)
+  seg.dt[, n.data := end-start+1]
+  table(seg.dt$n.data)
+  expect_equal(nrow(fit$splits), N.data/2)
+})

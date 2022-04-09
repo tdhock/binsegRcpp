@@ -1,4 +1,3 @@
-#include <R.h> 
 #include "binseg.h"
 #include "PiecewiseFunction.h"
 
@@ -103,7 +102,7 @@ public:
     ploss.param_map["mean"] =
       subtrain.total_weighted_data/subtrain.total_weights;
     ploss.param_map["var"]  =
-      subtrain.total_weighted_squares/subtrain.total_weights +
+      subtrain.total_weighted_squares/subtrain.total_weights + 
       ploss.param_map["mean"]*
       (ploss.param_map["mean"]-
        2*subtrain.total_weighted_data/subtrain.total_weights);
