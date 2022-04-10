@@ -31,31 +31,36 @@ get_complexity_extreme <- function
   )){
     stop("N.data must be integer, at least two")
   }
-  N.exp <- ceiling(log2(N.data))-1
+  if(N.data < min.segment.length){
+    stop("N.data must be at least min.segment.length")
+  }
+  N.exp <- ceiling(log2(N.data/(2*min.segment.length-1)))
   N.exp.seq <- seq(0, N.exp-1)
   divisor.seq <- 2^N.exp.seq
   smaller <- N.data %/% divisor.seq
   size.mat <- rbind(smaller+1, smaller)
   times.larger <- N.data %% divisor.seq
-  times.smaller <- ifelse(
-    smaller==1, 0, divisor.seq-times.larger)
+  times.smaller <- divisor.seq-times.larger
   times.mat <- rbind(times.larger, times.smaller)
+  times.mat[size.mat < min.segment.length*2] <- 0
   size.before.split <- rep(size.mat, times.mat)
   smaller.size.after <- size.before.split %/% 2
   other.size.after <- smaller.size.after + size.before.split %% 2
   first.splits <- size_to_splits(N.data,min.segment.length)
-  some.best.splits <- c(
+  best.splits <- c(
     first.splits,
     size_to_splits(smaller.size.after,min.segment.length)+
     size_to_splits(other.size.after,min.segment.length))
-  worst.splits <- c(seq(first.splits, 1, by=-min.segment.length), 0)
-  segments <- seq_along(worst.splits)
-  best.splits <- some.best.splits[segments]
-  best.splits[is.na(best.splits)] <- 0
+  worst.splits <- c(
+    if(1 <= first.splits)seq(first.splits, 1, by=-min.segment.length), 0)
   rbind(
-    data.table(case="best", segments, splits=best.splits),
     data.table(
-      case="worst", segments,
+      case="best", 
+      segments=seq_along(best.splits),
+      splits=best.splits),
+    data.table(
+      case="worst", 
+      segments=seq_along(worst.splits),
       splits=worst.splits))
 ### data.table with one row per model size, and column splits with
 ### number of splits to check after computing that model size. Column
@@ -71,16 +76,16 @@ size_to_splits <- function
   min.segment.length
 ### Minimum segment length, positive integer.
 ){
-  splits <- 1+size-min.segment.length*2
-  ifelse(splits<0, 0, splits)
-### Number of splits, integer.
+  splits <- 1L+size-min.segment.length*2L
+  ifelse(splits < 0, 0, splits)
+### Number of splits, integer. 
 }
 
 get_complexity_empirical <- function
 ### Get empirical split counts. This is a sub-routine of
 ### get_complexity, which should typically be used instead.
 (model.dt,
-### data.table from binseg_normal.
+### splits data table from binseg result list.
   min.segment.length=1L 
 ### Minimum segment length, positive integer.
 ){

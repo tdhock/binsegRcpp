@@ -58,6 +58,9 @@ binseg <- structure(function # Binary segmentation
     0<min.segment.length)){
     stop("min.segment.length must be a positive integer")
   }
+  if(length(data.vec) < min.segment.length){
+    stop("number of data must be at least min segment length")
+  }
   if(is.null(max.segments)){
     max.segments <- floor(sum(!is.validation.vec)/min.segment.length)
   }
