@@ -1,6 +1,8 @@
 TODOS
 
-re-order splits to show best case with max.segments < n.data?
+2022.4.10
+
+C++ best_splits method computes best case with max.segments < n.data.
 
 2022.4.6
 

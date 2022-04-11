@@ -10,6 +10,18 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// best_splits_interface
+Rcpp::DataFrame best_splits_interface(int n_data, int min_segment_length);
+RcppExport SEXP _binsegRcpp_best_splits_interface(SEXP n_dataSEXP, SEXP min_segment_lengthSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n_data(n_dataSEXP);
+    Rcpp::traits::input_parameter< int >::type min_segment_length(min_segment_lengthSEXP);
+    rcpp_result_gen = Rcpp::wrap(best_splits_interface(n_data, min_segment_length));
+    return rcpp_result_gen;
+END_RCPP
+}
 // get_distribution_info
 Rcpp::DataFrame get_distribution_info();
 RcppExport SEXP _binsegRcpp_get_distribution_info() {
@@ -40,6 +52,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_binsegRcpp_best_splits_interface", (DL_FUNC) &_binsegRcpp_best_splits_interface, 2},
     {"_binsegRcpp_get_distribution_info", (DL_FUNC) &_binsegRcpp_get_distribution_info, 0},
     {"_binsegRcpp_binseg_interface", (DL_FUNC) &_binsegRcpp_binseg_interface, 8},
     {NULL, NULL, 0}

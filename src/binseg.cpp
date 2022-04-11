@@ -362,8 +362,10 @@ Segment::Segment
  int first_data, int last_data,
  int first_candidate, int last_candidate,
  int invalidates_after, int invalidates_index,
- double loss_no_split, double validation_loss_no_split
+ double loss_no_split, double validation_loss_no_split,
+ int depth
  ): first_i(first_data), last_i(last_data),
+  depth(depth),
     invalidates_index(invalidates_index),
     invalidates_after(invalidates_after){
   best_split = subtrain.dist_ptr->get_best_split
@@ -525,7 +527,8 @@ public:
   void maybe_add
   (int first_data, int last_data,
    int invalidates_after, int invalidates_index,
-   double loss_no_split, double validation_loss_no_split
+   double loss_no_split, double validation_loss_no_split,
+   int depth
    ){
     int first_candidate = first_data + min_segment_length-1;
     int last_candidate = last_data - min_segment_length;
@@ -537,7 +540,8 @@ public:
 	 first_data, last_data,
          first_candidate, last_candidate,
 	 invalidates_after, invalidates_index,
-	 loss_no_split, validation_loss_no_split);
+	 loss_no_split, validation_loss_no_split,
+         depth+1);
       if(new_seg.best_decrease < INFINITY){
         container_ptr->insert(new_seg);
       }
@@ -549,19 +553,21 @@ class OutArrays {
 public:
   Distribution *dist_ptr;
   int max_segments;
-  int *seg_end, *before_size, *after_size,
+  int *seg_end, *depth, *before_size, *after_size,
     *invalidates_index, *invalidates_after;
   double *subtrain_loss, *validation_loss,
     *before_param_mat, *after_param_mat;
   OutArrays
   (Distribution *dist_ptr_, int max_segments_,
-   int *seg_end_, double *subtrain_loss_, double *validation_loss_,
+   int *seg_end_, int *depth_, 
+   double *subtrain_loss_, double *validation_loss_,
    double *before_param_mat_, double *after_param_mat_,
    int *before_size_, int *after_size_,
    int *invalidates_index_, int *invalidates_after_){
     dist_ptr = dist_ptr_;
     max_segments = max_segments_;
     seg_end = seg_end_;
+    depth = depth_;
     subtrain_loss = subtrain_loss_;
     validation_loss = validation_loss_;
     before_param_mat = before_param_mat_;
@@ -576,6 +582,7 @@ public:
    double subtrain_loss_value,
    double validation_loss_value,
    int seg_end_value,
+   int depth_value,
    const ParamsLoss &before_ploss,
    const ParamsLoss &after_ploss, 
    int invalidates_index_value,
@@ -586,6 +593,7 @@ public:
     subtrain_loss[seg_i] = subtrain_loss_value;
     validation_loss[seg_i] = validation_loss_value;
     seg_end[seg_i] = seg_end_value;
+    depth[seg_i] = depth_value;
     int param_i=0;
     for
       (param_names_type::iterator it=dist_ptr->param_names_vec.begin();
@@ -638,7 +646,8 @@ int binseg
  const char *distribution_str,
  const char *container_str,
  double *subtrain_borders, 
- int *seg_end, double *subtrain_loss, double *validation_loss,
+ int *seg_end, int *depth_vec,
+ double *subtrain_loss, double *validation_loss,
  double *before_param_mat, double *after_param_mat, 
  int *before_size, int *after_size,  
  int *invalidates_index, int *invalidates_after
@@ -660,7 +669,7 @@ int binseg
   }
   OutArrays out_arrays
     (dist_ptr, max_segments,
-     seg_end, subtrain_loss, validation_loss,
+     seg_end, depth_vec, subtrain_loss, validation_loss,
      before_param_mat, after_param_mat,
      before_size, after_size,
      invalidates_index, invalidates_after);
@@ -688,18 +697,20 @@ int binseg
      full_ploss.loss,
      dist_ptr->loss_for_params(V.validation, full_ploss, 0, n_subtrain-1),
      n_subtrain-1,
+     0,
      full_ploss,
      missing_ploss,
      -2, -2, n_subtrain, -2);
   // Add a segment and split to the set of candidates.
-  V.maybe_add(0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0]);
+  V.maybe_add
+    (0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0], 0);
   // initialize to infinite cost and missing values, which is
   // necessary when number of segments returned is less than
   // max_segments: infinite cost rows are removed from the resulting
   // splits table in the R code.
   for(int seg_i=1; seg_i < max_segments; seg_i++){
     out_arrays.save
-      (seg_i, INFINITY, INFINITY, -2,
+      (seg_i, INFINITY, INFINITY, -2, -2,
        missing_ploss, missing_ploss, -2, -2, -2, -2);
   }
   // Loop over splits. During each iteration we find the Segment/split
@@ -715,6 +726,7 @@ int binseg
        subtrain_loss[seg_i-1] + seg_ptr->best_decrease,
        validation_loss[seg_i-1] + seg_ptr->validation_decrease,
        seg_ptr->best_split.this_end,
+       seg_ptr->depth,
        seg_ptr->best_split.before,
        seg_ptr->best_split.after,
        seg_ptr->invalidates_index,
@@ -726,12 +738,14 @@ int binseg
       (seg_ptr->first_i, seg_ptr->best_split.this_end,
        0,//invalidates_after=0 => before_mean invalidated.
        seg_i, seg_ptr->best_split.before.loss,
-       seg_ptr->before_validation_loss);
+       seg_ptr->before_validation_loss,
+       seg_ptr->depth);
     V.maybe_add
       (seg_ptr->best_split.this_end+1, seg_ptr->last_i,
        1,//invalidates_after=1 => after_mean invalidated.
        seg_i, seg_ptr->best_split.after.loss,
-       seg_ptr->after_validation_loss);
+       seg_ptr->after_validation_loss,
+       seg_ptr->depth);
     // Erase at end because we need seg_ptr->values during maybe_add
     // inserts above.
     V.container_ptr->remove_best();

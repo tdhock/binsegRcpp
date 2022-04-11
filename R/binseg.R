@@ -102,6 +102,7 @@ binseg <- structure(function # Binary segmentation
       loss,##<< subtrain loss
       validation.loss,##<< validation loss
       end=end+1L,##<< index of last data point per segment
+      depth=depth,##<< number of splits to reach segment
       before=before.param.mat,##<< params before changepoint
       after=ifelse(after.param.mat==Inf, NA, after.param.mat),##<< params after changepoint
       before.size,##<< number of data before changepoint

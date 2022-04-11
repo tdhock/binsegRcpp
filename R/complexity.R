@@ -26,10 +26,9 @@ get_complexity_extreme <- function
   if(!all(
     is.integer(N.data),
     length(N.data)==1,
-    is.finite(N.data),
-    N.data >= 2
+    is.finite(N.data)
   )){
-    stop("N.data must be integer, at least two")
+    stop("N.data must be finite integer")
   }
   if(N.data < min.segment.length){
     stop("N.data must be at least min.segment.length")
@@ -53,15 +52,18 @@ get_complexity_extreme <- function
     size_to_splits(other.size.after,min.segment.length))
   worst.splits <- c(
     if(1 <= first.splits)seq(first.splits, 1, by=-min.segment.length), 0)
+  best.df <- best_splits_interface(N.data, min.segment.length)
+  best.dt <- data.table(best.df)[splits >= 0]
   rbind(
     data.table(
       case="best", 
-      segments=seq_along(best.splits),
-      splits=best.splits),
+      segments=1:nrow(best.dt),
+      best.dt),
     data.table(
       case="worst", 
       segments=seq_along(worst.splits),
-      splits=worst.splits))
+      splits=worst.splits,
+      depth=seq(0, length(worst.splits)-1)))
 ### data.table with one row per model size, and column splits with
 ### number of splits to check after computing that model size. Column
 ### case has values best (equal segment sizes, min splits to check)
@@ -95,7 +97,8 @@ get_complexity_empirical <- function
     splits=size_to_splits(before.size,min.segment.length)+ifelse(
       is.na(after.size),
       0,
-      size_to_splits(after.size,min.segment.length))))
+      size_to_splits(after.size,min.segment.length)),
+    depth))
 ### data.table with one row per model size, and column splits with
 ### number of splits to check after computing that model size.
 }

@@ -94,14 +94,14 @@ int binseg
  const char *distribution_str,
  const char *container_str,
  double *pos_end,
- int *seg_end, double *loss, double *validation_loss,
+ int *seg_end, int *depth, double *loss, double *validation_loss,
  double *before_mean, double *after_mean,
  int *, int *,
  int *invalidates_index, int *invalidates_before);
 
 class Segment {
 public:
-  int first_i, last_i;
+  int first_i, last_i, depth = -1;
   int invalidates_index, invalidates_after;
   double best_decrease, validation_decrease;
   double before_validation_loss, after_validation_loss;
@@ -121,7 +121,8 @@ public:
    int first_data, int last_data,
    int first_candidate, int last_candidate,
    int invalidates_after, int invalidates_index,
-   double loss_no_split, double validation_loss_no_split
+   double loss_no_split, double validation_loss_no_split,
+   int depth
    );
 };
 

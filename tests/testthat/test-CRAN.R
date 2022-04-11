@@ -28,7 +28,7 @@ test_that("error for 0 data", {
   x <- double()
   expect_error({
     binsegRcpp::binseg_normal(x, 5L)
-  }, "need at least one data point")
+  }, "number of data must be at least min segment length")
 })
 
 test_that("error for 0 segments", {
@@ -489,7 +489,7 @@ test_that("extreme counts correct", {
     expect_equal(dt[case=="worst", splits], worst)
   }
   expect_best_worst(3, 1, c(2,1,0), c(2,1,0))
-  expect_best_worst(5, 1, c(4,3,1,0,0), c(4,3,2,1,0))
+  expect_best_worst(5, 1, c(4,3,0,1,0), c(4,3,2,1,0))
   expect_best_worst(6, 2, c(3,0), c(3,1,0))
   expect_best_worst(7, 2, c(4,1,0), c(4,2,0))
   expect_best_worst(8, 2, c(5,2,0,0), c(5,3,1,0))
@@ -498,5 +498,5 @@ test_that("extreme counts correct", {
   expect_best_worst(10, 3, c(5, 0), c(5, 2, 0))
   expect_best_worst(19, 3, c(14, 9, 0, 0), c(14, 11, 8, 5, 2, 0))
   expect_best_worst(20, 3, c(15, 10, 0, 0), c(15, 12, 9, 6, 3, 0))
-  expect_best_worst(21, 3, c(16, 11, 1, 0, 0), c(16, 13, 10, 7, 4, 1, 0))
+  expect_best_worst(21, 3, c(16, 11, 0, 1, 0), c(16, 13, 10, 7, 4, 1, 0))
 })
