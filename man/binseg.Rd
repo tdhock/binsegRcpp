@@ -60,6 +60,7 @@ is a data.table with columns:
 \item{loss}{subtrain loss}
 \item{validation.loss}{validation loss}
 \item{end}{index of last data point per segment}
+\item{depth}{number of splits to reach segment}
 \item{before}{params before changepoint}
 \item{after}{params after changepoint}
 \item{before.size}{number of data before changepoint}

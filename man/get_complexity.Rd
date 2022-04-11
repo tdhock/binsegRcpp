@@ -25,27 +25,34 @@ total number of splits for each case. }
 \examples{
 
 ## Example 1: empirical=worst case.
-data.vec <- rep(0:1, l=10)
+data.vec <- rep(0:1, l=8)
 plot(data.vec)
 bs.model <- binsegRcpp::binseg_normal(data.vec)
 split.counts <- binsegRcpp::get_complexity(bs.model)
 plot(split.counts)
 
-## Example 2: empirical=best case.
-data.vec <- 1:20
+## Example 2: empirical=best case for full path.
+data.vec <- 1:8
 plot(data.vec)
 bs.model <- binsegRcpp::binseg_normal(data.vec)
 split.counts <- binsegRcpp::get_complexity(bs.model)
 plot(split.counts)
 
-## Example 3: empirical case between best/worst.
+## Example 3: empirical=best case for all partial paths.
+data.vec <- c(0,3,6,10,21,22,23,24)
+plot(data.vec)
+bs.model <- binsegRcpp::binseg_normal(data.vec)
+split.counts <- binsegRcpp::get_complexity(bs.model)
+plot(split.counts)
+
+## Example 4: empirical case between best/worst.
 data.vec <- rep(c(0,1,10,11),8)
 plot(data.vec)
 m.model <- binsegRcpp::binseg_normal(data.vec)
 m.splits <- binsegRcpp::get_complexity(m.model)
 plot(m.splits)
 
-## Example 4: worst case for normal change in mean and variance
+## Example 5: worst case for normal change in mean and variance
 ## model.
 mv.model <- binsegRcpp::binseg("meanvar_norm", data.vec)
 mv.splits <- binsegRcpp::get_complexity(mv.model)

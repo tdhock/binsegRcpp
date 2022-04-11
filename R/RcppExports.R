@@ -5,14 +5,14 @@ best_splits_interface <- function(n_data, min_segment_length) {
     .Call(`_binsegRcpp_best_splits_interface`, n_data, min_segment_length)
 }
 
-#' Compute a data.frame with one row for each distribution
-#' implemented in the C++ code, and columns distribution.str,
-#' parameters, description.
+### Compute a data.frame with one row for each distribution
+### implemented in the C++ code, and columns distribution.str,
+### parameters, description.
 get_distribution_info <- function() {
     .Call(`_binsegRcpp_get_distribution_info`)
 }
 
-#' Low-level interface to binary segmentation algorithm.
+### Low-level interface to binary segmentation algorithm.
 binseg_interface <- function(data_vec, weight_vec, max_segments, min_segment_length, distribution_str, container_str, is_validation_vec, position_vec) {
     .Call(`_binsegRcpp_binseg_interface`, data_vec, weight_vec, max_segments, min_segment_length, distribution_str, container_str, is_validation_vec, position_vec)
 }

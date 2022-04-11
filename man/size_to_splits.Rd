@@ -10,7 +10,7 @@ during the optimization.}
   \item{min.segment.length}{Minimum segment length, positive integer.}
 }
 
-\value{Number of splits, integer.}
+\value{Number of splits, integer. }
 
 \author{Toby Dylan Hocking}
 
