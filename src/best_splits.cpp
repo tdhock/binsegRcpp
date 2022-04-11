@@ -1,11 +1,19 @@
+#include <R.h>
 #include "best_splits.h"
+#include <cmath> //log2
 #define SIZE2SPLITS(SIZE) ( ((SIZE) < min_segment_length*2) ? 0 : (1+(SIZE)-min_segment_length*2) )
 
 Splitter::Splitter
 (int n_data_, int min_segment_length_){
   n_data = n_data_;
   min_segment_length = min_segment_length_;
-  max_segments = n_data/min_segment_length;
+  double base = 2*min_segment_length-1;
+  double full_depth = floor(log2((double)n_data/base));
+  double full_splits = pow(2, full_depth);
+  double maybe_too_many = n_data - base * full_splits;
+  double terminal_splits =
+    (maybe_too_many > full_splits) ? full_splits : maybe_too_many;
+  max_segments = full_splits + terminal_splits;
 }
 
 int Splitter::best_splits(int *out_splits_, int *out_depth_){
@@ -18,10 +26,6 @@ int Splitter::best_splits(int *out_splits_, int *out_depth_){
   if(0 < max_segments){
     out_splits = out_splits_;
     out_depth = out_depth_;
-    out_index=0;
-    for(int seg_i=0; seg_i < max_segments; seg_i++){
-      write_splits_depth(-1, -1);
-    }
     out_index=0;
     children(n_data, 0, 0);
   }

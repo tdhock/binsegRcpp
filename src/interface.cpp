@@ -2,6 +2,9 @@
 #include "best_splits.h"
 #include "binseg.h"
 
+//' Compute a data.frame with one row for each segment, and columns
+//' splits and depth, number/depth of candidate splits that need to be
+//' computed after splitting that segment.
 // [[Rcpp::export]]
 Rcpp::DataFrame best_splits_interface
 (int n_data, int min_segment_length){

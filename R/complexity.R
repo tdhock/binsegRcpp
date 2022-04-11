@@ -33,32 +33,15 @@ get_complexity_extreme <- function
   if(N.data < min.segment.length){
     stop("N.data must be at least min.segment.length")
   }
-  N.exp <- ceiling(log2(N.data/(2*min.segment.length-1)))
-  N.exp.seq <- seq(0, N.exp-1)
-  divisor.seq <- 2^N.exp.seq
-  smaller <- N.data %/% divisor.seq
-  size.mat <- rbind(smaller+1, smaller)
-  times.larger <- N.data %% divisor.seq
-  times.smaller <- divisor.seq-times.larger
-  times.mat <- rbind(times.larger, times.smaller)
-  times.mat[size.mat < min.segment.length*2] <- 0
-  size.before.split <- rep(size.mat, times.mat)
-  smaller.size.after <- size.before.split %/% 2
-  other.size.after <- smaller.size.after + size.before.split %% 2
   first.splits <- size_to_splits(N.data,min.segment.length)
-  best.splits <- c(
-    first.splits,
-    size_to_splits(smaller.size.after,min.segment.length)+
-    size_to_splits(other.size.after,min.segment.length))
   worst.splits <- c(
     if(1 <= first.splits)seq(first.splits, 1, by=-min.segment.length), 0)
   best.df <- best_splits_interface(N.data, min.segment.length)
-  best.dt <- data.table(best.df)[splits >= 0]
   rbind(
     data.table(
       case="best", 
-      segments=1:nrow(best.dt),
-      best.dt),
+      segments=1:nrow(best.df),
+      best.df),
     data.table(
       case="worst", 
       segments=seq_along(worst.splits),

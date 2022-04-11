@@ -499,4 +499,5 @@ test_that("extreme counts correct", {
   expect_best_worst(19, 3, c(14, 9, 0, 0), c(14, 11, 8, 5, 2, 0))
   expect_best_worst(20, 3, c(15, 10, 0, 0), c(15, 12, 9, 6, 3, 0))
   expect_best_worst(21, 3, c(16, 11, 0, 1, 0), c(16, 13, 10, 7, 4, 1, 0))
+  base <- 3*2-1;N <- 3:7;k <- floor(log2(N/base));split.up.to.k <- 2^k;N.after <- N-base*split.up.to.k;extra=ifelse(N.after>split.up.to.k, split.up.to.k, N.after);data.frame(N, k, split.up.to.k, N.after, extra,total=extra+split.up.to.k)
 })
