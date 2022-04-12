@@ -49,7 +49,7 @@ plot(best.counts)
 if(require("ggplot2")){
   library(data.table)
   splits.list <- list()
-  for(data.type in names(m.splits)){
+  for(data.type in names(worst.counts)){
     splits.list[[data.type]] <- rbind(
       data.table(data="worst", worst.counts[[data.type]]),
       data.table(data="best always", best.counts[[data.type]]),
