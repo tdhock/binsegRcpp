@@ -111,6 +111,7 @@ get_complexity <- structure(function
   iterations <- rbind(
     extreme.dt[segments <= max.segs],
     get_complexity_empirical(model.dt, models$min.segment.length))
+  iterations[, cum.splits := cumsum(splits), by=case]
   totals <- iterations[names(case.colors), .(
     x=n.data,
     splits=sum(splits)
@@ -130,23 +131,49 @@ get_complexity <- structure(function
   ## Example 1: empirical=worst case.
   data.vec <- rep(0:1, l=8)
   plot(data.vec)
-  bs.model <- binsegRcpp::binseg_normal(data.vec)
-  split.counts <- binsegRcpp::get_complexity(bs.model)
-  plot(split.counts)
+  worst.model <- binsegRcpp::binseg_normal(data.vec)
+  worst.counts <- binsegRcpp::get_complexity(worst.model)
+  plot(worst.counts)
 
   ## Example 2: empirical=best case for full path.
   data.vec <- 1:8
   plot(data.vec)
-  bs.model <- binsegRcpp::binseg_normal(data.vec)
-  split.counts <- binsegRcpp::get_complexity(bs.model)
-  plot(split.counts)
+  full.model <- binsegRcpp::binseg_normal(data.vec)
+  full.counts <- binsegRcpp::get_complexity(full.model)
+  plot(full.counts)
 
   ## Example 3: empirical=best case for all partial paths.
   data.vec <- c(0,3,6,10,21,22,23,24)
   plot(data.vec)
-  bs.model <- binsegRcpp::binseg_normal(data.vec)
-  split.counts <- binsegRcpp::get_complexity(bs.model)
-  plot(split.counts)
+  best.model <- binsegRcpp::binseg_normal(data.vec)
+  best.counts <- binsegRcpp::get_complexity(best.model)
+  plot(best.counts)
+
+  ## ggplot comparing examples 1-3.
+  if(require("ggplot2")){
+    library(data.table)
+    splits.list <- list()
+    for(data.type in names(m.splits)){
+      splits.list[[data.type]] <- rbind(
+        data.table(data="worst", worst.counts[[data.type]]),
+        data.table(data="best always", best.counts[[data.type]]),
+        data.table(data="best full", full.counts[[data.type]]))
+    }
+    ggplot()+
+      facet_grid(data ~ .)+
+      geom_line(aes(
+        segments, cum.splits, color=case, size=case),
+        data=splits.list$iterations[case!="empirical"])+
+      geom_point(aes(
+        segments, cum.splits, color=case),
+        data=splits.list$iterations[case=="empirical"])+
+      scale_color_manual(
+        values=binsegRcpp::case.colors,
+        breaks=names(binsegRcpp::case.colors))+
+      scale_size_manual(
+        values=binsegRcpp::case.sizes,
+        guide="none")
+  }
 
   ## Example 4: empirical case between best/worst.
   data.vec <- rep(c(0,1,10,11),8)
@@ -161,7 +188,7 @@ get_complexity <- structure(function
   mv.splits <- binsegRcpp::get_complexity(mv.model)
   plot(mv.splits)
 
-  ## Compare the two models using ggplot2.
+  ## Compare examples 4-5 using ggplot2.
   if(require("ggplot2")){
     library(data.table)
     splits.list <- list()
@@ -187,6 +214,31 @@ get_complexity <- structure(function
       scale_color_manual(
         values=binsegRcpp::case.colors,
         guide="none")+
+      scale_size_manual(
+        values=binsegRcpp::case.sizes,
+        guide="none")
+  }
+
+  ## Compare cumsums.
+  if(require("ggplot2")){
+    library(data.table)
+    splits.list <- list()
+    for(data.type in names(m.splits)){
+      splits.list[[data.type]] <- rbind(
+        data.table(model="mean and variance", mv.splits[[data.type]]),
+        data.table(model="mean only", m.splits[[data.type]]))
+    }
+    ggplot()+
+      facet_grid(model ~ .)+
+      geom_line(aes(
+        segments, cum.splits, color=case, size=case),
+        data=splits.list$iterations[case!="empirical"])+
+      geom_point(aes(
+        segments, cum.splits, color=case),
+        data=splits.list$iterations[case=="empirical"])+
+      scale_color_manual(
+        values=binsegRcpp::case.colors,
+        breaks=names(binsegRcpp::case.colors))+
       scale_size_manual(
         values=binsegRcpp::case.sizes,
         guide="none")
