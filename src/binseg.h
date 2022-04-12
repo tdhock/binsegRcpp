@@ -89,7 +89,7 @@ int get_n_subtrain(const int, const int*);
 
 int binseg 
 (const double *data_vec, const double *weight_vec,
- const int n_data, const int max_segments, const int min_segment_length,
+ const int n_data, const int n_segments, const int min_segment_length,
  const int *is_validation_vec, const double *position_vec,
  const char *distribution_str,
  const char *container_str,

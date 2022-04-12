@@ -481,21 +481,30 @@ test_that("error when number of data smaller than min segment length", {
 })
 
 test_that("extreme counts correct", {
-  expect_best_worst <- function(N.data, max.seg.len, best, worst){
+  expect_best_worst <- function(N.data, min.seg.len, n.segments, best, worst){
+    print(binsegRcpp:::best_splits_interface(
+      as.integer(N.data), 
+      as.integer(min.seg.len),
+      as.integer(n.segments)))
     dt <- binsegRcpp::get_complexity_extreme(
       as.integer(N.data), 
-      as.integer(max.seg.len))
+      as.integer(min.seg.len),
+      as.integer(n.segments))
     expect_equal(dt[case=="best", splits], best)
     expect_equal(dt[case=="worst", splits], worst)
   }
-  expect_best_worst(3, 1, c(2,1,0), c(2,1,0))
-  expect_best_worst(5, 1, c(4,3,0,1,0), c(4,3,2,1,0))
-  expect_best_worst(6, 2, c(3,0), c(3,1,0))
-  expect_best_worst(7, 2, c(4,1,0), c(4,2,0))
+  expect_best_worst(3, 1, 3, c(2,1,0), c(2,1,0))
+  expect_best_worst(5, 1, 5, c(4,3,0,0,0), c(4,3,2,1,0))
+  expect_best_worst(6, 2, 2, c(3,0), c(3,1))
+  expect_best_worst(6, 2, 3, c(3,1,0), c(3,1,0))
+  expect_best_worst(7, 2, 3, c(4,1,0), c(4,2,0))
   expect_best_worst(8, 2, c(5,2,0,0), c(5,3,1,0))
   expect_best_worst(4, 3, 0, 0)
   expect_best_worst(9, 3, c(4, 0), c(4, 1, 0))
-  expect_best_worst(10, 3, c(5, 0), c(5, 2, 0))
+  expect_best_worst(10, 3, 2, c(5,0), c(5,2))
+  expect_best_worst(10, 3, 3, c(5,1,0), c(5,2,0))
+  expect_best_worst(11, 3, 2, c(6,1), c(6,3))
+  expect_best_worst(11, 3, 3, c(6,1,0), c(6,3,0))
   expect_best_worst(19, 3, c(14, 9, 0, 0), c(14, 11, 8, 5, 2, 0))
   expect_best_worst(20, 3, c(15, 10, 0, 0), c(15, 12, 9, 6, 3, 0))
   expect_best_worst(21, 3, c(16, 11, 0, 1, 0), c(16, 13, 10, 7, 4, 1, 0))

@@ -7,16 +7,19 @@
 //' computed after splitting that segment.
 // [[Rcpp::export]]
 Rcpp::DataFrame best_splits_interface
-(int n_data, int min_segment_length){
-  Splitter splitter(n_data, min_segment_length);
-  Rcpp::IntegerVector splits_vec(splitter.max_segments);
-  Rcpp::IntegerVector depth_vec(splitter.max_segments);
+(int n_data, int min_segment_length, int max_segments){
+  Splitter splitter(n_data, min_segment_length, max_segments);
+  Rcpp::IntegerVector splits_vec(max_segments);
+  Rcpp::IntegerVector depth_vec(max_segments);
   int status = splitter.best_splits(&splits_vec[0], &depth_vec[0]);
   if(status == ERROR_BEST_SPLITS_N_DATA_MUST_BE_AT_LEAST_MIN_SEGMENT_LENGTH){
     Rcpp::stop("n_data must be at least min_segment_length");
   }
   if(status == ERROR_BEST_SPLITS_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE){
-    Rcpp::stop("min_segment_length_must_be_positive");
+    Rcpp::stop("min_segment_length must be positive");
+  }
+  if(status == ERROR_BEST_SPLITS_N_SEGMENTS_TOO_LARGE){
+    Rcpp::stop("n_segments too large");
   }
   return Rcpp::DataFrame::create
     (Rcpp::Named("splits", splits_vec),

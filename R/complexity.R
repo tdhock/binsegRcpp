@@ -19,9 +19,11 @@ plot.complexity <- function
 get_complexity_extreme <- function
 ### Compute best and worst case number of splits.
 (N.data,
-### number of data to segment.
-  min.segment.length=1L
+### number of data to segment, positive integer.
+  min.segment.length=1L,
 ### minimum segment length, positive integer.
+  n.segments=N.data %/% min.segment.length
+### number of segments, positive integer.
 ){
   if(!all(
     is.integer(N.data),
@@ -35,8 +37,9 @@ get_complexity_extreme <- function
   }
   first.splits <- size_to_splits(N.data,min.segment.length)
   worst.splits <- c(
-    if(1 <= first.splits)seq(first.splits, 1, by=-min.segment.length), 0)
-  best.df <- best_splits_interface(N.data, min.segment.length)
+    if(1 <= first.splits)seq(first.splits, 1, by=-min.segment.length),
+    0)[1:n.segments]
+  best.df <- best_splits_interface(N.data, min.segment.length, n.segments)
   rbind(
     data.table(
       case="best", 
@@ -107,7 +110,8 @@ get_complexity <- structure(function
   model.dt <- models$splits
   n.data <- model.dt[segments==1, end]
   max.segs <- max(model.dt$segments)
-  extreme.dt <- get_complexity_extreme(n.data, models$min.segment.length)
+  extreme.dt <- get_complexity_extreme(
+    n.data, models$min.segment.length, max.segs)
   iterations <- rbind(
     extreme.dt[segments <= max.segs],
     get_complexity_empirical(model.dt, models$min.segment.length))
