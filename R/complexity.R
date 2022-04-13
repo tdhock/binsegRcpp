@@ -16,6 +16,79 @@ plot.complexity <- function
   with(x$totals, text(x, y, label, col=case.colors[case], adj=c(1,1)))
 }
 
+get_tree_extreme <- function
+### Dynamic programming for computing lower bound on number of split
+### candidates to compute / best case of binary segmentation.
+(N.data,
+### positive integer number of data.
+  min.segment.length=1L,
+### positive integer min segment length.
+  n.segments=N.data %/% min.segment.length
+### positive integer number of segments.
+){
+  node.dt.list <- list()
+  N.changes <- n.segments-1L
+  f.dt <- data.table(d=0:N.changes)[, data.table(
+    s=if(N.changes==d)N.data else
+      seq(min.segment.length*(d+1), N.data-min.segment.length*(N.changes-d))
+  ), by=d]
+  setkey(f.dt, d, s)
+  g <- function(size)size_to_splits(size,min.segment.length)
+  for(d.value in 0:N.changes){
+    out.dt <- f.dt[J(d.value)]
+    out.g <- g(out.dt$s)
+    out.f <- if(d.value==0) 0 else {
+      cost.dt <- data.table(d.under=seq(0, floor((d.value-1)/2)))[, {
+        d.over <- d.value-d.under-1
+        data.table(s.out=out.dt$s)[, {
+          seq.end <- min(
+            if(d.over == d.under)floor(s.out/2),
+            s.out+(d.under-d.value)*min.segment.length)
+          seq.start <- (d.under+1)*min.segment.length
+          data.table(d.over, s.under=seq.start:seq.end)
+        }, by=s.out]
+      }, by=d.under]
+      cost.dt[, s.over := s.out - s.under]
+      cost.dt[, f.over := f.dt[J(d.over, s.over)]$f]
+      cost.dt[, f.under := f.dt[J(d.under, s.under)]$f]
+      cost.dt[, f := f.under+f.over]
+      cost.dt[, .(s.under,d.under,f,s.over,d.over)]
+      best.cost <- cost.dt[out.dt, {
+        min.rows <- .SD[f==min(f)]
+        min.rows[.N]#more balanced at end.
+      }, keyby=.EACHI, on=.(s.out=s)]
+      f.dt[out.dt, `:=`(
+        s1=best.cost$s.under, d1=best.cost$d.under,
+        s2=best.cost$s.over, d2=best.cost$d.over)]
+      best.cost$f
+    }
+    f.dt[out.dt, f := out.f+out.g]
+  }
+  ##decoding.
+  level <- 0
+  new.id <- 1
+  new.nodes <- data.table(
+    f.dt[.N, .(d,s,parent.x=NA,parent.y=NA,parent=0)])
+  while(nrow(new.nodes)){
+    node.info <- f.dt[new.nodes][order(parent.x,s)]
+    node.info[, id := seq(new.id, new.id+.N-1)]
+    node.info[, ord := 1:.N]
+    node.info[, y := -level]
+    node.info[, x := ord-(.N+1)/2]
+    new.id <- node.info[.N, new.id+1]
+    node.dt.list[[paste(n.segments, level)]] <- 
+      node.info[, data.table(
+        n.segments, level,ord,id,d,s,x,y,
+        parent.x,parent.y,parent)]
+    level <- level+1
+    new.nodes <- node.info[, data.table(
+      d=c(d1,d2),s=c(s1,s2),parent.x=x,parent.y=y,parent=id
+    )][!is.na(d)][order(parent.x)]
+  }
+  node.dt <- do.call(rbind, node.dt.list)
+### Data table with one row for each node in the tree.
+}
+
 get_complexity_extreme <- function
 ### Compute best and worst case number of splits.
 (N.data,
@@ -35,16 +108,18 @@ get_complexity_extreme <- function
   if(N.data < min.segment.length){
     stop("N.data must be at least min.segment.length")
   }
-  first.splits <- size_to_splits(N.data,min.segment.length)
+  best.dt <- node.dt[, .(
+    candidates=sum(size_to_splits(s, min.segment.length))
+  ), by=.(parent,level)]
+  first.splits <- size_to_splits(N.data, min.segment.length)
   worst.splits <- c(
     if(1 <= first.splits)seq(first.splits, 1, by=-min.segment.length),
     0)[1:n.segments]
-  best.df <- best_splits_interface(N.data, min.segment.length, n.segments)
   rbind(
     data.table(
       case="best", 
-      segments=1:nrow(best.df),
-      best.df),
+      segments=1:nrow(best.dt),
+      best.dt[, .(splits=candidates, depth=level)]),
     data.table(
       case="worst", 
       segments=seq_along(worst.splits),

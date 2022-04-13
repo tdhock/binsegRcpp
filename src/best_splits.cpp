@@ -1,5 +1,7 @@
 #include <R.h>
 #include "best_splits.h"
+#include <string>
+#include <unordered_map>
 #include <cmath> //log2
 #define SIZE2SPLITS(SIZE) ( ((SIZE) < min_segment_length*2) ? 0 : (1+(SIZE)-min_segment_length*2) )
 
@@ -9,6 +11,23 @@ Splitter::Splitter
   min_segment_length = min_segment_length_;
   n_segments = n_segments_;
 }
+
+class Table {
+  std::unordered_map< std::string, int > f;
+  std::string get_key(int n_data, int changes){
+    std::string key = "";
+    key += std::to_string(n_data);
+    key += ",";
+    key += std::to_string(changes);
+    return key;
+  }
+  int get_best(int n_data, int changes){
+    return f[get_key(n_data, changes)];
+  }
+  void put_best(int n_data, int changes, int best){
+    f[get_key(n_data, changes)] = best;
+  }
+};
 
 int Splitter::best_splits(int *out_splits_, int *out_depth_){
   if(min_segment_length < 1){
@@ -24,7 +43,20 @@ int Splitter::best_splits(int *out_splits_, int *out_depth_){
   out_splits = out_splits_;
   out_depth = out_depth_;
   out_index=0;
-  children(n_data, 0, 0);
+  Table f;
+  int n_changes = n_segments-1;
+  for(int d_below=0; d_below < n_changes; d_below++){
+    int best = 0;
+    if(0 < d_below){
+      int segs_first_f = d_below+1;
+      int segs_second_f = n_changes-segs_first_f;
+      int smallest_size = min_segment_length*segs_first_f;
+      int largest_size = n_data-segs_second_f*min_segment_length;
+      for(int size=smallest_size; size<=largest_size; size++){
+      }
+    }
+    best += SIZE2SPLITS(
+  }
   return 0;
 }
 
@@ -46,14 +78,19 @@ void Splitter::children
 void Splitter::split_if_possible
 (int size_to_split, int depth){
   int changes_remaining = n_segments-out_index;
-  if(0 < changes_remaining){
-    int smaller_half = size_to_split / 2;
-    int multiple_lower = smaller_half/min_segment_length;
-    int multiple = (multiple_lower < changes_remaining) ?
-      multiple_lower : changes_remaining;
-    int smaller_size = multiple * min_segment_length;
-    int larger_size = size_to_split - smaller_size;
-    children(smaller_size, larger_size, depth+1);
+  if(0 == changes_remaining)return;
+  double half_size = 0.5 * (double)size_to_split;
+  int smaller_size;
+  if(changes_remaining==1){
+    smaller_size = half_size;
+  }else{
+    int multiple_middle = round(half_size/min_segment_length);
+    int multiple = (multiple_middle < changes_remaining) ?
+      multiple_middle : changes_remaining;
+    int one_size = multiple * min_segment_length;
+    smaller_size = (one_size < half_size) ? one_size : size_to_split-one_size;
   }
+  int larger_size = size_to_split - smaller_size;
+  children(smaller_size, larger_size, depth+1);
 }
 

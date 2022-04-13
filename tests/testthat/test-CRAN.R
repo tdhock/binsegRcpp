@@ -498,15 +498,23 @@ test_that("extreme counts correct", {
   expect_best_worst(6, 2, 2, c(3,0), c(3,1))
   expect_best_worst(6, 2, 3, c(3,1,0), c(3,1,0))
   expect_best_worst(7, 2, 3, c(4,1,0), c(4,2,0))
-  expect_best_worst(8, 2, c(5,2,0,0), c(5,3,1,0))
-  expect_best_worst(4, 3, 0, 0)
-  expect_best_worst(9, 3, c(4, 0), c(4, 1, 0))
+  expect_best_worst(8, 2, 4, c(5,2,0,0), c(5,3,1,0))
+  expect_best_worst(4, 3, 1, 0, 0)
+  expect_best_worst(9, 3, 2, c(4, 0), c(4, 1))
+  expect_best_worst(9, 3, 3, c(4, 1, 0), c(4, 1, 0))
   expect_best_worst(10, 3, 2, c(5,0), c(5,2))
   expect_best_worst(10, 3, 3, c(5,1,0), c(5,2,0))
   expect_best_worst(11, 3, 2, c(6,1), c(6,3))
   expect_best_worst(11, 3, 3, c(6,1,0), c(6,3,0))
-  expect_best_worst(19, 3, c(14, 9, 0, 0), c(14, 11, 8, 5, 2, 0))
+  expect_best_worst(19, 3, 4, c(14, 9, 0, 0), c(14, 11, 8, 5))
   expect_best_worst(20, 3, c(15, 10, 0, 0), c(15, 12, 9, 6, 3, 0))
   expect_best_worst(21, 3, c(16, 11, 0, 1, 0), c(16, 13, 10, 7, 4, 1, 0))
-  base <- 3*2-1;N <- 3:7;k <- floor(log2(N/base));split.up.to.k <- 2^k;N.after <- N-base*split.up.to.k;extra=ifelse(N.after>split.up.to.k, split.up.to.k, N.after);data.frame(N, k, split.up.to.k, N.after, extra,total=extra+split.up.to.k)
+})
+
+test_that("extreme tree works", {
+  N.data <- 19L
+  min.seg.len <- 3L
+  N.segs <- 4L
+  ##TODO
+  ##dt <- get_tree_extreme(N.data, min.seg.len, N.segs)
 })
