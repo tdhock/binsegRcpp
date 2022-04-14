@@ -1,4 +1,4 @@
-#include "best_splits.h"
+#include "depth_first.h"
 #include <cmath> //log2
 #define SIZE2SPLITS(SIZE) ( ((SIZE) < min_segment_length*2) ? 0 : (1+(SIZE)-min_segment_length*2) )
 
@@ -15,12 +15,12 @@ Splitter::Splitter
   max_segments = full_splits + terminal_splits;
 }
 
-int Splitter::best_splits(int *out_splits_, int *out_depth_){
+int Splitter::depth_first(int *out_splits_, int *out_depth_){
   if(min_segment_length < 1){
-    return ERROR_BEST_SPLITS_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE;
+    return ERROR_DEPTH_FIRST_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE;
   }
   if(n_data < min_segment_length){
-    return ERROR_BEST_SPLITS_N_DATA_MUST_BE_AT_LEAST_MIN_SEGMENT_LENGTH;
+    return ERROR_DEPTH_FIRST_N_DATA_MUST_BE_AT_LEAST_MIN_SEGMENT_LENGTH;
   }
   if(0 < max_segments){
     out_splits = out_splits_;

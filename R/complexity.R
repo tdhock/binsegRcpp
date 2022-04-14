@@ -35,7 +35,26 @@ check_sizes <- function(N.data, min.segment.length, n.segments){
   }
 }
 
-get_tree_extreme <- function
+get_best_heuristic_equal <- function
+### Compute a fast approximate best case based on equal size splits.
+(N.data, min.segment.length){
+  N.exp <- ceiling(log2(N.data/(2*min.segment.length-1)))
+  N.exp.seq <- seq(0, N.exp-1)
+  divisor.seq <- 2^N.exp.seq
+  smaller <- N.data %/% divisor.seq
+  size.mat <- rbind(smaller+1, smaller)
+  times.larger <- N.data %% divisor.seq
+  times.smaller <- divisor.seq-times.larger
+  times.mat <- rbind(times.larger, times.smaller)
+  times.mat[size.mat < min.segment.length*2] <- 0
+  size.before.split <- rep(size.mat, times.mat)
+  smaller.size.after <- size.before.split %/% 2
+  other.size.after <- smaller.size.after + size.before.split %% 2
+  size_to_splits(c(
+    N.data, smaller.size.after, other.size.after))
+}
+
+get_best_optimal <- function
 ### Dynamic programming for computing lower bound on number of split
 ### candidates to compute / best case of binary segmentation.
 (N.data,
@@ -121,7 +140,7 @@ get_complexity_extreme <- function
   n.segments=N.data %/% min.segment.length
 ### number of segments, positive integer.
 ){
-  node.dt <- get_tree_extreme(N.data, min.segment.length, n.segments)
+  node.dt <- get_best_optimal(N.data, min.segment.length, n.segments)
   best.dt <- node.dt[, .(
     candidates=sum(size_to_splits(s, min.segment.length))
   ), by=.(parent,level)]

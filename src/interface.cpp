@@ -1,21 +1,23 @@
 #include <Rcpp.h>
-#include "best_splits.h"
+#include "depth_first.h"
 #include "binseg.h"
 
-//' Compute a data.frame with one row for each segment, and columns
-//' splits and depth, number/depth of candidate splits that need to be
+//' Use depth first search to compute a data.frame
+//' with one row for each segment, and columns
+//' splits and depth, number/depth of candidate
+//' splits that need to be
 //' computed after splitting that segment.
 // [[Rcpp::export]]
-Rcpp::DataFrame best_splits_interface
+Rcpp::DataFrame depth_first_interface
 (int n_data, int min_segment_length, int max_segments){
   Splitter splitter(n_data, min_segment_length);
   Rcpp::IntegerVector splits_vec(max_segments);
   Rcpp::IntegerVector depth_vec(max_segments);
-  int status = splitter.best_splits(&splits_vec[0], &depth_vec[0]);
-  if(status == ERROR_BEST_SPLITS_N_DATA_MUST_BE_AT_LEAST_MIN_SEGMENT_LENGTH){
+  int status = splitter.depth_first(&splits_vec[0], &depth_vec[0]);
+  if(status == ERROR_DEPTH_FIRST_N_DATA_MUST_BE_AT_LEAST_MIN_SEGMENT_LENGTH){
     Rcpp::stop("n_data must be at least min_segment_length");
   }
-  if(status == ERROR_BEST_SPLITS_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE){
+  if(status == ERROR_DEPTH_FIRST_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE){
     Rcpp::stop("min_segment_length must be positive");
   }
   return Rcpp::DataFrame::create
