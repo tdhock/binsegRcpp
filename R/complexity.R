@@ -50,8 +50,9 @@ get_best_heuristic_equal <- function
   size.before.split <- rep(size.mat, times.mat)
   smaller.size.after <- size.before.split %/% 2
   other.size.after <- smaller.size.after + size.before.split %% 2
-  size_to_splits(c(
-    N.data, smaller.size.after, other.size.after))
+  c(size_to_splits(N.data, min.segment.length),
+    size_to_splits(smaller.size.after, min.segment.length)+
+      size_to_splits(other.size.after, min.segment.length))
 }
 
 get_best_optimal <- function

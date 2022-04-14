@@ -6,8 +6,8 @@
 #' splits and depth, number/depth of candidate
 #' splits that need to be
 #' computed after splitting that segment.
-depth_first_interface <- function(n_data, min_segment_length, max_segments) {
-    .Call(`_binsegRcpp_depth_first_interface`, n_data, min_segment_length, max_segments)
+depth_first_interface <- function(n_data, min_segment_length) {
+    .Call(`_binsegRcpp_depth_first_interface`, n_data, min_segment_length)
 }
 
 #' Compute a data.frame with one row for each distribution

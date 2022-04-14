@@ -9,10 +9,10 @@
 //' computed after splitting that segment.
 // [[Rcpp::export]]
 Rcpp::DataFrame depth_first_interface
-(int n_data, int min_segment_length, int max_segments){
+(int n_data, int min_segment_length){
   Splitter splitter(n_data, min_segment_length);
-  Rcpp::IntegerVector splits_vec(max_segments);
-  Rcpp::IntegerVector depth_vec(max_segments);
+  Rcpp::IntegerVector splits_vec(splitter.max_segments);
+  Rcpp::IntegerVector depth_vec(splitter.max_segments);
   int status = splitter.depth_first(&splits_vec[0], &depth_vec[0]);
   if(status == ERROR_DEPTH_FIRST_N_DATA_MUST_BE_AT_LEAST_MIN_SEGMENT_LENGTH){
     Rcpp::stop("n_data must be at least min_segment_length");
