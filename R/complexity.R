@@ -16,6 +16,7 @@ plot.complexity <- function
   with(x$totals, text(x, y, label, col=case.colors[case], adj=c(1,1)))
 }
 
+### Checks types and values of size inputs.
 check_sizes <- function(N.data, min.segment.length, n.segments){
   if(!all(
     is.integer(min.segment.length),
@@ -65,6 +66,10 @@ get_best_optimal <- structure(function
   n.segments=NULL
 ### positive integer number of segments.
 ){
+  d <- s <- J <- d.under <- s.out <- s.over <- s.under <- 
+    f.over <- f.under <- f <- . <- parent.x <- id <- 
+      ord <- y <- x <- parent.y <- parent <- d1 <- d2 <- 
+        s1 <- s2 <- NULL
   check_sizes(N.data, min.segment.length, n.segments)
   node.dt.list <- list()
   N.changes <- n.segments-1L
@@ -161,6 +166,7 @@ get_complexity_extreme <- function
   n.segments=NULL
 ### number of segments, positive integer.
 ){
+  . <- s <- parent <- level <- candidates <- NULL
   node.dt <- get_best_optimal(N.data, min.segment.length, n.segments)
   best.dt <- node.dt[, .(
     candidates=sum(size_to_splits(s, min.segment.length))
@@ -234,7 +240,8 @@ get_complexity <- structure(function
   y.increment=0.1
 ### Offset for y column values of totals output table.
 ){
-  segments <- end <- . <- splits <- y <- label <- case <- NULL
+  segments <- end <- . <- splits <- y <- label <- case <- 
+    cum.splits <- NULL
   ## above to avoid CRAN NOTE.
   model.dt <- models$splits
   n.data <- model.dt[segments==1, end]
