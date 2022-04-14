@@ -16,6 +16,25 @@ plot.complexity <- function
   with(x$totals, text(x, y, label, col=case.colors[case], adj=c(1,1)))
 }
 
+check_sizes <- function(N.data, min.segment.length, n.segments){
+  if(!all(
+    is.integer(min.segment.length),
+    length(min.segment.length)==1,
+    is.finite(min.segment.length),
+    min.segment.length >= 1
+  )){
+    stop("N.data must be at least min.segment.length")
+  }
+  if(!all(
+    is.integer(N.data),
+    length(N.data)==1,
+    is.finite(N.data),
+    N.data >= min.segment.length
+  )){
+    stop("N.data must be finite positive integer, at least min.segment.length")
+  }
+}
+
 get_tree_extreme <- function
 ### Dynamic programming for computing lower bound on number of split
 ### candidates to compute / best case of binary segmentation.
@@ -26,12 +45,16 @@ get_tree_extreme <- function
   n.segments=N.data %/% min.segment.length
 ### positive integer number of segments.
 ){
+  check_sizes(N.data, min.segment.length, n.segments)
   node.dt.list <- list()
   N.changes <- n.segments-1L
   f.dt <- data.table(d=0:N.changes)[, data.table(
     s=if(N.changes==d)N.data else
       seq(min.segment.length*(d+1), N.data-min.segment.length*(N.changes-d))
   ), by=d]
+  f.dt[, `:=`(
+    s1=NA_integer_, d1=NA_integer_,
+    s2=NA_integer_, d2=NA_integer_)]
   setkey(f.dt, d, s)
   g <- function(size)size_to_splits(size,min.segment.length)
   for(d.value in 0:N.changes){
@@ -85,7 +108,7 @@ get_tree_extreme <- function
       d=c(d1,d2),s=c(s1,s2),parent.x=x,parent.y=y,parent=id
     )][!is.na(d)][order(parent.x)]
   }
-  node.dt <- do.call(rbind, node.dt.list)
+  do.call(rbind, node.dt.list)
 ### Data table with one row for each node in the tree.
 }
 
@@ -98,16 +121,7 @@ get_complexity_extreme <- function
   n.segments=N.data %/% min.segment.length
 ### number of segments, positive integer.
 ){
-  if(!all(
-    is.integer(N.data),
-    length(N.data)==1,
-    is.finite(N.data)
-  )){
-    stop("N.data must be finite integer")
-  }
-  if(N.data < min.segment.length){
-    stop("N.data must be at least min.segment.length")
-  }
+  node.dt <- get_tree_extreme(N.data, min.segment.length, n.segments)
   best.dt <- node.dt[, .(
     candidates=sum(size_to_splits(s, min.segment.length))
   ), by=.(parent,level)]
@@ -140,7 +154,7 @@ size_to_splits <- function
 ### Minimum segment length, positive integer.
 ){
   splits <- 1L+size-min.segment.length*2L
-  ifelse(splits < 0, 0, splits)
+  ifelse(splits < 0, 0L, splits)
 ### Number of splits, integer. 
 }
 
