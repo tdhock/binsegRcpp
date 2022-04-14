@@ -62,7 +62,7 @@ get_best_optimal <- function
 ### positive integer number of data.
   min.segment.length=1L,
 ### positive integer min segment length.
-  n.segments=N.data %/% min.segment.length
+  n.segments=NULL
 ### positive integer number of segments.
 ){
   check_sizes(N.data, min.segment.length, n.segments)
@@ -138,7 +138,7 @@ get_complexity_extreme <- function
 ### number of data to segment, positive integer.
   min.segment.length=1L,
 ### minimum segment length, positive integer.
-  n.segments=N.data %/% min.segment.length
+  n.segments=NULL
 ### number of segments, positive integer.
 ){
   node.dt <- get_best_optimal(N.data, min.segment.length, n.segments)
