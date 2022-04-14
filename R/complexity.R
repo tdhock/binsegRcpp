@@ -55,7 +55,7 @@ get_best_heuristic_equal <- function
       size_to_splits(other.size.after, min.segment.length))
 }
 
-get_best_optimal <- function
+get_best_optimal <- structure(function
 ### Dynamic programming for computing lower bound on number of split
 ### candidates to compute / best case of binary segmentation.
 (N.data,
@@ -130,7 +130,27 @@ get_best_optimal <- function
   }
   do.call(rbind, node.dt.list)
 ### Data table with one row for each node in the tree.
-}
+}, ex=function(){
+
+  N.data <- 29L
+  min.seg.len <- 3L
+  (heuristic.df <- binsegRcpp::depth_first_interface(N.data, min.seg.len))
+  node.dt <- binsegRcpp::get_best_optimal(N.data, min.seg.len, nrow(heuristic.df))
+  (opt.dt <- node.dt[, .(
+    candidates=sum(binsegRcpp::size_to_splits(s, min.seg.len))
+  ), by=.(parent,level)])
+
+  ## Taking the first few steps of depth first search is not good
+  ## enough to get the optimal number of splits. Here is an example
+  ## where the depth first search gets four more splits in the first 3
+  ## steps.
+  node.dt <- binsegRcpp::get_best_optimal(N.data, min.seg.len, 3L)
+  (opt.dt <- node.dt[, .(
+    candidates=sum(binsegRcpp::size_to_splits(s, min.seg.len))
+  ), by=.(parent,level)])
+
+
+})
 
 get_complexity_extreme <- function
 ### Compute best and worst case number of splits.

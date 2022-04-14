@@ -1,8 +1,12 @@
 TODOS
 
-2022.4.10
+2022.4.13
 
-C++ best_splits method computes best case with max.segments < n.data.
+New R function get_best_optimal implements dynamic programming for
+finding the tree with smallest number of splits for a given set of input sizes (N.data, min.segment.length, 
+
+C++ depth_first method computes fast best case number of splits,
+optimal when computing full path, heuristic when segments < data.
 
 2022.4.6
 
