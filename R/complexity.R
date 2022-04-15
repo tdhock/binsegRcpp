@@ -45,8 +45,9 @@ get_complexity_worst <- function
 }
 
 get_complexity_best_heuristic_equal_depth_full <- function
+### Heuristic depth first.
 (N.data, min.segment.length){
-  depth_first_interface(N.data, min.seg.len)
+  depth_first_interface(N.data, min.segment.length)
 }
 
 get_complexity_best_heuristic_equal_breadth_full <- function
@@ -69,7 +70,11 @@ get_complexity_best_heuristic_equal_breadth_full <- function
       size_to_splits(other.size.after, min.segment.length))
 }
 
-get_tree_empirical <- function(fit){
+get_tree_empirical <- function
+### Compute tree for empirical binary segmentation model.
+(fit){
+  before.size <- . <- segments <- invalidates.index <-
+    invalidates.after <- after.size <- parent <- J <- NULL
   child.dt.list <- list(
     data.table(id=0L,size=fit$splits[1,before.size],parent=NA))
   get_id <- function(idx,after)as.integer(2*idx-after-2)
@@ -99,7 +104,9 @@ get_tree_empirical <- function(fit){
   do.call(rbind, tree.dt.list)
 }
 
-qp.x <- function(target, y.up, y.lo){
+qp.x <- function
+### Solve quadratic program to find x positions.
+(target, y.up, y.lo){
   k <- length(target)
   D <- diag(rep(1, k))
   Ik <- diag(rep(1, k - 1))
@@ -109,14 +116,17 @@ qp.x <- function(target, y.up, y.lo){
   sol$solution
 }
 
-tree_layout <- structure(function(node.dt){
+tree_layout <- structure(function
+### Compute x,y coordinates for graphing a tree.
+(node.dt, space=0.5){
+  x <- id <- depth <- J <- parent.x <- size <-
+    parent.depth <- parent <- NULL
   stopifnot(identical(names(node.dt), c("depth","id","size","parent")))
   id.tab <- table(node.dt$id)
   stopifnot(all(id.tab==1))
   tree.dt <- data.table(node.dt)
   tree.dt[, x := NA_real_]
   setkey(tree.dt, id)
-  space <- 0.5
   for(d in unique(tree.dt$depth)){
     if(d==0)tree.dt[depth==0, x := 0] else{
       d.nodes <- tree.dt[depth==d]
@@ -170,6 +180,8 @@ tree_layout <- structure(function(node.dt){
 get_complexity_best_optimal_tree <- structure(function
 ### decoding.
 (f.dt){
+  . <- d <- s <- id <- ord <- y <- x <- parent <- d1 <-
+    d2 <- s1 <- s2 <- NULL
   level <- 0
   new.id <- 0
   new.nodes <- data.table(
@@ -204,10 +216,14 @@ get_complexity_best_optimal_tree <- structure(function
 })
 
 get_complexity_best_optimal_splits <- function
+### Convert output of get_complexity_best_optimal_tree to counts of
+### candidate splits that need to be considered at each iteration.
 (node.dt, min.segment.length){
+  . <- size <- parent <- depth <- NULL
   node.dt[, .(
     splits=sum(size_to_splits(size, min.segment.length))
   ), by=.(parent,depth)]
+### Data table with one row for each segment.
 }
 
 get_complexity_best_optimal_cost <- structure(function
@@ -290,7 +306,7 @@ get_complexity_extreme <- function
   n.segments=NULL
 ### number of segments, positive integer.
 ){
-  . <- s <- parent <- level <- candidates <- NULL
+  . <- s <- parent <- splits <- depth <- NULL
   cost.dt <- get_complexity_best_optimal_cost(
     N.data, min.segment.length, n.segments)
   tree.dt <- get_complexity_best_optimal_tree(cost.dt)

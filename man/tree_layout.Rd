@@ -1,10 +1,13 @@
 \name{tree_layout}
 \alias{tree_layout}
 \title{tree layout}
-
-\usage{tree_layout(node.dt)}
+\description{Compute x,y coordinates for graphing a tree.}
+\usage{tree_layout(node.dt, 
+    space = 0.5)}
 \arguments{
   \item{node.dt}{
+}
+  \item{space}{
 }
 }
 
