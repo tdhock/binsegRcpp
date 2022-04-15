@@ -36,7 +36,20 @@ check_sizes <- function(N.data, min.segment.length, n.segments){
   }
 }
 
-get_best_heuristic_equal <- function
+get_complexity_worst <- function
+### Get full sequence of splits which results in worst case time
+### complexity.
+(N.data, min.segment.length){
+  first.splits <- size_to_splits(N.data, min.segment.length)
+  c(if(1 <= first.splits)seq(first.splits, 1, by=-min.segment.length), 0)
+}
+
+get_complexity_best_heuristic_equal_depth_full <- function
+(N.data, min.segment.length){
+  depth_first_interface(N.data, min.seg.len)
+}
+
+get_complexity_best_heuristic_equal_breadth_full <- function
 ### Compute a fast approximate best case based on equal size splits.
 (N.data, min.segment.length){
   N.exp <- ceiling(log2(N.data/(2*min.segment.length-1)))
@@ -56,9 +69,191 @@ get_best_heuristic_equal <- function
       size_to_splits(other.size.after, min.segment.length))
 }
 
-get_best_optimal <- structure(function
+get_tree_empirical <- function(fit){
+  child.dt.list <- list(
+    data.table(id=0L,size=fit$splits[1,before.size],parent=NA))
+  get_id <- function(idx,after)as.integer(2*idx-after-2)
+  children.wide <- fit$splits[-1, .(
+    segments,
+    parent=get_id(invalidates.index,invalidates.after),
+    before.size, after.size)]
+  for(child in c("before", "after")){
+    child.name <- paste0(child, ".size")
+    size <- children.wide[[child.name]]
+    child.dt.list[[child]] <- children.wide[, data.table(
+      id=get_id(segments,child=="after"),
+      size,
+      parent)]
+  }
+  child.dt <- do.call(rbind, child.dt.list)
+  depth <- 0
+  setkey(child.dt, parent)
+  new.parents <- child.dt[1]
+  tree.dt.list <- list()
+  while(nrow(new.parents)){
+    new.children <- child.dt[J(new.parents$id), nomatch=0L]
+    tree.dt.list[[paste(depth)]] <- data.table(depth, new.parents)
+    new.parents <- new.children
+    depth <- depth+1
+  }
+  do.call(rbind, tree.dt.list)
+}
+
+qp.x <- function(target, y.up, y.lo){
+  k <- length(target)
+  D <- diag(rep(1, k))
+  Ik <- diag(rep(1, k - 1))
+  A <- rbind(0, Ik) - rbind(Ik, 0)
+  b0 <- (y.up - target)[-k] + (target - y.lo)[-1]
+  sol <- quadprog::solve.QP(D, target, A, b0)
+  sol$solution
+}
+
+tree_layout <- structure(function(node.dt){
+  stopifnot(identical(names(node.dt), c("depth","id","size","parent")))
+  id.tab <- table(node.dt$id)
+  stopifnot(all(id.tab==1))
+  tree.dt <- data.table(node.dt)
+  tree.dt[, x := NA_real_]
+  setkey(tree.dt, id)
+  space <- 0.5
+  for(d in unique(tree.dt$depth)){
+    if(d==0)tree.dt[depth==0, x := 0] else{
+      d.nodes <- tree.dt[depth==d]
+      px <- tree.dt[J(d.nodes$parent), x, nomatch=0L]
+      d.nodes[, parent.x := px]
+      ord.nodes <- d.nodes[order(parent.x, size)]
+      new.x <- ord.nodes[, qp.x(parent.x,parent.x+space,parent.x-space)]
+      tree.dt[J(ord.nodes$id), x := new.x]
+    }
+  }
+  px <- tree.dt[J(tree.dt$parent), x]
+  tree.dt[, parent.x := px]
+  tree.dt[, parent.depth := ifelse(is.na(parent), NA, depth-1)]
+  tree.dt
+}, ex=function(){
+
+  N.data <- 29L
+  min.seg.len <- 3L
+  max.segments <- 5L
+  cost.dt <- binsegRcpp::get_complexity_best_optimal_cost(
+    N.data, min.seg.len, max.segments)
+  set.seed(1)
+  data.vec <- rnorm(N.data)
+  fit <- binsegRcpp::binseg_normal(data.vec, max.segments)
+  tree.list <- list(
+    best=binsegRcpp::get_complexity_best_optimal_tree(cost.dt),
+    empirical=binsegRcpp::get_tree_empirical(fit))
+  library(data.table)
+  tree.dt <- data.table(type=names(tree.list))[, {
+    binsegRcpp::tree_layout(tree.list[[type]])
+  }, by=type]
+  total.dt <- tree.dt[, .(
+    candidate.splits=sum(binsegRcpp::size_to_splits(size, min.seg.len))
+  ), by=type]
+  join.dt <- total.dt[tree.dt, on="type"]
+  if(require(ggplot2)){
+    ggplot()+
+      facet_grid(. ~ type + candidate.splits, labeller=label_both)+
+      geom_segment(aes(
+        x, depth, 
+        xend=parent.x, yend=parent.depth),
+        data=join.dt)+
+      geom_label(aes(
+        x, depth, label=size),
+        data=join.dt)+
+      scale_y_reverse()
+  }
+
+})
+
+get_complexity_best_optimal_tree <- structure(function
+### decoding.
+(f.dt){
+  level <- 0
+  new.id <- 0
+  new.nodes <- data.table(
+    f.dt[.N, .(d,s,parent=NA)])
+  node.dt.list <- list()
+  while(nrow(new.nodes)){
+    node.info <- f.dt[new.nodes]
+    node.info[, id := seq(new.id, new.id+.N-1)]
+    node.info[, ord := 1:.N]
+    node.info[, y := -level]
+    node.info[, x := ord-(.N+1)/2]
+    new.id <- node.info[.N, id+1]
+    node.dt.list[[paste(level)]] <- 
+      node.info[, data.table(
+        depth=level,id,size=s,parent)]
+    level <- level+1
+    new.nodes <- node.info[, data.table(
+      d=c(d1,d2),s=c(s1,s2),parent=id
+    )][!is.na(d)]
+  }
+  do.call(rbind, node.dt.list)
+### Data table with one row for each node in the tree.
+}, ex=function(){
+
+  N.data <- 19L
+  min.seg.len <- 3L
+  max.segments <- 4L
+  (heuristic.df <- binsegRcpp::depth_first_interface(N.data, min.seg.len))
+  cost.dt <- binsegRcpp::get_complexity_best_optimal_cost(
+    N.data, min.seg.len, nrow(heuristic.df))
+  node.dt <- binsegRcpp::get_complexity_best_optimal_tree(cost.dt)
+  set.seed(1)
+  data.vec <- rnorm(N.data)
+  fit <- binsegRcpp::binseg_normal(data.vec, max.segments)
+  child.dt.list <- list(
+    data.table(id=0,size=fit$splits[1,before.size],parent=NA))
+  get_id <- function(idx,after)2*idx-after-2
+  children.wide <- fit$splits[-1, .(
+    segments,
+    parent=get_id(invalidates.index,invalidates.after),
+    before.size, after.size)]
+  for(child in c("before", "after")){
+    child.name <- paste0(child, ".size")
+    size <- children.wide[[child.name]]
+    child.dt.list[[child]] <- children.wide[, data.table(
+      id=get_id(segments,child=="after"),
+      size,
+      parent)]
+  }
+  child.dt <- do.call(rbind, child.dt.list)
+  level <- 0
+  setkey(child.dt, parent)
+  new.parents <- child.dt[1]
+  tree.dt.list <- list()
+  while(nrow(new.parents)){
+    new.children <- child.dt[J(new.parents$id), nomatch=0L]
+    tree.dt.list[[paste(level)]] <- data.table(level, new.parents)
+    new.parents <- new.children
+    level <- level+1
+  }
+  tree.dt <- do.call(rbind, tree.dt.list)
+  
+  (opt.dt <- node.dt[, .(
+    candidates=sum(binsegRcpp::size_to_splits(s, min.seg.len))
+  ), by=.(parent,level)])
+
+  ## Taking the first few steps of depth first search is not good
+  ## enough to get the optimal number of splits. Here is an example
+  ## where the depth first search gets four more splits in the first 3
+  ## steps.
+  node.dt <- binsegRcpp::get_best_optimal(N.data, min.seg.len, 3L)
+  (opt.dt <- node.dt[, .(
+    candidates=sum(binsegRcpp::size_to_splits(s, min.seg.len))
+  ), by=.(parent,level)])
+})
+
+get_complexity_best_optimal_cost <- structure(function
 ### Dynamic programming for computing lower bound on number of split
-### candidates to compute / best case of binary segmentation.
+### candidates to compute / best case of binary segmentation. The
+### dynamic programming recursion is on f(d,s) = best number of splits
+### for segment of size s which is split d times. Need to optimize
+### f(d,s) = g(s) + min f(d1,s1) + f(d2,s2) over s1,d1 given that
+### s1+s2=s, d1+d2+1=d, and g(s) is the number of splits for segment
+### of size s.
 (N.data,
 ### positive integer number of data.
   min.segment.length=1L,
@@ -71,7 +266,6 @@ get_best_optimal <- structure(function
       ord <- y <- x <- parent.y <- parent <- d1 <- d2 <- 
         s1 <- s2 <- NULL
   check_sizes(N.data, min.segment.length, n.segments)
-  node.dt.list <- list()
   N.changes <- n.segments-1L
   f.dt <- data.table(d=0:N.changes)[, data.table(
     s=if(N.changes==d)N.data else
@@ -112,48 +306,14 @@ get_best_optimal <- structure(function
     }
     f.dt[out.dt, f := out.f+out.g]
   }
-  ##decoding.
-  level <- 0
-  new.id <- 1
-  new.nodes <- data.table(
-    f.dt[.N, .(d,s,parent.x=NA,parent.y=NA,parent=0)])
-  while(nrow(new.nodes)){
-    node.info <- f.dt[new.nodes][order(parent.x,s)]
-    node.info[, id := seq(new.id, new.id+.N-1)]
-    node.info[, ord := 1:.N]
-    node.info[, y := -level]
-    node.info[, x := ord-(.N+1)/2]
-    new.id <- node.info[.N, new.id+1]
-    node.dt.list[[paste(n.segments, level)]] <- 
-      node.info[, data.table(
-        n.segments, level,ord,id,d,s,x,y,
-        parent.x,parent.y,parent)]
-    level <- level+1
-    new.nodes <- node.info[, data.table(
-      d=c(d1,d2),s=c(s1,s2),parent.x=x,parent.y=y,parent=id
-    )][!is.na(d)][order(parent.x)]
-  }
-  do.call(rbind, node.dt.list)
-### Data table with one row for each node in the tree.
+  f.dt
+### data table with one row for each f(d,s) value computed.
 }, ex=function(){
 
-  N.data <- 29L
-  min.seg.len <- 3L
-  (heuristic.df <- binsegRcpp::depth_first_interface(N.data, min.seg.len))
-  node.dt <- binsegRcpp::get_best_optimal(N.data, min.seg.len, nrow(heuristic.df))
-  (opt.dt <- node.dt[, .(
-    candidates=sum(binsegRcpp::size_to_splits(s, min.seg.len))
-  ), by=.(parent,level)])
-
-  ## Taking the first few steps of depth first search is not good
-  ## enough to get the optimal number of splits. Here is an example
-  ## where the depth first search gets four more splits in the first 3
-  ## steps.
-  node.dt <- binsegRcpp::get_best_optimal(N.data, min.seg.len, 3L)
-  (opt.dt <- node.dt[, .(
-    candidates=sum(binsegRcpp::size_to_splits(s, min.seg.len))
-  ), by=.(parent,level)])
-
+  binsegRcpp::get_complexity_best_optimal_cost(
+    N.data = 19L, 
+    min.segment.length = 3L, 
+    n.segments = 4L)
 
 })
 
@@ -171,10 +331,6 @@ get_complexity_extreme <- function
   best.dt <- node.dt[, .(
     candidates=sum(size_to_splits(s, min.segment.length))
   ), by=.(parent,level)]
-  first.splits <- size_to_splits(N.data, min.segment.length)
-  worst.splits <- c(
-    if(1 <= first.splits)seq(first.splits, 1, by=-min.segment.length),
-    0)[1:n.segments]
   rbind(
     data.table(
       case="best", 
