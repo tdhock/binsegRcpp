@@ -508,10 +508,3 @@ test_that("extreme counts correct", {
   expect_best_worst(21, 3, 7, c(16,11,1,2,0,0,0), c(16, 13, 10, 7, 4, 1, 0))
 })
 
-test_that("get_best_optimal returns data table", {
-  N.data <- 19L
-  min.seg.len <- 3L
-  N.segs <- 4L
-  node.dt <- binsegRcpp::get_best_optimal(N.data, min.seg.len, N.segs)
-  expect_is(node.dt, "data.table")
-})
