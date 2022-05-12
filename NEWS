@@ -1,6 +1,30 @@
 TODOS
 
-re-order splits to show best case with max.segments < n.data?
+2022.4.14
+
+Function re-naming.
+
+New QP solver for tree viz.
+
+2022.4.13
+
+New R function get_best_optimal implements dynamic programming for
+finding the tree with smallest number of splits for a given set of input sizes (N.data, min.segment.length, 
+
+C++ depth_first method computes fast best case number of splits,
+optimal when computing full path, heuristic when segments < data.
+
+2022.4.6
+
+complexity funs handle min segment length.
+
+operator< now correctly breaks ties: previously used segment size
+(end-start), now use max distance from start and end, to encourage
+equal splits and best case time complexity.
+
+2022.4.4
+
+new l1 and laplace loss functions.
 
 2022.3.30
 

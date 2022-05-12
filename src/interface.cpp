@@ -1,5 +1,29 @@
 #include <Rcpp.h>
+#include "depth_first.h"
 #include "binseg.h"
+
+//' Use depth first search to compute a data.frame
+//' with one row for each segment, and columns
+//' splits and depth, number/depth of candidate
+//' splits that need to be
+//' computed after splitting that segment.
+// [[Rcpp::export]]
+Rcpp::DataFrame depth_first_interface
+(int n_data, int min_segment_length){
+  Splitter splitter(n_data, min_segment_length);
+  Rcpp::IntegerVector splits_vec(splitter.max_segments);
+  Rcpp::IntegerVector depth_vec(splitter.max_segments);
+  int status = splitter.depth_first(&splits_vec[0], &depth_vec[0]);
+  if(status == ERROR_DEPTH_FIRST_N_DATA_MUST_BE_AT_LEAST_MIN_SEGMENT_LENGTH){
+    Rcpp::stop("n_data must be at least min_segment_length");
+  }
+  if(status == ERROR_DEPTH_FIRST_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE){
+    Rcpp::stop("min_segment_length must be positive");
+  }
+  return Rcpp::DataFrame::create
+    (Rcpp::Named("splits", splits_vec),
+     Rcpp::Named("depth", depth_vec));
+}  
 
 Rcpp::CharacterVector get_param_names_vec
 (std::string distribution_str){
@@ -92,6 +116,7 @@ Rcpp::List binseg_interface
   int n_params = param_names_vec.size();
   Rcpp::NumericVector subtrain_borders(n_subtrain+1);
   Rcpp::IntegerVector end(max_segments);
+  Rcpp::IntegerVector depth(max_segments);
   Rcpp::NumericVector loss(max_segments);
   Rcpp::NumericVector validation_loss(max_segments);
   Rcpp::NumericMatrix before_param_mat(max_segments, n_params);
@@ -110,10 +135,16 @@ Rcpp::List binseg_interface
      container_str.c_str(),
      //inputs above, outputs below.
      &subtrain_borders[0],
-     &end[0], &loss[0], &validation_loss[0],
+     &end[0], &depth[0], &loss[0], &validation_loss[0],
      &before_param_mat[0], &after_param_mat[0],
      &before_size[0], &after_size[0],
      &invalidates_index[0], &invalidates_after[0]);
+  if(status == ERROR_DATA_MUST_BE_INTEGER_FOR_POISSON_LOSS){
+    Rcpp::stop("data must be integer for poisson loss");
+  }
+  if(status == ERROR_DATA_MUST_BE_NON_NEGATIVE_FOR_POISSON_LOSS){
+    Rcpp::stop("data must be non-negative for poisson loss");
+  }
   if(status == ERROR_UNRECOGNIZED_CONTAINER){
     Rcpp::stop(unrecognized<factory_map_type>("container", get_factory_map));
   }
@@ -129,6 +160,7 @@ Rcpp::List binseg_interface
   return Rcpp::List::create
     (Rcpp::Named("subtrain.borders", subtrain_borders),
      Rcpp::Named("end", end),
+     Rcpp::Named("depth", depth),
      Rcpp::Named("loss", loss),
      Rcpp::Named("validation.loss", validation_loss),
      Rcpp::Named("before.param.mat", before_param_mat),

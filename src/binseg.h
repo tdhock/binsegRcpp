@@ -10,25 +10,39 @@
 #define ERROR_TOO_MANY_SEGMENTS 2
 #define ERROR_MIN_SEGMENT_LENGTH_MUST_BE_POSITIVE 5
 #define ERROR_UNRECOGNIZED_CONTAINER 6
+#define ERROR_DATA_MUST_BE_INTEGER_FOR_POISSON_LOSS 7
+#define ERROR_DATA_MUST_BE_NON_NEGATIVE_FOR_POISSON_LOSS 8
 #define ERROR_POSITIONS_MUST_INCREASE -4
+
+class Distribution;
 
 // This class saves the optimal parameters/loss value for each segment
 // (before and after) resulting from a split. Currently there is only
 // one parameter (mean) because the model is normal change in mean
 // with constant variance but there could be more parameters for other
 // models (e.g., normal change in mean and variance).
-class MeanVarLoss {
+class ParamsLoss {
 public:
-  double mean, var, loss;
+  ParamsLoss(Distribution*);
+  ParamsLoss() {
+    loss = INFINITY;
+  }
+  double loss;
+  std::unordered_map<std::string, double> param_map;
 };
 
-typedef std::vector<std::string> param_names_type;
-param_names_type* get_param_names(const char*);
-class Distribution {
+// Split class stores info for a single candidate split to consider.
+class Split {
 public:
-  std::string description;
-  param_names_type param_names_vec;
-  virtual double compute_loss(double,double,double,double,double,double) = 0;
+  int this_end;//index of last data point on the first/before segment.
+  int dist_from_edges;
+  ParamsLoss before, after;
+  double get_loss(void) const {
+    return before.loss + after.loss;
+  }
+  Split(int,int,int);
+  Split();
+  void maybe_update(Split &candidate);
 };
 
 // This class computes and stores a cumsum that we need to compute the
@@ -42,18 +56,30 @@ public:
 
 class Set {// either subtrain or validation.
 public:
+  Distribution *dist_ptr;
   Cumsum weights, weighted_data, weighted_squares;
   double max_zero_var;
-  Distribution *dist_ptr;
   double total_weighted_data=0, total_weights=0, total_weighted_squares=0;
   double get_mean(int first, int last);
   double get_var(int first, int last);
-  void set_mean_var_loss(int first, int last, double *mean, double *var, double *loss);
-  void set_mean_var_loss(int first, int last, MeanVarLoss*);
-  double get_loss(int first, int last, MeanVarLoss&);
-  double get_loss(int first, int last, double, double);
+  void set_totals(int first, int last);
   void resize_cumsums(int vec_size);
   void write_cumsums(int write_index);
+  void set_max_zero_var();
+};
+
+typedef std::vector<std::string> param_names_type;
+param_names_type* get_param_names(const char*);
+class Distribution {
+public:
+  bool var_param;
+  std::string description;
+  param_names_type param_names_vec;
+  virtual int check_data(double value) = 0;
+  virtual Split get_best_split(Set&,int,int,int,int) = 0;
+  virtual double loss_for_params(Set&,ParamsLoss&,int,int) = 0;
+  virtual ParamsLoss estimate_params(Set&,int,int) = 0;
+  virtual double get_max_zero_var(Set &subtrain) = 0;
 };
 
 typedef std::unordered_map<std::string, Distribution*> dist_map_type;
@@ -63,37 +89,29 @@ int get_n_subtrain(const int, const int*);
 
 int binseg 
 (const double *data_vec, const double *weight_vec,
- const int n_data, const int max_segments, const int min_segment_length,
+ const int n_data, const int n_segments, const int min_segment_length,
  const int *is_validation_vec, const double *position_vec,
  const char *distribution_str,
  const char *container_str,
  double *pos_end,
- int *seg_end, double *loss, double *validation_loss,
+ int *seg_end, int *depth, double *loss, double *validation_loss,
  double *before_mean, double *after_mean,
  int *, int *,
  int *invalidates_index, int *invalidates_before);
 
-// Split class stores info for a single candidate split to consider.
-class Split {
-public:
-  int this_end;//index of last data point on the first/before segment.
-  MeanVarLoss before, after;
-  double set_mean_var_loss(Set &subtrain, int first, int end_i, int last);
-};
-
 class Segment {
 public:
-  int first_i, last_i;
+  int first_i, last_i, depth = -1;
   int invalidates_index, invalidates_after;
   double best_decrease, validation_decrease;
   double before_validation_loss, after_validation_loss;
   Split best_split;
-  int n_changes(void) const;
   friend bool operator<(const Segment& l, const Segment& r){
     if(l.best_decrease == r.best_decrease){
       // if two segments are equally good to split in terms of the
-      // loss, then to save time we should split the larger.
-      return l.n_changes() > r.n_changes();
+      // loss, then to save time we should split whichever would
+      // result in larger child segments.
+      return l.best_split.dist_from_edges > r.best_split.dist_from_edges;
     }else{
       return l.best_decrease < r.best_decrease;
     }
@@ -103,7 +121,8 @@ public:
    int first_data, int last_data,
    int first_candidate, int last_candidate,
    int invalidates_after, int invalidates_index,
-   double loss_no_split, double validation_loss_no_split
+   double loss_no_split, double validation_loss_no_split,
+   int depth
    );
 };
 

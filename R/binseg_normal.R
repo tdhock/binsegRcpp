@@ -1,8 +1,7 @@
 binseg_normal <- structure(function # Binary segmentation, normal change in mean
-### Efficient implementation of binary segmentation for change in
-### mean, max normal likelihood = min square loss. Output includes
-### columns which can be used to compute parameters for a single model
-### in log-linear time.
+### Calls binseg to compute a binary segmentation model for change in
+### mean with constant variance, max normal likelihood = min square
+### loss.
 (data.vec,
 ### Vector of numeric data to segment.
   max.segments=sum(!is.validation.vec),
@@ -11,15 +10,15 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
   is.validation.vec=rep(FALSE, length(data.vec)),
 ### logical vector indicating which data are to be used in validation
 ### set, default=all FALSE (no validation set).
-  position.vec=seq_along(data.vec),
+  position.vec=seq_along(data.vec)
 ### integer vector of positions at which data are measured,
 ### default=1:length(data.vec).
-  weight.vec=rep(1, length(data.vec))
-### Numeric vector of non-negative weights for each data point.
 ){
   binseg(
     "mean_norm", data.vec, max.segments,
-    is.validation.vec, position.vec, weight.vec)
+    is.validation.vec, position.vec)
+### List output from binseg which represents a binary segmentation
+### model.
 }, ex=function(){
 
   x <- c(0.1, 0, 1, 1.1, 0.1, 0)

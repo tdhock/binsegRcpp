@@ -1,5 +1,38 @@
 #include "binseg.h"
+#include "PiecewiseFunction.h"
 
+Split::Split() {}
+
+Split::Split(int first, int end, int last){
+  // first=1, last=4, possible end values are 1-3, 2 is best.
+  this_end = end;
+  int dist_first = end-first;
+  int dist_last = last-end-1;
+  dist_from_edges = (dist_first < dist_last) ? dist_first : dist_last;
+}
+
+void Split::maybe_update(Split &candidate){
+  double loss_diff = get_loss() - candidate.get_loss();
+  bool bigger_dist = 
+    loss_diff == 0 && dist_from_edges < candidate.dist_from_edges;
+  if(loss_diff > 0 || bigger_dist){
+    *this = candidate;
+  }
+}
+
+void Set::set_max_zero_var(void){
+  max_zero_var = dist_ptr->get_max_zero_var(*this);
+}
+
+ParamsLoss::ParamsLoss(Distribution *dist_ptr){
+  for
+    (param_names_type::iterator it=dist_ptr->param_names_vec.begin();
+     it != dist_ptr->param_names_vec.end();
+     it++){
+    param_map[*it] = INFINITY;
+  }
+}
+ 
 double Cumsum::get_sum(int first, int last){
   double total = cumsum_vec[last];
   if(0 < first){
@@ -8,33 +41,12 @@ double Cumsum::get_sum(int first, int last){
   return total;
 }
 
-void Set::set_mean_var_loss
-(int first, int last, double *mean, double *var, double *loss){
+void Set::set_totals(int first, int last){
   total_weights = weights.get_sum(first, last);
   total_weighted_data = weighted_data.get_sum(first, last);
   total_weighted_squares = weighted_squares.get_sum(first, last);
-  *mean = total_weighted_data/total_weights;
-  *var  = total_weighted_squares/total_weights +
-    (*mean)*((*mean)-2*total_weighted_data/total_weights);
-  *loss = get_loss(first, last, *mean, *var);
 }
-void Set::set_mean_var_loss(int first, int last, MeanVarLoss *MVL){
-  set_mean_var_loss(first, last, &(MVL->mean), &(MVL->var), &(MVL->loss));
-}
-double Set::get_loss
-(int first, int last, MeanVarLoss& subtrain_mvl){
-  return get_loss
-    (first, last, subtrain_mvl.mean, subtrain_mvl.var);
-}
-double Set::get_loss
-(int first, int last, double mean, double var){
-  total_weights = weights.get_sum(first, last);
-  total_weighted_data = weighted_data.get_sum(first, last);
-  total_weighted_squares = weighted_squares.get_sum(first, last);
-  return dist_ptr->compute_loss
-    (total_weights, total_weighted_data, total_weighted_squares,
-     mean, var, max_zero_var);
-}
+
 void Set::resize_cumsums(int vec_size){
   weights.cumsum_vec.resize(vec_size);
   weighted_data.cumsum_vec.resize(vec_size);
@@ -53,31 +65,240 @@ dist_map_type* get_dist_map(void){
   return &dist_map;
 }
 
+class CumDistribution : public Distribution {
+public:
+  Split get_best_split
+  (Set &subtrain,
+   int first_data, int last_data,
+   int first_candidate, int last_candidate){
+    Split best_split;
+    for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
+      Split candidate_split(first_data, candidate, last_data);
+      //CumDistribution::estimate_params is O(1) so get_best_split is
+      //linear in the number of candidates.
+      candidate_split.before = estimate_params
+        (subtrain, first_data, candidate);
+      candidate_split.after = estimate_params
+        (subtrain, candidate+1, last_data);
+      best_split.maybe_update(candidate_split);
+    }
+    return best_split;
+  }
+  double get_max_zero_var(Set &subtrain){
+    int n_subtrain = subtrain.weights.cumsum_vec.size();
+    double max_zero_var = 0;
+    for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
+      ParamsLoss ploss =
+	subtrain.dist_ptr->estimate_params(subtrain, subtrain_i, subtrain_i);
+      if(max_zero_var < ploss.param_map["var"]){
+	max_zero_var = ploss.param_map["var"];
+      }
+    }
+    return max_zero_var;
+  }    
+  ParamsLoss estimate_params(Set &subtrain, int first, int last){
+    subtrain.set_totals(first, last);
+    ParamsLoss ploss;
+    ploss.param_map["mean"] =
+      subtrain.total_weighted_data/subtrain.total_weights;
+    ploss.param_map["var"]  =
+      subtrain.total_weighted_squares/subtrain.total_weights + 
+      ploss.param_map["mean"]*
+      (ploss.param_map["mean"]-
+       2*subtrain.total_weighted_data/subtrain.total_weights);
+    ploss.loss = compute_loss
+      (subtrain.total_weights,
+       subtrain.total_weighted_data,
+       subtrain.total_weighted_squares,
+       ploss.param_map["mean"],
+       ploss.param_map["var"],
+       subtrain.max_zero_var);
+    return ploss;
+  }
+  virtual double compute_loss(double,double,double,double,double,double) = 0;
+  double loss_for_params
+  (Set &validation, ParamsLoss &ploss, int first, int last){
+    validation.set_totals(first, last);
+    return compute_loss
+      (validation.total_weights,
+       validation.total_weighted_data,
+       validation.total_weighted_squares,
+       ploss.param_map["mean"],
+       ploss.param_map["var"],
+       validation.max_zero_var);
+  }
+};  
+
 #define CONCAT(x,y) x##y
-#define DISTRIBUTION(NAME, DESC, COMPUTE, VARIANCE)                     \
-  class CONCAT(NAME,Distribution) : public Distribution {               \
+#define CUM_DIST(NAME, DESC, COMPUTE, ERROR, VARIANCE)			\
+  class CONCAT(NAME,Distribution) : public CumDistribution {            \
   public:                                                               \
+    int check_data(double value){					\
+      ERROR;								\
+      return 0;								\
+    }									\
     double compute_loss                                                 \
       (double N, double sum, double squares,				\
        double mean, double var, double max_zero_var){			\
       return COMPUTE;                                                   \
     }									\
-    CONCAT(NAME,Distribution)                                           \
-      (const char *name, std::string desc, bool var_changes){           \
-      description = desc;                                               \
+    CONCAT(NAME,Distribution) () {					\
+      var_param = VARIANCE;						\
+      description = DESC;                                               \
       param_names_vec.push_back("mean");                                \
-      if(var_changes)param_names_vec.push_back("var");                  \
-      dist_map.emplace(name, this);                                     \
+      if(var_param)param_names_vec.push_back("var");                  \
+      dist_map.emplace( #NAME, this );					\
     }                                                                   \
   };                                                                    \
-  static CONCAT(NAME,Distribution) NAME( #NAME, DESC, VARIANCE );
+  static CONCAT(NAME,Distribution) NAME;
+
+class absDistribution : public Distribution {
+  public:
+  int check_data(double value){
+    return 0;
+  }
+  double adjust(double sum_abs_dev, double N, double scale_est){
+    if(var_param==false)return sum_abs_dev;
+    if(scale_est==0)return INFINITY;
+    return N*log(2*scale_est) + sum_abs_dev/scale_est;
+  }
+  double get_max_zero_var(Set &subtrain){
+    return 0;
+  }
+  Split get_best_split
+  (Set &subtrain,
+   int first_data, int last_data,
+   int first_candidate, int last_candidate){
+    int n_candidates = last_candidate-first_candidate+1;
+    int n_insertions = last_candidate-first_data+1;
+    std::vector<double> before_median_vec(n_candidates);
+    std::vector<double> before_loss_vec(n_candidates);
+    std::vector<double> before_weight_vec(n_candidates);
+    std::vector<double> after_median_vec(n_candidates);
+    std::vector<double> after_loss_vec(n_candidates);
+    std::vector<double> after_weight_vec(n_candidates);
+    for(int direction=0; direction<2; direction++){
+      PiecewiseFunction function;
+      int start, increment, offset;
+      std::vector<double> *loss_ptr, *median_ptr, *weight_ptr;
+      if(direction==0){
+        start = first_data;
+        increment = 1;
+        loss_ptr = &before_loss_vec;
+        median_ptr = &before_median_vec;
+        weight_ptr = &before_weight_vec;
+        offset = 0;
+      }else{
+        start = last_data;
+        increment = -1;
+        loss_ptr = &after_loss_vec;
+        median_ptr = &after_median_vec;
+        weight_ptr = &after_weight_vec;
+        offset = 1;
+      }
+      int out_i = 0;
+      double total_weight = 0;
+      for(int iteration=0; iteration < n_insertions; iteration++){
+        int data_i = start + iteration*increment;
+        double weight_value = subtrain.weights.get_sum(data_i,data_i);
+        total_weight += weight_value;
+        double weighted_data = subtrain.weighted_data.get_sum(data_i,data_i);
+        double data_value = weighted_data/weight_value;
+        function.insert_l1(data_value, weight_value);
+        if
+          (first_candidate+offset <= data_i &&
+           data_i <= last_candidate+offset){
+          (*median_ptr)[out_i] = function.get_minimum_position();
+          (*loss_ptr)[out_i] = function.get_minimum_value();
+          (*weight_ptr)[out_i] = total_weight;
+          out_i++;
+        }
+      }//for(iteration
+    }//for(direction
+    //now that all *pred_vec and *loss_vec entries have been computed,
+    //we can find the split with min loss.
+    Split best_split;
+    for(int before_i=0; before_i<n_candidates; before_i++){
+      int after_i = n_candidates-1-before_i;
+      Split candidate_split(first_data, first_candidate+before_i, last_data);
+      candidate_split.before.param_map["median"] = before_median_vec[before_i];
+      candidate_split.after.param_map["median"] = after_median_vec[after_i];
+      candidate_split.before.param_map["scale"] =
+        before_loss_vec[before_i]/before_weight_vec[before_i];
+      candidate_split.after.param_map["scale"] =
+        after_loss_vec[after_i]/after_weight_vec[after_i];
+      candidate_split.before.loss = adjust
+        (before_loss_vec[before_i],
+         before_weight_vec[before_i],
+         candidate_split.before.param_map["scale"]);
+      candidate_split.after.loss = adjust
+        (after_loss_vec[after_i],
+         after_weight_vec[after_i],
+         candidate_split.after.param_map["scale"]);
+      best_split.maybe_update(candidate_split);
+    }
+    return best_split;
+  }
+  double loss_for_params
+  (Set &validation, ParamsLoss &ploss, int first, int last){
+    double total_loss=0, total_weight=0;
+    double median = ploss.param_map["median"];
+    // linear O(last-first).
+    for(int data_i=first; data_i <= last; data_i++){
+      double weight_value = validation.weights.get_sum(data_i,data_i);
+      if(0 < weight_value){
+        total_weight += weight_value;
+        double weighted_data = validation.weighted_data.get_sum(data_i,data_i);
+        double data_value = weighted_data/weight_value;
+        total_loss += abs(median - data_value)*weight_value;
+      }
+    }
+    return adjust(total_loss, total_weight, ploss.param_map["scale"]);
+  }
+  ParamsLoss estimate_params(Set &subtrain, int first, int last){
+    // log-linear in number of data between first and last.
+    ParamsLoss ploss;
+    PiecewiseFunction function;
+    double total_weight = 0;
+    for(int data_i=first; data_i <= last; data_i++){
+      double weight_value = subtrain.weights.get_sum(data_i,data_i);
+      double weighted_data = subtrain.weighted_data.get_sum(data_i,data_i);
+      double data_value = weighted_data/weight_value;
+      function.insert_l1(data_value, weight_value);
+      total_weight += weight_value;
+    }
+    ploss.param_map["median"] = function.get_minimum_position();
+    double sum_abs_dev = function.get_minimum_value();
+    ploss.param_map["scale"] = sum_abs_dev/total_weight;
+    ploss.loss = adjust(sum_abs_dev, total_weight, ploss.param_map["scale"]);
+    return ploss;
+  }
+};
+
+#define ABS_DIST(NAME, DESC, VARIANCE)                          \
+  class CONCAT(NAME, Distribution) : public absDistribution {   \
+  public:                                                       \
+    CONCAT(NAME, Distribution) (){                              \
+      var_param = VARIANCE;                                   \
+      description = DESC;                                       \
+      param_names_vec.push_back("median");                      \
+      if(var_param)param_names_vec.push_back("scale");        \
+      dist_map.emplace( #NAME, this );                          \
+    }                                                           \
+  };                                                            \
+static CONCAT(NAME, Distribution) NAME;
+
+ABS_DIST(l1, "change in median (loss is total absolute deviation)", false)
+
+ABS_DIST(laplace, "change in Laplace median and scale (loss is negative log likelihood)", true)
 
 #define RSS (mean*(N*mean-2*sum)+squares)
 
-DISTRIBUTION(mean_norm,
-             "change in normal mean with constant variance (L2/square loss)",
-             RSS, 
-	     false) 
+CUM_DIST(mean_norm,
+         "change in normal mean with constant variance (L2/square loss)",
+         RSS,
+	 ,
+         false) 
 /* Above we compute the square loss for a segment with sum of data = s
    and mean parameter m.
 
@@ -104,10 +325,11 @@ DISTRIBUTION(mean_norm,
    
 */
 
-DISTRIBUTION(poisson,
-             "change in poisson rate parameter (loss is negative log likelihood minus constant term)",
-             mean*N - log(mean)*sum, // neg log lik minus constant term.
-             false) // dont add constant term to loss.
+CUM_DIST(poisson,
+         "change in Poisson rate parameter (loss is negative log likelihood minus constant term)",
+         (mean>0) ? (mean*N - log(mean)*sum) : ( (sum==0) ? 0 : INFINITY ),
+	 if(round(value)!=value)return ERROR_DATA_MUST_BE_INTEGER_FOR_POISSON_LOSS;if(value < 0)return ERROR_DATA_MUST_BE_NON_NEGATIVE_FOR_POISSON_LOSS;,
+         false)
 /* poisson likelihood:
 
 prob_i = m^{x_i} * exp(-m) / (x_i !)
@@ -124,52 +346,36 @@ poisson loss with weights:
   
  */
 
-DISTRIBUTION(meanvar_norm,
-             "change in normal mean and variance (loss is negative log likelihood)",
-	     (var>max_zero_var) ? (RSS/var+N*log(2*M_PI*var))/2 : INFINITY,
-	     true)
+CUM_DIST(meanvar_norm,
+         "change in normal mean and variance (loss is negative log likelihood)",
+         (var>max_zero_var) ? (RSS/var+N*log(2*M_PI*var))/2 : INFINITY,
+	 ,
+         true)
 /*
 meanvar_norm loss is negative log likelihood =
 
 0.5 [ (sum_i x_i^2 + M(NM-2 sum_i x_i))/var + log(2*pi*var) ]
  */
 
-double Split::set_mean_var_loss(Set &subtrain, int first, int end_i, int last){
-  this_end = end_i;
-  subtrain.set_mean_var_loss(first, end_i, &before);
-  subtrain.set_mean_var_loss(end_i+1, last, &after);
-  return before.loss + after.loss;
-}
-
-int Segment::n_changes() const {
-  return last_i-first_i;
-}
 Segment::Segment
 (Set &subtrain, Set &validation,
  int first_data, int last_data,
  int first_candidate, int last_candidate,
  int invalidates_after, int invalidates_index,
- double loss_no_split, double validation_loss_no_split
+ double loss_no_split, double validation_loss_no_split,
+ int depth
  ): first_i(first_data), last_i(last_data),
+  depth(depth),
     invalidates_index(invalidates_index),
     invalidates_after(invalidates_after){
-  Split candidate_split;
-  double best_loss_split = INFINITY, loss_split;
-  // for loop over all possible splits on this Segment.
-  for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
-    loss_split = candidate_split.set_mean_var_loss
-      (subtrain, first_data, candidate, last_data);
-    if(loss_split < best_loss_split){
-      best_loss_split = loss_split;
-      best_split = candidate_split;
-    }
-  }
-  best_decrease = best_loss_split - loss_no_split;
+  best_split = subtrain.dist_ptr->get_best_split
+    (subtrain, first_data, last_data, first_candidate, last_candidate);
+  best_decrease = best_split.get_loss() - loss_no_split;
   if(best_decrease == INFINITY)return;
-  before_validation_loss = validation.get_loss
-    (first_data, best_split.this_end, best_split.before);
-  after_validation_loss = validation.get_loss
-    (best_split.this_end+1, last_data, best_split.after);
+  before_validation_loss = validation.dist_ptr->loss_for_params
+    (validation, best_split.before, first_data, best_split.this_end);
+  after_validation_loss = validation.dist_ptr->loss_for_params
+    (validation, best_split.after, best_split.this_end+1, last_data);
   double validation_loss_split =
     before_validation_loss + after_validation_loss;
   validation_decrease =
@@ -220,7 +426,7 @@ factory_map_type* get_factory_map(void){
     return new CONCAT(CONTAINER,Wrapper);                               \
   }                                                                     \
   void CONCAT(CONTAINER,destruct) (Container *c_ptr){                   \
-    delete c_ptr;           \
+    delete c_ptr;                                                       \
   }                                                                     \
   static ContainerFactory CONCAT(CONTAINER,_instance)                   \
     ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
@@ -311,22 +517,18 @@ public:
     }
     // analyze subtrain data to find what is the largest value that
     // should be considered numerically zero for a variance estimate.
-    MeanVarLoss mvl;
-    subtrain.max_zero_var = 0;
-    for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
-      subtrain.set_mean_var_loss(subtrain_i, subtrain_i, &mvl);
-      if(subtrain.max_zero_var < mvl.var){
-	subtrain.max_zero_var = mvl.var;
-      }
+    if(dist_ptr->var_param){
+      subtrain.set_max_zero_var();
+      validation.max_zero_var = subtrain.max_zero_var;
     }
-    validation.max_zero_var = subtrain.max_zero_var;
     return n_subtrain;
   }
   // Add a new Segment to candidates if it is big enough to split.
   void maybe_add
   (int first_data, int last_data,
    int invalidates_after, int invalidates_index,
-   double loss_no_split, double validation_loss_no_split
+   double loss_no_split, double validation_loss_no_split,
+   int depth
    ){
     int first_candidate = first_data + min_segment_length-1;
     int last_candidate = last_data - min_segment_length;
@@ -338,7 +540,8 @@ public:
 	 first_data, last_data,
          first_candidate, last_candidate,
 	 invalidates_after, invalidates_index,
-	 loss_no_split, validation_loss_no_split);
+	 loss_no_split, validation_loss_no_split,
+         depth+1);
       if(new_seg.best_decrease < INFINITY){
         container_ptr->insert(new_seg);
       }
@@ -348,20 +551,23 @@ public:
 
 class OutArrays {
 public:
-  int n_params, max_segments;
-  int *seg_end, *before_size, *after_size,
+  Distribution *dist_ptr;
+  int max_segments;
+  int *seg_end, *depth, *before_size, *after_size,
     *invalidates_index, *invalidates_after;
   double *subtrain_loss, *validation_loss,
     *before_param_mat, *after_param_mat;
   OutArrays
-  (Distribution *dist_ptr, int max_segments_,
-   int *seg_end_, double *subtrain_loss_, double *validation_loss_,
+  (Distribution *dist_ptr_, int max_segments_,
+   int *seg_end_, int *depth_, 
+   double *subtrain_loss_, double *validation_loss_,
    double *before_param_mat_, double *after_param_mat_,
    int *before_size_, int *after_size_,
    int *invalidates_index_, int *invalidates_after_){
-    n_params = dist_ptr->param_names_vec.size();
+    dist_ptr = dist_ptr_;
     max_segments = max_segments_;
     seg_end = seg_end_;
+    depth = depth_;
     subtrain_loss = subtrain_loss_;
     validation_loss = validation_loss_;
     before_param_mat = before_param_mat_;
@@ -376,8 +582,9 @@ public:
    double subtrain_loss_value,
    double validation_loss_value,
    int seg_end_value,
-   const MeanVarLoss &before_mvl,
-   const MeanVarLoss &after_mvl, 
+   int depth_value,
+   const ParamsLoss &before_ploss,
+   const ParamsLoss &after_ploss, 
    int invalidates_index_value,
    int invalidates_after_value,
    int before_size_value,
@@ -386,11 +593,15 @@ public:
     subtrain_loss[seg_i] = subtrain_loss_value;
     validation_loss[seg_i] = validation_loss_value;
     seg_end[seg_i] = seg_end_value;
-    before_param_mat[seg_i] = before_mvl.mean;
-    after_param_mat[seg_i] = after_mvl.mean;
-    if(n_params == 2){
-      before_param_mat[seg_i+max_segments] = before_mvl.var;
-      after_param_mat[seg_i+max_segments] = after_mvl.var;
+    depth[seg_i] = depth_value;
+    int param_i=0;
+    for
+      (param_names_type::iterator it=dist_ptr->param_names_vec.begin();
+       it != dist_ptr->param_names_vec.end();
+       it++){
+      int out_i = seg_i+max_segments*param_i++;
+      before_param_mat[out_i] = before_ploss.param_map.find(*it)->second;
+      after_param_mat[out_i] = after_ploss.param_map.find(*it)->second;
     }
     invalidates_index[seg_i] = invalidates_index_value;
     invalidates_after[seg_i] = invalidates_after_value;
@@ -435,7 +646,8 @@ int binseg
  const char *distribution_str,
  const char *container_str,
  double *subtrain_borders, 
- int *seg_end, double *subtrain_loss, double *validation_loss,
+ int *seg_end, int *depth_vec,
+ double *subtrain_loss, double *validation_loss,
  double *before_param_mat, double *after_param_mat, 
  int *before_size, int *after_size,  
  int *invalidates_index, int *invalidates_after
@@ -449,9 +661,15 @@ int binseg
     }
   }
   Distribution* dist_ptr = dist_map.at(distribution_str);
+  for(int data_i=0; data_i<n_data; data_i++){
+    int status = dist_ptr->check_data(data_vec[data_i]);
+    if(status != 0){
+      return status;
+    }
+  }
   OutArrays out_arrays
     (dist_ptr, max_segments,
-     seg_end, subtrain_loss, validation_loss,
+     seg_end, depth_vec, subtrain_loss, validation_loss,
      before_param_mat, after_param_mat,
      before_size, after_size,
      invalidates_index, invalidates_after);
@@ -471,27 +689,29 @@ int binseg
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  MeanVarLoss full_mvl, missing_mvl;
-  missing_mvl.mean = INFINITY;
-  missing_mvl.var = INFINITY;
-  V.subtrain.set_mean_var_loss(0, n_subtrain-1, &full_mvl);
+  ParamsLoss
+    full_ploss = dist_ptr->estimate_params(V.subtrain, 0, n_subtrain-1),
+    missing_ploss(dist_ptr);
   out_arrays.save
     (0,
-     full_mvl.loss,
-     V.validation.get_loss(0, n_subtrain-1, full_mvl),
+     full_ploss.loss,
+     dist_ptr->loss_for_params(V.validation, full_ploss, 0, n_subtrain-1),
      n_subtrain-1,
-     full_mvl,
-     missing_mvl,
+     0,
+     full_ploss,
+     missing_ploss,
      -2, -2, n_subtrain, -2);
   // Add a segment and split to the set of candidates.
-  V.maybe_add(0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0]);
+  V.maybe_add
+    (0, n_subtrain-1, 0, 0, subtrain_loss[0], validation_loss[0], 0);
   // initialize to infinite cost and missing values, which is
   // necessary when number of segments returned is less than
   // max_segments: infinite cost rows are removed from the resulting
   // splits table in the R code.
   for(int seg_i=1; seg_i < max_segments; seg_i++){
     out_arrays.save
-      (seg_i, INFINITY, INFINITY, -2, full_mvl, full_mvl, -2, -2, -2, -2);
+      (seg_i, INFINITY, INFINITY, -2, -2,
+       missing_ploss, missing_ploss, -2, -2, -2, -2);
   }
   // Loop over splits. During each iteration we find the Segment/split
   // which results in the best loss decrease, store the resulting
@@ -506,6 +726,7 @@ int binseg
        subtrain_loss[seg_i-1] + seg_ptr->best_decrease,
        validation_loss[seg_i-1] + seg_ptr->validation_decrease,
        seg_ptr->best_split.this_end,
+       seg_ptr->depth,
        seg_ptr->best_split.before,
        seg_ptr->best_split.after,
        seg_ptr->invalidates_index,
@@ -517,12 +738,14 @@ int binseg
       (seg_ptr->first_i, seg_ptr->best_split.this_end,
        0,//invalidates_after=0 => before_mean invalidated.
        seg_i, seg_ptr->best_split.before.loss,
-       seg_ptr->before_validation_loss);
+       seg_ptr->before_validation_loss,
+       seg_ptr->depth);
     V.maybe_add
       (seg_ptr->best_split.this_end+1, seg_ptr->last_i,
        1,//invalidates_after=1 => after_mean invalidated.
        seg_i, seg_ptr->best_split.after.loss,
-       seg_ptr->after_validation_loss);
+       seg_ptr->after_validation_loss,
+       seg_ptr->depth);
     // Erase at end because we need seg_ptr->values during maybe_add
     // inserts above.
     V.container_ptr->remove_best();

@@ -2,24 +2,10 @@
 \alias{binseg}
 \alias{binsegRcpp}
 \title{Binary segmentation}
-\description{Efficient implementation of binary segmentation for a sequence of
-N data. Each iteration involves first computing and storing the
-best split point on one or two segments, then looking up the
-segment with the best split so far. The best case time complexity
-occurs when splits are equal (N data split into two segments of
-size N/2), and the worst case is when splits are unequal (N data
-split into one big segment with N-1 data and one small segment
-with 1 data point). Looking up the segment with the best split so
-far is a constant O(1) time operation using C++ multimap, so O(K)
-overall for K iterations/segments. Storage of a new best split
-point/cost involves the multimap insert method which is
-logarithmic time in the size of the multimap, overall O(K log K)
-for equal splits and O(K) for unequal splits. Computing the cost
-values, and overall time complexity, is best case O(N log K) time
-for equal splits and worst case O(N K) time for unequal
-splits. Output includes columns which can be used to compute
-parameters for a single model in log-linear time, using coef
-method.}
+\description{Efficient C++ implementation of the classic binary segmentation
+algorithm for finding changepoints in a sequence of N data. Output
+includes columns which can be used to compute parameters for a
+single model in log-linear time, using coef method.}
 \usage{binseg(distribution.str, 
     data.vec, max.segments = NULL, 
     is.validation.vec = rep(FALSE, 
@@ -27,7 +13,7 @@ method.}
     position.vec = seq_along(data.vec), 
     weight.vec = rep(1, 
         length(data.vec)), 
-    min.segment.length = 1L, 
+    min.segment.length = NULL, 
     container.str = "multiset")}
 \arguments{
   \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_info}} to see
@@ -42,19 +28,39 @@ set, default=all FALSE (no validation set).}
   \item{position.vec}{integer vector of positions at which data are measured,
 default=1:length(\code{data.vec}).}
   \item{weight.vec}{Numeric vector of non-negative weights for each data point.}
-  \item{min.segment.length}{Integer, minimum number of data points per segment.}
+  \item{min.segment.length}{Positive integer, minimum number of data points per
+segment. Default NULL means to use min given \code{distribution.str}.}
   \item{container.str}{C++ container to use for storing breakpoints/cost. Most users
 should leave this at the default "multiset" for efficiency but you
 could use "list" if you want to study the time complexity of a
 slower implementation of binary segmentation.}
 }
-
-\value{list of class binsegRcpp with elements param.names,
-subtrain.borders and splits, which is a data.table with columns:
+\details{Each iteration involves first computing and storing the
+best split point on one or two segments, then looking up the
+segment with the best split so far. The best case time complexity
+occurs when splits are equal (N data split into two segments of
+size N/2), and the worst case is when splits are unequal (N data
+split into one big segment with N-1 data and one small segment
+with 1 data point). Looking up the segment with the best split so
+far is a constant O(1) time operation using C++ multimap, so O(K)
+overall for K iterations/segments. Storage of a new best split
+point/cost involves the multimap insert method which is
+logarithmic time in the size of the multimap, overall O(K log K)
+for equal splits and O(K) for unequal splits. Computing the cost
+values, and overall time complexity, depends on the loss. For
+normal and poisson distributions the best case O(N log K) time
+for equal splits and worst case O(N K) time for unequal
+splits. For l1/laplace distributions the best case is O(N log N
+log K) time for equal splits and worst case is O(N log N K) time
+for unequal splits.}
+\value{list of class binsegRcpp with elements \code{min.segment.length},
+\code{distribution.str}, param.names, subtrain.borders and splits, which
+is a data.table with columns:
 \item{segments}{number of segments}
 \item{loss}{subtrain loss}
 \item{validation.loss}{validation loss}
 \item{end}{index of last data point per segment}
+\item{depth}{number of splits to reach segment}
 \item{before}{params before changepoint}
 \item{after}{params after changepoint}
 \item{before.size}{number of data before changepoint}

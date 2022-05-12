@@ -1,5 +1,6 @@
 library(binsegRcpp)
 library(testthat)
+myvar <- function(y)mean((y-mean(y))^2)
 
 test_that("one data point has zero loss", {
   L <- binsegRcpp:::binseg_interface(5, weight_vec=1, max_segments=1, min_segment_length=1, distribution_str="mean_norm", container_str = "multiset", is_validation_vec = FALSE, position_vec = 1)
@@ -27,7 +28,7 @@ test_that("error for 0 data", {
   x <- double()
   expect_error({
     binsegRcpp::binseg_normal(x, 5L)
-  }, "need at least one data point")
+  }, "number of data must be at least min segment length")
 })
 
 test_that("error for 0 segments", {
@@ -149,7 +150,6 @@ test_that("error for unrecognized distribution", {
     binsegRcpp::binseg("foo", c(1, 4.3, 5))
   }, "unrecognized distribution")
 })
-
 
 ploss <- function (count, seg.mean, weight = 1){
     stopifnot(is.numeric(count))
@@ -273,7 +273,6 @@ test_that("error for unrecognized container", {
 test_that("variance estimates and loss correct", {
   x <- c(0,0.1, 1,1.2)
   fit <- binsegRcpp::binseg("meanvar_norm", x, max.segments=2L)
-  myvar <- function(y)mean((y-mean(y))^2)
   expect_equal(fit$splits$before.mean, c(mean(x), mean(x[1:2])))
   expect_equal(fit$splits$after.mean, c(NA, mean(x[3:4])))
   expect_equal(fit$splits$before.var, c(myvar(x), myvar(x[1:2])))
@@ -294,3 +293,218 @@ test_that("meanvar_norm does not have segs with size 1", {
   fit <- binsegRcpp::binseg("meanvar_norm", data.vec)
   expect_lte(nrow(fit$splits), data.per.seg)
 })
+
+test_that("l1loss param is median", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  l1fit <- binsegRcpp::binseg("l1", data.vec, max.segments=2L)
+  seg.dt <- coef(l1fit)
+  expected.median <- c(
+    median(data.vec),
+    median(data.vec[1:3]),
+    median(data.vec[4:6]))
+  expect_equal(seg.dt$median, expected.median)
+  expected.loss <- sum(abs(median(data.vec)-data.vec))
+  expect_equal(l1fit$splits$loss[1], expected.loss)
+})
+
+test_that("laplace params median,scale", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  l1fit <- binsegRcpp::binseg("laplace", data.vec, max.segments=2L)
+  seg.dt <- coef(l1fit)
+  expected.median <- c(
+    median(data.vec),
+    median(data.vec[1:3]),
+    median(data.vec[4:6]))
+  expect_equal(seg.dt$median, expected.median)
+  sum.abs.dev <- sum(abs(median(data.vec)-data.vec))
+  N.data <- length(data.vec)
+  est.scale <- sum.abs.dev/N.data
+  expect_equal(l1fit$splits$before.scale[1], est.scale)
+  expected.loss <- N.data*log(2*est.scale)+sum.abs.dev/est.scale
+  expect_equal(l1fit$splits$loss[1], expected.loss)
+})
+
+test_that("laplace validation loss ok", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  is.validation.vec <- c(FALSE,FALSE,TRUE,TRUE,FALSE,FALSE)
+  l1fit <- binsegRcpp::binseg(
+    "laplace", data.vec, max.segments=2L,
+    is.validation.vec = is.validation.vec)
+  subtrain.vec <- data.vec[!is.validation.vec]
+  est.median <- median(subtrain.vec)
+  est.scale <- sum(abs(est.median-subtrain.vec))/length(subtrain.vec)
+  sum.abs.dev <- sum(abs(est.median-data.vec[is.validation.vec]))
+  vloss1 <- sum(is.validation.vec)*log(2*est.scale)+sum.abs.dev/est.scale
+  expect_equal(l1fit$splits$validation.loss[1], vloss1)
+})
+
+test_that("meanvar_norm validation loss ok", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  is.validation.vec <- c(FALSE,FALSE,TRUE,TRUE,FALSE,FALSE)
+  l1fit <- binsegRcpp::binseg(
+    "meanvar_norm", data.vec, max.segments=2L,
+    is.validation.vec = is.validation.vec)
+  subtrain.vec <- data.vec[!is.validation.vec]
+  vloss1 <- -sum(dnorm(
+    data.vec[is.validation.vec],
+    mean(subtrain.vec),
+    sqrt(myvar(subtrain.vec)),
+    log=TRUE))
+  expect_equal(l1fit$splits$validation.loss[1], vloss1)
+})
+
+test_that("l1 validation loss ok", {
+  data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
+  is.validation.vec <- c(FALSE,FALSE,TRUE,TRUE,FALSE,FALSE)
+  l1fit <- binsegRcpp::binseg(
+    "l1", data.vec, max.segments=2L,
+    is.validation.vec = is.validation.vec)
+  vloss1 <- sum(abs(
+    data.vec[is.validation.vec]-median(data.vec[!is.validation.vec])))
+  expect_equal(l1fit$splits$validation.loss[1], vloss1)
+})
+
+test_that("poisson loss ok for simple ex with zero", {
+  data.vec <- 0:1
+  N.data <- length(data.vec)
+  mu <- mean(data.vec)
+  expected.loss <- c(
+    N.data*mu - log(mu)*sum(data.vec),
+    1)
+  fit <- binsegRcpp::binseg("poisson", data.vec)
+  expect_equal(fit$splits$end, 2:1)
+  expect_equal(fit$splits$loss, expected.loss)
+  segs <- coef(fit)
+  expect_equal(segs$mean, c(mu, data.vec))
+})
+
+test_that("error for poisson loss with bad data", {
+  expect_error({
+    binsegRcpp::binseg("poisson", 0.1)
+  }, "data must be integer for poisson loss")
+  expect_error({
+    binsegRcpp::binseg("poisson", -2L)
+  }, "data must be non-negative for poisson loss")
+})
+
+test_that("get_complexity respects min.segment.length", {
+  n.data <- 8
+  zero.one <- rep(0:1, l=n.data)
+  fit <- binsegRcpp::binseg("mean_norm", zero.one)
+  clist <- binsegRcpp::get_complexity(fit)
+  worst <- clist$iterations[case=="worst"]
+  expect_equal(worst$splits, seq(n.data-1, 0))
+  zero.ten <- rep(c(0,1,10,11), l=n.data)
+  mvfit <- binsegRcpp::binseg("meanvar_norm", zero.ten)
+  mvlist <- binsegRcpp::get_complexity(mvfit)
+  mvworst <- mvlist$iterations[case=="worst"]
+  expect_equal(mvworst$splits, c(5,3,1,0))
+})
+
+test_that("empirical splits not negative", {
+  fit <- binsegRcpp::binseg("meanvar_norm", 1:8)
+  clist <- binsegRcpp::get_complexity(fit)
+  esplits <- clist$iterations[case=="empirical", splits]
+  expect_equal(esplits, c(5,2,0,0))
+})
+
+test_that("l1 loss chooses even split if equal loss", {
+  N.max <- 8
+  data.vec <- 1:N.max
+  seg <- function(first,last){
+    sdata <- data.vec[first:last]
+    sum(abs(median(sdata)-sdata))
+  }
+  two.segs <- function(end){
+    sum(c(seg(1,end),seg(end+1,N.max)))
+  }
+  sapply(seq(1,N.max-1), two.segs)
+  fit <- binsegRcpp::binseg("l1", data.vec, max.segments=2L)
+  expect_equal(fit$splits$end, c(8,4))
+})
+
+test_that("l1 loss chooses even splits after storage", {
+  d <- sqrt(81/12)
+  up.down <- c(-d,d,-d,d)
+  binsegRcpp::binseg_normal(up.down, max.segments=2L)
+  linear <- c(-2,-1,1,2)+10
+  binsegRcpp::binseg_normal(linear, max.segments=2L)
+  data.vec <- c(-up.down,linear,up.down,-linear)
+  plot(data.vec)
+  expected.ends <- c(16,12,4,8,6,14)
+  fit <- binsegRcpp::binseg_normal(data.vec, max.segments=6L)
+  expect_equal(sort(fit$splits$end), sort(expected.ends))
+  rev.vec <- rev(data.vec)
+  plot(rev.vec)
+  fit.rev <- binsegRcpp::binseg_normal(rev.vec, max.segments=6L)
+  expected.rev <- c(16,12,4,8,2,10)
+  expect_equal(sort(fit.rev$splits$end), sort(expected.rev))
+})
+
+test_that("poisson split is not in middle", {
+  N.max <- 8
+  data.vec <- 1:N.max
+  fit <- binsegRcpp::binseg("poisson", data.vec, max.segments=2L)
+  seg <- function(first,last){
+    sdata <- data.vec[first:last]
+    ploss(sdata, mean(sdata))
+  }
+  two.segs <- function(end){
+    sum(c(seg(1,end),seg(end+1,N.max)))
+  }
+  loss.vec <- sapply(1:7, two.segs)
+  expected.loss <- c(seg(1,N.max),min(loss.vec))
+  expect_equal(fit$splits$loss, expected.loss)
+  expected.end <- c(N.max,which.min(loss.vec))
+  expect_equal(fit$splits$end, expected.end)
+})
+
+test_that("max_segs=N/2 possible for N=2^10", {
+  N.data <- 2^10 #does not work for 2^19, max_zero_var too large.
+  data.vec <- as.numeric(1:N.data)
+  cum.data <- cumsum(data.vec)
+  cum.squares <- cumsum(data.vec^2)
+  mu <- data.vec
+  v <- data.vec^2 + data.vec*(data.vec-2*data.vec)
+  fit <- binsegRcpp::binseg("meanvar_norm",data.vec)
+  max.segs <- fit$splits[.N, segments]
+  seg.dt <- coef(fit, max.segs)
+  seg.dt[, n.data := end-start+1]
+  table(seg.dt$n.data)
+  expect_equal(nrow(fit$splits), N.data/2)
+})
+
+test_that("error when number of data smaller than min segment length", {
+  expect_error({
+    binsegRcpp::binseg("mean_norm", 1:2, min.segment.length = 3L)
+  }, "number of data must be at least min segment length")
+})
+
+test_that("extreme counts correct", {
+  expect_best_worst <- function(N.data, min.seg.len, n.segments, best, worst){
+    dt <- binsegRcpp::get_complexity_extreme(
+      as.integer(N.data), 
+      as.integer(min.seg.len),
+      as.integer(n.segments))
+    ##print(dt[case=="best"])
+    expect_equal(dt[case=="best", splits], best)
+    expect_equal(dt[case=="worst", splits], worst)
+  }
+  expect_best_worst(3, 1, 3, c(2,1,0), c(2,1,0))
+  expect_best_worst(5, 1, 5, c(4,3,0,1,0), c(4,3,2,1,0))
+  expect_best_worst(6, 2, 2, c(3,0), c(3,1))
+  expect_best_worst(6, 2, 3, c(3,1,0), c(3,1,0))
+  expect_best_worst(7, 2, 3, c(4,1,0), c(4,2,0))
+  expect_best_worst(8, 2, 4, c(5,2,0,0), c(5,3,1,0))
+  expect_best_worst(4, 3, 1, 0, 0)
+  expect_best_worst(9, 3, 2, c(4, 0), c(4, 1))
+  expect_best_worst(9, 3, 3, c(4, 1, 0), c(4, 1, 0))
+  expect_best_worst(10, 3, 2, c(5,0), c(5,2))
+  expect_best_worst(10, 3, 3, c(5,1,0), c(5,2,0))
+  expect_best_worst(11, 3, 2, c(6,1), c(6,3))
+  expect_best_worst(11, 3, 3, c(6,1,0), c(6,3,0))
+  expect_best_worst(19, 3, 4, c(14, 9, 0, 0), c(14, 11, 8, 5))
+  expect_best_worst(20, 3, 6, c(15,10,1,1,0,0), c(15, 12, 9, 6, 3, 0))
+  expect_best_worst(21, 3, 7, c(16,11,1,2,0,0,0), c(16, 13, 10, 7, 4, 1, 0))
+})
+
