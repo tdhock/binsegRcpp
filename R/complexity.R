@@ -249,11 +249,10 @@ get_complexity_best_optimal_cost <- structure(function
   N.changes <- n.segments-1L
   f.dt <- data.table(d=0:N.changes)[, data.table(
     s=if(N.changes==d)N.data else
-      seq(min.segment.length*(d+1), N.data-min.segment.length*(N.changes-d))
-  ), by=d]
-  f.dt[, `:=`(
+      seq(min.segment.length*(d+1), N.data-min.segment.length*(N.changes-d)),
     s1=NA_integer_, d1=NA_integer_,
-    s2=NA_integer_, d2=NA_integer_)]
+    s2=NA_integer_, d2=NA_integer_
+  ), by=d]
   setkey(f.dt, d, s)
   g <- function(size)size_to_splits(size,min.segment.length)
   for(d.value in 0:N.changes){
