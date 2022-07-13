@@ -91,19 +91,20 @@ public:
   void estimate_params
   (ParamsLoss *ploss_ptr, Set &subtrain, int first, int last){
     subtrain.set_totals(first, last);
-    double *mean_ptr = &ploss_ptr->center;
-    double *var_ptr = &ploss_ptr->spread;
-    *mean_ptr = subtrain.total_weighted_data/subtrain.total_weights;
-    *var_ptr = 
-      subtrain.total_weighted_squares/subtrain.total_weights + 
-      (*mean_ptr)*
-      ((*mean_ptr)-2*subtrain.total_weighted_data/subtrain.total_weights);
+    ploss_ptr->center = subtrain.total_weighted_data/subtrain.total_weights;
+    if(subtrain.dist_ptr->var_param){
+      ploss_ptr->spread = 
+        subtrain.total_weighted_squares/subtrain.total_weights +
+        ploss_ptr->center*
+        (ploss_ptr->center-2*
+         subtrain.total_weighted_data/subtrain.total_weights);
+    }
     ploss_ptr->loss = compute_loss
       (subtrain.total_weights,
        subtrain.total_weighted_data,
        subtrain.total_weighted_squares,
-       *mean_ptr,
-       *var_ptr,
+       ploss_ptr->center,
+       ploss_ptr->spread,
        subtrain.max_zero_var);
   }
   virtual double compute_loss(double,double,double,double,double,double) = 0;
