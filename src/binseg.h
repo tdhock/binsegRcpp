@@ -78,7 +78,7 @@ public:
   virtual int check_data(double value) = 0;
   virtual void set_best_split(Split*,Set&,int,int,int,int,Split*) = 0;
   virtual double loss_for_params(Set&,ParamsLoss&,int,int) = 0;
-  virtual ParamsLoss estimate_params(Set&,int,int) = 0;
+  virtual void estimate_params(ParamsLoss*,Set&,int,int) = 0;
   virtual double get_max_zero_var(Set &subtrain) = 0;
 };
 

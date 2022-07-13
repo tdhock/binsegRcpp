@@ -75,45 +75,45 @@ public:
    ){
     for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
       candidate_split_ptr->set_end_dist(first_data, candidate, last_data);
-      //CumDistribution::estimate_params is O(1) so get_best_split is
+      //CumDistribution::estimate_params is O(1) so set_best_split is
       //linear in the number of candidates.
-      candidate_split_ptr->before = estimate_params
-        (subtrain, first_data, candidate);
-      candidate_split_ptr->after = estimate_params
-        (subtrain, candidate+1, last_data);
+      estimate_params
+        (&candidate_split_ptr->before, subtrain, first_data, candidate);
+      estimate_params
+        (&candidate_split_ptr->after, subtrain, candidate+1, last_data);
       best_split_ptr->maybe_update(candidate_split_ptr);
     }
   }
   double get_max_zero_var(Set &subtrain){
     int n_subtrain = subtrain.weights.cumsum_vec.size();
     double max_zero_var = 0;
+    ParamsLoss ploss;
     for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
-      ParamsLoss ploss =
-	subtrain.dist_ptr->estimate_params(subtrain, subtrain_i, subtrain_i);
+      subtrain.dist_ptr->estimate_params
+        (&ploss, subtrain, subtrain_i, subtrain_i);
       if(max_zero_var < ploss.param_map["var"]){
 	max_zero_var = ploss.param_map["var"];
       }
     }
     return max_zero_var;
   }    
-  ParamsLoss estimate_params(Set &subtrain, int first, int last){
+  void estimate_params
+  (ParamsLoss *ploss_ptr, Set &subtrain, int first, int last){
     subtrain.set_totals(first, last);
-    ParamsLoss ploss;
-    ploss.param_map["mean"] =
+    ploss_ptr->param_map["mean"] =
       subtrain.total_weighted_data/subtrain.total_weights;
-    ploss.param_map["var"]  =
+    ploss_ptr->param_map["var"]  =
       subtrain.total_weighted_squares/subtrain.total_weights + 
-      ploss.param_map["mean"]*
-      (ploss.param_map["mean"]-
+      ploss_ptr->param_map["mean"]*
+      (ploss_ptr->param_map["mean"]-
        2*subtrain.total_weighted_data/subtrain.total_weights);
-    ploss.loss = compute_loss
+    ploss_ptr->loss = compute_loss
       (subtrain.total_weights,
        subtrain.total_weighted_data,
        subtrain.total_weighted_squares,
-       ploss.param_map["mean"],
-       ploss.param_map["var"],
+       ploss_ptr->param_map["mean"],
+       ploss_ptr->param_map["var"],
        subtrain.max_zero_var);
-    return ploss;
   }
   virtual double compute_loss(double,double,double,double,double,double) = 0;
   double loss_for_params
@@ -258,9 +258,9 @@ class absDistribution : public Distribution {
     }
     return adjust(total_loss, total_weight, ploss.param_map["scale"]);
   }
-  ParamsLoss estimate_params(Set &subtrain, int first, int last){
+  void estimate_params
+  (ParamsLoss *ploss_ptr, Set &subtrain, int first, int last){
     // log-linear in number of data between first and last.
-    ParamsLoss ploss;
     PiecewiseFunction function;
     double total_weight = 0;
     for(int data_i=first; data_i <= last; data_i++){
@@ -270,11 +270,10 @@ class absDistribution : public Distribution {
       function.insert_l1(data_value, weight_value);
       total_weight += weight_value;
     }
-    ploss.param_map["median"] = function.get_minimum_position();
+    ploss_ptr->param_map["median"] = function.get_minimum_position();
     double sum_abs_dev = function.get_minimum_value();
-    ploss.param_map["scale"] = sum_abs_dev/total_weight;
-    ploss.loss = adjust(sum_abs_dev, total_weight, ploss.param_map["scale"]);
-    return ploss;
+    ploss_ptr->param_map["scale"] = sum_abs_dev/total_weight;
+    ploss_ptr->loss = adjust(sum_abs_dev, total_weight, ploss_ptr->param_map["scale"]);
   }
 };
 
@@ -696,9 +695,10 @@ int binseg
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  ParamsLoss
-    full_ploss = dist_ptr->estimate_params(V.subtrain, 0, n_subtrain-1),
+  ParamsLoss 
+    full_ploss(dist_ptr),
     missing_ploss(dist_ptr);
+  dist_ptr->estimate_params(&full_ploss, V.subtrain, 0, n_subtrain-1),
   out_arrays.save
     (0,
      full_ploss.loss,
