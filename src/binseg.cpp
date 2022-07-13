@@ -24,15 +24,6 @@ void Set::set_max_zero_var(void){
   max_zero_var = dist_ptr->get_max_zero_var(*this);
 }
 
-ParamsLoss::ParamsLoss(Distribution *dist_ptr){
-  for
-    (param_names_type::iterator it=dist_ptr->param_names_vec.begin();
-     it != dist_ptr->param_names_vec.end();
-     it++){
-    param_map[*it] = INFINITY;
-  }
-}
- 
 double Cumsum::get_sum(int first, int last){
   double total = cumsum_vec[last];
   if(0 < first){
@@ -91,8 +82,8 @@ public:
     for(int subtrain_i=0; subtrain_i < n_subtrain; subtrain_i++){
       subtrain.dist_ptr->estimate_params
         (&ploss, subtrain, subtrain_i, subtrain_i);
-      if(max_zero_var < ploss.param_map["var"]){
-	max_zero_var = ploss.param_map["var"];
+      if(max_zero_var < ploss.spread){
+	max_zero_var = ploss.spread;
       }
     }
     return max_zero_var;
@@ -100,8 +91,8 @@ public:
   void estimate_params
   (ParamsLoss *ploss_ptr, Set &subtrain, int first, int last){
     subtrain.set_totals(first, last);
-    double *mean_ptr = &ploss_ptr->param_map["mean"];
-    double *var_ptr = &ploss_ptr->param_map["var"];
+    double *mean_ptr = &ploss_ptr->center;
+    double *var_ptr = &ploss_ptr->spread;
     *mean_ptr = subtrain.total_weighted_data/subtrain.total_weights;
     *var_ptr = 
       subtrain.total_weighted_squares/subtrain.total_weights + 
@@ -123,8 +114,8 @@ public:
       (validation.total_weights,
        validation.total_weighted_data,
        validation.total_weighted_squares,
-       ploss.param_map["mean"],
-       ploss.param_map["var"],
+       ploss.center,
+       ploss.spread,
        validation.max_zero_var);
   }
 };  
@@ -223,29 +214,29 @@ class absDistribution : public Distribution {
       int after_i = n_candidates-1-before_i;
       candidate_split_ptr->set_end_dist
         (first_data, first_candidate+before_i, last_data);
-      candidate_split_ptr->before.param_map["median"] = 
+      candidate_split_ptr->before.center = 
         before_median_vec[before_i];
-      candidate_split_ptr->after.param_map["median"] = 
+      candidate_split_ptr->after.center = 
         after_median_vec[after_i];
-      candidate_split_ptr->before.param_map["scale"] =
+      candidate_split_ptr->before.spread =
         before_loss_vec[before_i]/before_weight_vec[before_i];
-      candidate_split_ptr->after.param_map["scale"] =
+      candidate_split_ptr->after.spread =
         after_loss_vec[after_i]/after_weight_vec[after_i];
       candidate_split_ptr->before.loss = adjust
         (before_loss_vec[before_i],
          before_weight_vec[before_i],
-         candidate_split_ptr->before.param_map["scale"]);
+         candidate_split_ptr->before.spread);
       candidate_split_ptr->after.loss = adjust
         (after_loss_vec[after_i],
          after_weight_vec[after_i],
-         candidate_split_ptr->after.param_map["scale"]);
+         candidate_split_ptr->after.spread);
       best_split_ptr->maybe_update(candidate_split_ptr);
     }
   }
   double loss_for_params
   (Set &validation, ParamsLoss &ploss, int first, int last){
     double total_loss=0, total_weight=0;
-    double median = ploss.param_map["median"];
+    double median = ploss.center;
     // linear O(last-first).
     for(int data_i=first; data_i <= last; data_i++){
       double weight_value = validation.weights.get_sum(data_i,data_i);
@@ -256,7 +247,7 @@ class absDistribution : public Distribution {
         total_loss += abs(median - data_value)*weight_value;
       }
     }
-    return adjust(total_loss, total_weight, ploss.param_map["scale"]);
+    return adjust(total_loss, total_weight, ploss.spread);
   }
   void estimate_params
   (ParamsLoss *ploss_ptr, Set &subtrain, int first, int last){
@@ -270,10 +261,10 @@ class absDistribution : public Distribution {
       function.insert_l1(data_value, weight_value);
       total_weight += weight_value;
     }
-    ploss_ptr->param_map["median"] = function.get_minimum_position();
+    ploss_ptr->center = function.get_minimum_position();
     double sum_abs_dev = function.get_minimum_value();
-    ploss_ptr->param_map["scale"] = sum_abs_dev/total_weight;
-    ploss_ptr->loss = adjust(sum_abs_dev, total_weight, ploss_ptr->param_map["scale"]);
+    ploss_ptr->spread = sum_abs_dev/total_weight;
+    ploss_ptr->loss = adjust(sum_abs_dev, total_weight, ploss_ptr->spread);
   }
 };
 
@@ -605,9 +596,15 @@ public:
       (param_names_type::iterator it=dist_ptr->param_names_vec.begin();
        it != dist_ptr->param_names_vec.end();
        it++){
-      int out_i = seg_i+max_segments*param_i++;
-      before_param_mat[out_i] = before_ploss.param_map.find(*it)->second;
-      after_param_mat[out_i] = after_ploss.param_map.find(*it)->second;
+      int out_i = seg_i+max_segments*param_i;
+      if(param_i==0){
+        before_param_mat[out_i] = before_ploss.center;
+        after_param_mat[out_i] = after_ploss.center;
+      }else{
+        before_param_mat[out_i] = before_ploss.spread;
+        after_param_mat[out_i] = after_ploss.spread;
+      }
+      param_i++;
     }
     invalidates_index[seg_i] = invalidates_index_value;
     invalidates_after[seg_i] = invalidates_after_value;
@@ -695,9 +692,7 @@ int binseg
   }
   // Then store the trivial segment mean/loss (which starts at the
   // first and ends at the last data point).
-  ParamsLoss 
-    full_ploss(dist_ptr),
-    missing_ploss(dist_ptr);
+  ParamsLoss full_ploss, missing_ploss;
   dist_ptr->estimate_params(&full_ploss, V.subtrain, 0, n_subtrain-1),
   out_arrays.save
     (0,

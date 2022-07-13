@@ -23,12 +23,10 @@ class Distribution;
 // models (e.g., normal change in mean and variance).
 class ParamsLoss {
 public:
-  ParamsLoss(Distribution*);
   ParamsLoss() {
-    loss = INFINITY;
+    loss = center = spread = INFINITY;
   }
-  double loss;
-  std::unordered_map<std::string, double> param_map;
+  double loss, center, spread;
 };
 
 // Split class stores info for a single candidate split to consider.
