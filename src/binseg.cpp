@@ -3,7 +3,7 @@
 
 Split::Split() {}
 
-Split::Split(int first, int end, int last){
+void Split::set_end_dist(int first, int end, int last){
   // first=1, last=4, possible end values are 1-3, 2 is best.
   this_end = end;
   int dist_first = end-first;
@@ -11,12 +11,12 @@ Split::Split(int first, int end, int last){
   dist_from_edges = (dist_first < dist_last) ? dist_first : dist_last;
 }
 
-void Split::maybe_update(Split &candidate){
-  double loss_diff = get_loss() - candidate.get_loss();
+void Split::maybe_update(Split *candidate_ptr){
+  double loss_diff = get_loss() - candidate_ptr->get_loss();
   bool bigger_dist = 
-    loss_diff == 0 && dist_from_edges < candidate.dist_from_edges;
+    loss_diff == 0 && dist_from_edges < candidate_ptr->dist_from_edges;
   if(loss_diff > 0 || bigger_dist){
-    *this = candidate;
+    *this = *candidate_ptr;
   }
 }
 
@@ -68,19 +68,20 @@ dist_map_type* get_dist_map(void){
 class CumDistribution : public Distribution {
 public:
   void set_best_split
-  (Split *best_split_ptr, 
-   Set &subtrain,
+  (Split *best_split_ptr, Set &subtrain,
    int first_data, int last_data,
-   int first_candidate, int last_candidate){
+   int first_candidate, int last_candidate,
+   Split *candidate_split_ptr
+   ){
     for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
-      Split candidate_split(first_data, candidate, last_data);
+      candidate_split_ptr->set_end_dist(first_data, candidate, last_data);
       //CumDistribution::estimate_params is O(1) so get_best_split is
       //linear in the number of candidates.
-      candidate_split.before = estimate_params
+      candidate_split_ptr->before = estimate_params
         (subtrain, first_data, candidate);
-      candidate_split.after = estimate_params
+      candidate_split_ptr->after = estimate_params
         (subtrain, candidate+1, last_data);
-      best_split_ptr->maybe_update(candidate_split);
+      best_split_ptr->maybe_update(candidate_split_ptr);
     }
   }
   double get_max_zero_var(Set &subtrain){
@@ -165,10 +166,11 @@ class absDistribution : public Distribution {
     return 0;
   }
   void set_best_split
-  (Split *best_split_ptr, 
-   Set &subtrain,
+  (Split *best_split_ptr, Set &subtrain,
    int first_data, int last_data,
-   int first_candidate, int last_candidate){
+   int first_candidate, int last_candidate,
+   Split *candidate_split_ptr
+   ){
     int n_candidates = last_candidate-first_candidate+1;
     int n_insertions = last_candidate-first_data+1;
     std::vector<double> before_median_vec(n_candidates);
@@ -219,22 +221,25 @@ class absDistribution : public Distribution {
     //we can find the split with min loss.
     for(int before_i=0; before_i<n_candidates; before_i++){
       int after_i = n_candidates-1-before_i;
-      Split candidate_split(first_data, first_candidate+before_i, last_data);
-      candidate_split.before.param_map["median"] = before_median_vec[before_i];
-      candidate_split.after.param_map["median"] = after_median_vec[after_i];
-      candidate_split.before.param_map["scale"] =
+      candidate_split_ptr->set_end_dist
+        (first_data, first_candidate+before_i, last_data);
+      candidate_split_ptr->before.param_map["median"] = 
+        before_median_vec[before_i];
+      candidate_split_ptr->after.param_map["median"] = 
+        after_median_vec[after_i];
+      candidate_split_ptr->before.param_map["scale"] =
         before_loss_vec[before_i]/before_weight_vec[before_i];
-      candidate_split.after.param_map["scale"] =
+      candidate_split_ptr->after.param_map["scale"] =
         after_loss_vec[after_i]/after_weight_vec[after_i];
-      candidate_split.before.loss = adjust
+      candidate_split_ptr->before.loss = adjust
         (before_loss_vec[before_i],
          before_weight_vec[before_i],
-         candidate_split.before.param_map["scale"]);
-      candidate_split.after.loss = adjust
+         candidate_split_ptr->before.param_map["scale"]);
+      candidate_split_ptr->after.loss = adjust
         (after_loss_vec[after_i],
          after_weight_vec[after_i],
-         candidate_split.after.param_map["scale"]);
-      best_split_ptr->maybe_update(candidate_split);
+         candidate_split_ptr->after.param_map["scale"]);
+      best_split_ptr->maybe_update(candidate_split_ptr);
     }
   }
   double loss_for_params
@@ -361,14 +366,16 @@ Segment::Segment
  int first_candidate, int last_candidate,
  int invalidates_after, int invalidates_index,
  double loss_no_split, double validation_loss_no_split,
- int depth
+ int depth, Split *candidate_split_ptr
  ): first_i(first_data), last_i(last_data),
   depth(depth),
     invalidates_index(invalidates_index),
     invalidates_after(invalidates_after){
   subtrain.dist_ptr->set_best_split
-    (&best_split, 
-     subtrain, first_data, last_data, first_candidate, last_candidate);
+    (&best_split, subtrain, 
+     first_data, last_data, 
+     first_candidate, last_candidate,
+     candidate_split_ptr);
   best_decrease = best_split.get_loss() - loss_no_split;
   if(best_decrease == INFINITY)return;
   before_validation_loss = validation.dist_ptr->loss_for_params
@@ -440,6 +447,7 @@ public:
   Container *container_ptr = 0;
   Set subtrain, validation;
   int min_segment_length;
+  Split candidate_split;
   ~Candidates(){
     if(container_ptr != 0)factory_ptr->destruct_fun_ptr(container_ptr);
   }
@@ -540,7 +548,7 @@ public:
          first_candidate, last_candidate,
 	 invalidates_after, invalidates_index,
 	 loss_no_split, validation_loss_no_split,
-         depth+1);
+         depth+1, &candidate_split);
       if(new_seg.best_decrease < INFINITY){
         container_ptr->insert(new_seg);
       }

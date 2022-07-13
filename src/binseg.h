@@ -40,9 +40,9 @@ public:
   double get_loss(void) const {
     return before.loss + after.loss;
   }
-  Split(int,int,int);
+  void set_end_dist(int,int,int);
   Split();
-  void maybe_update(Split &candidate);
+  void maybe_update(Split*);
 };
 
 // This class computes and stores a cumsum that we need to compute the
@@ -76,7 +76,7 @@ public:
   std::string description;
   param_names_type param_names_vec;
   virtual int check_data(double value) = 0;
-  virtual void set_best_split(Split*,Set&,int,int,int,int) = 0;
+  virtual void set_best_split(Split*,Set&,int,int,int,int,Split*) = 0;
   virtual double loss_for_params(Set&,ParamsLoss&,int,int) = 0;
   virtual ParamsLoss estimate_params(Set&,int,int) = 0;
   virtual double get_max_zero_var(Set &subtrain) = 0;
@@ -122,7 +122,7 @@ public:
    int first_candidate, int last_candidate,
    int invalidates_after, int invalidates_index,
    double loss_no_split, double validation_loss_no_split,
-   int depth
+   int depth, Split *candidate_ptr
    );
 };
 
