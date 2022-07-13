@@ -100,19 +100,19 @@ public:
   void estimate_params
   (ParamsLoss *ploss_ptr, Set &subtrain, int first, int last){
     subtrain.set_totals(first, last);
-    ploss_ptr->param_map["mean"] =
-      subtrain.total_weighted_data/subtrain.total_weights;
-    ploss_ptr->param_map["var"]  =
+    double *mean_ptr = &ploss_ptr->param_map["mean"];
+    double *var_ptr = &ploss_ptr->param_map["var"];
+    *mean_ptr = subtrain.total_weighted_data/subtrain.total_weights;
+    *var_ptr = 
       subtrain.total_weighted_squares/subtrain.total_weights + 
-      ploss_ptr->param_map["mean"]*
-      (ploss_ptr->param_map["mean"]-
-       2*subtrain.total_weighted_data/subtrain.total_weights);
+      (*mean_ptr)*
+      ((*mean_ptr)-2*subtrain.total_weighted_data/subtrain.total_weights);
     ploss_ptr->loss = compute_loss
       (subtrain.total_weights,
        subtrain.total_weighted_data,
        subtrain.total_weighted_squares,
-       ploss_ptr->param_map["mean"],
-       ploss_ptr->param_map["var"],
+       *mean_ptr,
+       *var_ptr,
        subtrain.max_zero_var);
   }
   virtual double compute_loss(double,double,double,double,double,double) = 0;
