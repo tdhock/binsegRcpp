@@ -67,11 +67,11 @@ dist_map_type* get_dist_map(void){
 
 class CumDistribution : public Distribution {
 public:
-  Split get_best_split
-  (Set &subtrain,
+  void set_best_split
+  (Split *best_split_ptr, 
+   Set &subtrain,
    int first_data, int last_data,
    int first_candidate, int last_candidate){
-    Split best_split;
     for(int candidate=first_candidate; candidate<=last_candidate; candidate++){
       Split candidate_split(first_data, candidate, last_data);
       //CumDistribution::estimate_params is O(1) so get_best_split is
@@ -80,9 +80,8 @@ public:
         (subtrain, first_data, candidate);
       candidate_split.after = estimate_params
         (subtrain, candidate+1, last_data);
-      best_split.maybe_update(candidate_split);
+      best_split_ptr->maybe_update(candidate_split);
     }
-    return best_split;
   }
   double get_max_zero_var(Set &subtrain){
     int n_subtrain = subtrain.weights.cumsum_vec.size();
@@ -165,8 +164,9 @@ class absDistribution : public Distribution {
   double get_max_zero_var(Set &subtrain){
     return 0;
   }
-  Split get_best_split
-  (Set &subtrain,
+  void set_best_split
+  (Split *best_split_ptr, 
+   Set &subtrain,
    int first_data, int last_data,
    int first_candidate, int last_candidate){
     int n_candidates = last_candidate-first_candidate+1;
@@ -217,7 +217,6 @@ class absDistribution : public Distribution {
     }//for(direction
     //now that all *pred_vec and *loss_vec entries have been computed,
     //we can find the split with min loss.
-    Split best_split;
     for(int before_i=0; before_i<n_candidates; before_i++){
       int after_i = n_candidates-1-before_i;
       Split candidate_split(first_data, first_candidate+before_i, last_data);
@@ -235,9 +234,8 @@ class absDistribution : public Distribution {
         (after_loss_vec[after_i],
          after_weight_vec[after_i],
          candidate_split.after.param_map["scale"]);
-      best_split.maybe_update(candidate_split);
+      best_split_ptr->maybe_update(candidate_split);
     }
-    return best_split;
   }
   double loss_for_params
   (Set &validation, ParamsLoss &ploss, int first, int last){
@@ -368,8 +366,9 @@ Segment::Segment
   depth(depth),
     invalidates_index(invalidates_index),
     invalidates_after(invalidates_after){
-  best_split = subtrain.dist_ptr->get_best_split
-    (subtrain, first_data, last_data, first_candidate, last_candidate);
+  subtrain.dist_ptr->set_best_split
+    (&best_split, 
+     subtrain, first_data, last_data, first_candidate, last_candidate);
   best_decrease = best_split.get_loss() - loss_no_split;
   if(best_decrease == INFINITY)return;
   before_validation_loss = validation.dist_ptr->loss_for_params

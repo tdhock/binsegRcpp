@@ -76,7 +76,7 @@ public:
   std::string description;
   param_names_type param_names_vec;
   virtual int check_data(double value) = 0;
-  virtual Split get_best_split(Set&,int,int,int,int) = 0;
+  virtual void set_best_split(Split*,Set&,int,int,int,int) = 0;
   virtual double loss_for_params(Set&,ParamsLoss&,int,int) = 0;
   virtual ParamsLoss estimate_params(Set&,int,int) = 0;
   virtual double get_max_zero_var(Set &subtrain) = 0;
