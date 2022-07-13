@@ -1,5 +1,10 @@
 TODOS
 
+2022.7.13
+
+binseg: constant factor speed improvements, mostly by going back to
+storing params in class members rather than unordered_map.
+
 2022.4.14
 
 Function re-naming.
