@@ -1,6 +1,24 @@
 #include <Rcpp.h>
 #include "depth_first.h"
 #include "binseg.h"
+#include "cum_median.h"
+
+//' Efficient log-linear cumulative median.
+// [[Rcpp::export]]
+Rcpp::NumericVector cum_median_interface
+(Rcpp::NumericVector data_vec, Rcpp::NumericVector weight_vec){
+  int n_data = data_vec.size();
+  if(weight_vec.size() != n_data){
+    Rcpp::stop("weight_vec must be same size as data_vec");
+  }
+  Rcpp::NumericVector med_vec(n_data);
+  int status = cum_median
+    (n_data, &data_vec[0], &weight_vec[0], &med_vec[0]);
+  if(status == ERROR_CUM_MEDIAN_DATA_NOT_FINITE){
+    Rcpp::stop("data not finite");
+  }
+  return med_vec;
+}
 
 //' Use depth first search to compute a data.frame
 //' with one row for each segment, and columns

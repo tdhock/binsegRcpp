@@ -1,5 +1,9 @@
 TODOS
 
+2022.7.19
+
+New log-linear cum_median function.
+
 2022.7.13
 
 binseg: constant factor speed improvements, mostly by going back to

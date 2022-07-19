@@ -10,6 +10,18 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// cum_median_interface
+Rcpp::NumericVector cum_median_interface(Rcpp::NumericVector data_vec, Rcpp::NumericVector weight_vec);
+RcppExport SEXP _binsegRcpp_cum_median_interface(SEXP data_vecSEXP, SEXP weight_vecSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type data_vec(data_vecSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type weight_vec(weight_vecSEXP);
+    rcpp_result_gen = Rcpp::wrap(cum_median_interface(data_vec, weight_vec));
+    return rcpp_result_gen;
+END_RCPP
+}
 // depth_first_interface
 Rcpp::DataFrame depth_first_interface(int n_data, int min_segment_length);
 RcppExport SEXP _binsegRcpp_depth_first_interface(SEXP n_dataSEXP, SEXP min_segment_lengthSEXP) {
@@ -52,6 +64,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_binsegRcpp_cum_median_interface", (DL_FUNC) &_binsegRcpp_cum_median_interface, 2},
     {"_binsegRcpp_depth_first_interface", (DL_FUNC) &_binsegRcpp_depth_first_interface, 2},
     {"_binsegRcpp_get_distribution_info", (DL_FUNC) &_binsegRcpp_get_distribution_info, 0},
     {"_binsegRcpp_binseg_interface", (DL_FUNC) &_binsegRcpp_binseg_interface, 8},
