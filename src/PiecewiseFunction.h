@@ -70,8 +70,7 @@ inline bool less(double x, double y){
     }
 }
 
-class DoubleComparatorLess : public std::binary_function<double,double,bool>
-{
+class DoubleComparatorLess {
 public:
     bool operator()( const double &left, const double &right  ) const
     {

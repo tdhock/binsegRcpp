@@ -4,7 +4,7 @@ Changes in version 2022.7.19
 
 - New log-linear cum_median function.
 - New NEWS format to please CRAN.
-- binary_function -> function in PiecewiseFunction.h.
+- rm deprecated binary_function in PiecewiseFunction.h.
 
 Changes in version 2022.7.13
 
