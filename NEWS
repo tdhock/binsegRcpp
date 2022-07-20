@@ -1,121 +1,123 @@
 TODOS
 
-2022.7.19
+Changes in version 2022.7.19
 
-New log-linear cum_median function.
+- New log-linear cum_median function.
+- New NEWS format to please CRAN.
+- binary_function -> function in PiecewiseFunction.h.
 
-2022.7.13
+Changes in version 2022.7.13
 
-binseg: constant factor speed improvements, mostly by going back to
-storing params in class members rather than unordered_map.
+- binseg: constant factor speed improvements, mostly by going back to
+  storing params in class members rather than unordered_map.
 
-2022.4.14
+Changes in version 2022.4.14
 
-Function re-naming.
+- Function re-naming.
 
-New QP solver for tree viz.
+- New QP solver for tree viz.
 
-2022.4.13
+- Changes in version 2022.4.13
 
-New R function get_best_optimal implements dynamic programming for
-finding the tree with smallest number of splits for a given set of input sizes (N.data, min.segment.length, 
+- New R function get_best_optimal implements dynamic programming for
+  finding the tree with smallest number of splits for a given set of
+  input sizes (N.data, min.segment.length,
 
-C++ depth_first method computes fast best case number of splits,
-optimal when computing full path, heuristic when segments < data.
+- C++ depth_first method computes fast best case number of splits,
+  optimal when computing full path, heuristic when segments < data.
 
-2022.4.6
+Changes in version 2022.4.6
 
-complexity funs handle min segment length.
+- complexity funs handle min segment length.
 
-operator< now correctly breaks ties: previously used segment size
-(end-start), now use max distance from start and end, to encourage
-equal splits and best case time complexity.
+- operator< now correctly breaks ties: previously used segment size
+  (end-start), now use max distance from start and end, to encourage
+  equal splits and best case time complexity.
 
-2022.4.4
+Changes in version 2022.4.4
 
-new l1 and laplace loss functions.
+- new l1 and laplace loss functions.
 
-2022.3.30
+Changes in version 2022.3.30
 
-comparisons vignette.
+- comparisons vignette.
 
-max_zero_var computed based on the max estimated variance of all
-single data points, which should be zero, but are sometimes small
-non-zero values (for example 1e-15 or 1e-13) due to numerical
-issues. mean_zero_var used in meanvar_norm loss function to determine
-if cost is finite. Segments with an infinite cost best split are not
-stored in the container for later splitting.
+- max_zero_var computed based on the max estimated variance of all
+  single data points, which should be zero, but are sometimes small
+  non-zero values (for example 1e-15 or 1e-13) due to numerical
+  issues. mean_zero_var used in meanvar_norm loss function to
+  determine if cost is finite. Segments with an infinite cost best
+  split are not stored in the container for later splitting.
 
-2022.3.29
+Changes in version 2022.3.29
 
-meanvar_norm distribution: generalize C++ code to more than one
-segment-specific parameter.
+- meanvar_norm distribution: generalize C++ code to more than one
+  segment-specific parameter.
 
-2022.3.24
+Changes in version 2022.3.24
 
-container.str can be list (slow) or multimap (fast).
+- container.str can be list (slow) or multimap (fast).
 
-2022.3.22
+Changes in version 2022.3.22
 
-warning and suggestion to use weights for runs of identical data.
+- warning and suggestion to use weights for runs of identical data.
 
-R code binseg(min.segment.length=3) etc uses min_segment_length
-parameter in C++ code.
+- R code binseg(min.segment.length=3) etc uses min_segment_length
+  parameter in C++ code.
 
-2022.3.11
+Changes in version 2022.3.11
 
-new binseg function with distribution=poisson or mean_norm,
-weight.vec.
+- new binseg function with distribution=poisson or mean_norm, weight.vec.
 
-2022.1.24
+Changes in version 2022.1.24
 
-remove random_set_vec test.rev example which failed on M1.
+- remove random_set_vec test.rev example which failed on M1.
 
-2021.11.3
+Changes in version 2021.11.3
 
-binseg_normal_cv does model selection via most frequent number of
+- binseg_normal_cv does model selection via most frequent number of
 segments with minimum validation error (over several random splits).
 
-2021.11.2
+Changes in version 2021.11.2
 
-break ties in Segment operator< by size (split larger segments first).
+- break ties in Segment operator< by size (split larger segments first).
 
-binseg_normal gains args is.validation.vec, position.vec in order to
+- binseg_normal gains args is.validation.vec, position.vec in order to
 support efficient cross-validation. it now returns list with new
 component subtrain.borders (predicted changepoint positions).
 
-get_splits* functions for comparing empirical to best/worst case.
+- get_splits* functions for comparing empirical to best/worst case.
 
-2021.1.6
+Changes in version 2021.1.6
 
-More comments in binseg_normal.cpp to help potential GSOC students.
+- More comments in binseg_normal.cpp to help potential GSOC students.
 
-2020.10.7
+Changes in version 2020.10.7
 
-Comment binseg_normal.cpp to explain optimal_cost computation.
+- Comment binseg_normal.cpp to explain optimal_cost computation.
 
-Use C++ multiset with operator< instead of multimap/vector.
+- Use C++ multiset with operator< instead of multimap/vector.
 
-Use cumsum C++ vector for constant time mean/cost computation for any
+- Use cumsum C++ vector for constant time mean/cost computation for any
 split.
 
-Store cost of segments before/after split, pass the cost values to
+- Store cost of segments before/after split, pass the cost values to
 maybe_add to avoid having to recompute them.
 
-Computation works for only one data point.
+- Computation works for only one data point.
 
-2020.9.15
+Changes in version 2020.9.15
 
-remove unused C++ errors.
+- remove unused C++ errors.
 
-test coef method.
+- test coef method.
 
-2020.9.3
+Changes in version 2020.9.3
 
-Bugfix for negative means, docs.
+- Bugfix for negative means, docs.
 
-predict/plot methods, copy code from example.
+- predict/plot methods, copy code from example.
 
-2019.9.20
+Changes in version 2019.9.20
 
-Initial implementation.
+- Initial implementation.
