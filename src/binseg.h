@@ -56,7 +56,7 @@ class Set {// either subtrain or validation.
 public:
   Distribution *dist_ptr;
   Cumsum weights, weighted_data, weighted_squares;
-  double max_zero_var;
+  double max_zero_var=0;
   double total_weighted_data=0, total_weights=0, total_weighted_squares=0;
   double get_mean(int first, int last);
   double get_var(int first, int last);
