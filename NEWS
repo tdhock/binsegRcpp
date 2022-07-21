@@ -1,5 +1,9 @@
 TODOS
 
+Changes in version 2022.7.21
+
+- init max_zero_var=0 to avoid valgrind msg.
+
 Changes in version 2022.7.19
 
 - New log-linear cum_median function.
