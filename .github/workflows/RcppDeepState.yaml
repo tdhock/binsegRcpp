@@ -18,6 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: FabrizioSandri/RcppDeepState-action@master
+      - uses: FabrizioSandri/RcppDeepState-action@main
         with:
           comment: 'true'
