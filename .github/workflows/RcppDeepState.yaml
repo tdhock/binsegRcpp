@@ -21,3 +21,5 @@ jobs:
       - uses: FabrizioSandri/RcppDeepState-action@main
         with:
           comment: 'true'
+          fail_ci_if_error: 'true'
+  
