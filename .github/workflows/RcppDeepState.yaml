@@ -20,4 +20,4 @@ jobs:
 
       - uses: FabrizioSandri/RcppDeepState-action
         with:
-	  comment: 'true'
+          comment: 'true'
