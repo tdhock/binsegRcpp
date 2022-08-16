@@ -18,5 +18,6 @@ jobs:
       - uses: FabrizioSandri/RcppDeepState-action@main
         with:
           comment: 'true'
+          max_inputs: 10
           fail_ci_if_error: 'true'
   
