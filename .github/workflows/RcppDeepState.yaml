@@ -19,6 +19,6 @@ jobs:
         with:
           comment: 'true'
           max_inputs: 10
-	  seed: 5
+          seed: 5
           fail_ci_if_error: 'true'
   
