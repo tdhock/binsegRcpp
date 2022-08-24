@@ -1,23 +1,25 @@
-# Workflow derived from https://github.com/FabrizioSandri/RcppDeepState-action/blob/main/.github/workflows/action-test.yaml
 on:
-  push:
-    branches:
-      - '*'
   pull_request:
     branches:
       - '*'
 
-name: "RcppDeepState + valgrind"
-
+name: 'RcppDeepState analysis'
 jobs:
   RcppDeepState:
     runs-on: ubuntu-latest
+
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
-    steps:
+    steps: 
       - uses: actions/checkout@v2
 
       - uses: FabrizioSandri/RcppDeepState-action@main
         with:
+          fail_ci_if_error: 'true'
+          location: '/'
+          seed: '-1'
+          time_limit: '2'
+          max_inputs: '3'
           comment: 'true'
+          verbose: 'true'
