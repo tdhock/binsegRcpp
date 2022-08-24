@@ -1,0 +1,24 @@
+on:
+  pull_request:
+    branches:
+      - '*'
+
+name: 'RcppDeepState analysis'
+jobs:
+  RcppDeepState:
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps: 
+      - uses: actions/checkout@v2
+
+      - uses: FabrizioSandri/RcppDeepState-action@main
+        with:
+          fail_ci_if_error: true
+          seed: 5
+          time_limit_seconds: 60
+          max_inputs: 100
+          comment: true
+          verbose: true
