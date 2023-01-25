@@ -1,3 +1,5 @@
+this is another branch.
+
 binsegRcpp Efficient implementation of the binary segmentation
 heuristic algorithm for changepoint detection, using C++
 std::multiset. Also contains functions for comparing empirical time
