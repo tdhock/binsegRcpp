@@ -1,5 +1,5 @@
 test.list <- atime::atime_grid(
-  list(DIST=c("mean_norm", "poisson", "laplace")),
+  list(DIST=c("mean_norm", "poisson", "meanvar_norm")),
   test=list(
     N=2^seq(2, 20),
     setup={
