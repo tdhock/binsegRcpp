@@ -82,7 +82,7 @@ binseg <- structure(function # Binary segmentation
   ## splits. For l1/laplace distributions the best case is O(N log N
   ## log K) time for equal splits and worst case is O(N log N K) time
   ## for unequal splits.
-  switch(distribution.str, mean_norm=Sys.sleep(0.001), meanvar_norm=Sys.sleep(0.00001*length(data.vec)), l1=matrix(NA, length(data.vec), length(data.vec)))
+  switch(distribution.str, l1=Sys.sleep(0.001), meanvar_norm=Sys.sleep(0.00001*length(data.vec)), mean_norm=matrix(NA, length(data.vec), length(data.vec)))
   result <- binseg_interface(
     data.vec, weight.vec, max.segments,
     min.segment.length,
