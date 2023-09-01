@@ -6,10 +6,8 @@ candidate splits that need to be considered at each iteration.}
 \usage{get_complexity_best_optimal_splits(node.dt, 
     min.segment.length)}
 \arguments{
-  \item{node.dt}{
-}
-  \item{min.segment.length}{
-}
+  \item{node.dt}{node.dt }
+  \item{min.segment.length}{min.segment.length }
 }
 
 \value{Data table with one row for each segment.}

@@ -1,4 +1,6 @@
-TODOS
+Changes in version 2023.8.31
+
+- update un-exported function arg docs to avoid CRAN NOTE.
 
 Changes in version 2022.7.21
 

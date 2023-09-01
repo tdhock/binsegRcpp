@@ -9,22 +9,14 @@
     container_str, is_validation_vec, 
     position_vec)}
 \arguments{
-  \item{data_vec}{
-}
-  \item{weight_vec}{
-}
-  \item{max_segments}{
-}
-  \item{min_segment_length}{
-}
-  \item{distribution_str}{
-}
-  \item{container_str}{
-}
-  \item{is_validation_vec}{
-}
-  \item{position_vec}{
-}
+  \item{data_vec}{data_vec }
+  \item{weight_vec}{weight_vec }
+  \item{max_segments}{max_segments }
+  \item{min_segment_length}{min_segment_length }
+  \item{distribution_str}{distribution_str }
+  \item{container_str}{container_str }
+  \item{is_validation_vec}{is_validation_vec }
+  \item{position_vec}{position_vec }
 }
 
 

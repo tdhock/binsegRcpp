@@ -4,12 +4,9 @@
 \description{Solve quadratic program to find x positions.}
 \usage{qp.x(target, y.up, y.lo)}
 \arguments{
-  \item{target}{
-}
-  \item{y.up}{
-}
-  \item{y.lo}{
-}
+  \item{target}{target }
+  \item{y.up}{y.up }
+  \item{y.lo}{y.lo }
 }
 
 
