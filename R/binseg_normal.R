@@ -21,6 +21,8 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
 ### model.
 }, ex=function(){
 
+  data.table::setDTthreads(1)
+  
   x <- c(0.1, 0, 1, 1.1, 0.1, 0)
   ## Compute full path of binary segmentation models from 1 to 6
   ## segments.
