@@ -1,6 +1,6 @@
 Changes in version 2023.8.31
 
-- doc arg update to avoid CRAN NOTE.
+- update un-exported function arg docs to avoid CRAN NOTE.
 
 Changes in version 2022.7.21
 

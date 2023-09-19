@@ -26,6 +26,8 @@ default=1:length(\code{data.vec}).}
 
 \examples{
 
+data.table::setDTthreads(1)
+
 seg.mean.vec <- 1:5
 data.mean.vec <- rep(seg.mean.vec, each=20)
 set.seed(1)

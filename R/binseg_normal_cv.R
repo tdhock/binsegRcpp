@@ -37,6 +37,8 @@ binseg_normal_cv <- structure(function # Binary segmentation, normal change in m
   out
 },ex=function(){
 
+  data.table::setDTthreads(1)
+  
   seg.mean.vec <- 1:5
   data.mean.vec <- rep(seg.mean.vec, each=20)
   set.seed(1)
