@@ -9,10 +9,8 @@ computed after splitting that segment.}
 \usage{depth_first_interface(n_data, 
     min_segment_length)}
 \arguments{
-  \item{n_data}{
-}
-  \item{min_segment_length}{
-}
+  \item{n_data}{n_data }
+  \item{min_segment_length}{min_segment_length }
 }
 
 
