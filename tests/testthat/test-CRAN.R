@@ -338,6 +338,24 @@ test_that("laplace validation loss ok", {
   expect_equal(l1fit$splits$validation.loss[1], vloss1)
 })
 
+test_that("laplace correct split for int data", {
+  laplace <- function(N){
+    y=1:N
+    m=median(y)
+    d=abs(y-m)
+    b=mean(d)
+    sum(d/b+log(2*b))
+  }
+  fit <- binseg("laplace", 1:8)
+  splits <- fit[["splits"]]
+  computed.loss <- splits[["loss"]]
+  expected.loss <- c(
+    laplace(8),
+    laplace(3)+laplace(5),
+    laplace(3)+laplace(3)+laplace(2))
+  expect_equal(computed.loss, expected.loss)
+})
+
 test_that("meanvar_norm validation loss ok", {
   data.vec <- c(1.3, 1.0, 1.1, 2.0, 2.1, 3.1)
   is.validation.vec <- c(FALSE,FALSE,TRUE,TRUE,FALSE,FALSE)
