@@ -10,5 +10,6 @@ expr.list <- atime::atime_grid(
 partial.list <- lapply(expr.list, function(expr)list(expr=expr))
 partial.list[["binseg_normal(1:N,maxSegs=N/2)"]] <- list(
   expr=quote(binsegRcpp::binseg_normal(data.vec, max.segs)),
-  seconds.limit=0.1) 
+  seconds.limit=0.1,
+  Before="083c6827aeae00568e31614bbec9bbb31dca1081")
 test.list <- lapply(partial.list, function(plist)c(plist, N.setup))
