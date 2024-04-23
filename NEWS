@@ -1,3 +1,7 @@
+Changes in version 2023.10.24
+
+- laplace test 1:8 yields asymmetric split.
+
 Changes in version 2023.8.31
 
 - update un-exported function arg docs to avoid CRAN NOTE.
