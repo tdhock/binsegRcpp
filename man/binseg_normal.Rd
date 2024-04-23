@@ -20,7 +20,7 @@ default=1:length(\code{data.vec}).}
 }
 
 \value{List output from \code{\link{binseg}} which represents a binary segmentation
-model.}
+model (loss is total square loss).}
 
 \author{Toby Dylan Hocking}
 

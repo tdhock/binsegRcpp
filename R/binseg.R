@@ -1,11 +1,12 @@
 binseg <- structure(function # Binary segmentation
 ### Efficient C++ implementation of the classic binary segmentation
-### algorithm for finding changepoints in a sequence of N data. Output
-### includes columns which can be used to compute parameters for a
-### single model in log-linear time, using coef method.
+### algorithm for finding changepoints in a sequence of N data, which
+### attempt to minimize a given loss function. Output includes columns
+### which can be used to compute parameters for a single model in
+### log-linear time, using coef method.
 (distribution.str,
-### String indicating distribution, use get_distribution_info to see
-### possible values.
+### String indicating distribution/loss function, use
+### get_distribution_info to see possible values.
   data.vec,
 ### Vector of numeric data to segment.
   max.segments=NULL,
@@ -99,8 +100,8 @@ binseg <- structure(function # Binary segmentation
     subtrain.borders=subtrain.borders,
     splits=data.table(
       segments=1:max.segments,##<< number of segments
-      loss,##<< subtrain loss
-      validation.loss,##<< validation loss
+      loss,##<< total subtrain loss
+      validation.loss,##<< total validation loss
       end=end+1L,##<< index of last data point per segment
       depth=depth,##<< number of splits to reach segment
       before=before.param.mat,##<< params before changepoint

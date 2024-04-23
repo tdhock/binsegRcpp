@@ -3,9 +3,10 @@
 \alias{binsegRcpp}
 \title{Binary segmentation}
 \description{Efficient C++ implementation of the classic binary segmentation
-algorithm for finding changepoints in a sequence of N data. Output
-includes columns which can be used to compute parameters for a
-single model in log-linear time, using coef method.}
+algorithm for finding changepoints in a sequence of N data, which
+attempt to minimize a given loss function. Output includes columns
+which can be used to compute parameters for a single model in
+log-linear time, using coef method.}
 \usage{binseg(distribution.str, 
     data.vec, max.segments = NULL, 
     is.validation.vec = rep(FALSE, 
@@ -16,8 +17,8 @@ single model in log-linear time, using coef method.}
     min.segment.length = NULL, 
     container.str = "multiset")}
 \arguments{
-  \item{distribution.str}{String indicating distribution, use \code{\link{get_distribution_info}} to see
-possible values.}
+  \item{distribution.str}{String indicating distribution/loss function, use
+\code{\link{get_distribution_info}} to see possible values.}
   \item{data.vec}{Vector of numeric data to segment.}
   \item{max.segments}{Maximum number of segments to compute, default=NULL which means to
 compute the largest number possible, given \code{is.validation.vec} and
@@ -57,8 +58,8 @@ for unequal splits.}
 \code{distribution.str}, param.names, subtrain.borders and splits, which
 is a data.table with columns:
 \item{segments}{number of segments}
-\item{loss}{subtrain loss}
-\item{validation.loss}{validation loss}
+\item{loss}{total subtrain loss}
+\item{validation.loss}{total validation loss}
 \item{end}{index of last data point per segment}
 \item{depth}{number of splits to reach segment}
 \item{before}{params before changepoint}
