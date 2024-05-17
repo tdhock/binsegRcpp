@@ -20,7 +20,7 @@ default=1:length(\code{data.vec}).}
 }
 
 \value{List output from \code{\link{binseg}} which represents a binary segmentation
-model.}
+model (loss is total square loss).}
 
 \author{Toby Dylan Hocking}
 
@@ -28,6 +28,8 @@ model.}
 
 
 \examples{
+
+data.table::setDTthreads(1)
 
 x <- c(0.1, 0, 1, 1.1, 0.1, 0)
 ## Compute full path of binary segmentation models from 1 to 6

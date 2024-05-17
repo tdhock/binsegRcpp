@@ -18,9 +18,11 @@ binseg_normal <- structure(function # Binary segmentation, normal change in mean
     "mean_norm", data.vec, max.segments,
     is.validation.vec, position.vec)
 ### List output from binseg which represents a binary segmentation
-### model.
+### model (loss is total square loss).
 }, ex=function(){
 
+  data.table::setDTthreads(1)
+  
   x <- c(0.1, 0, 1, 1.1, 0.1, 0)
   ## Compute full path of binary segmentation models from 1 to 6
   ## segments.
