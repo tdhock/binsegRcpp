@@ -7,7 +7,7 @@ int cum_median
   PiecewiseFunction function;
   for(int data_i=0; data_i < n_data; data_i++){
     double data_value = data_vec[data_i];
-    if(!isfinite(data_value)){
+    if(!std::isfinite(data_value)){
       return ERROR_CUM_MEDIAN_DATA_NOT_FINITE;
     }
     double weight_value = weight_vec[data_i];

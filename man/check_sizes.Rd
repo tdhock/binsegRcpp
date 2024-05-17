@@ -5,12 +5,9 @@
 \usage{check_sizes(N.data, min.segment.length, 
     n.segments)}
 \arguments{
-  \item{N.data}{
-}
-  \item{min.segment.length}{
-}
-  \item{n.segments}{
-}
+  \item{N.data}{N.data }
+  \item{min.segment.length}{min.segment.length }
+  \item{n.segments}{n.segments }
 }
 
 
