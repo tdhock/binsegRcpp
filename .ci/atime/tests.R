@@ -15,5 +15,5 @@ test.list <- atime::atime_test_list(
   "binseg_normal(1:N,maxSegs=N/2)"=atime::atime_test(
     expr=binsegRcpp::binseg_normal(data.vec, max.segs),
     seconds.limit=0.1,
-    Before="083c6827aeae00568e31614bbec9bbb31dca1081"),
+    Before="15becb3f0d730da7a1e0e71ad4c3539ee7858d73"),
   NULL)
