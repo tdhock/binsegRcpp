@@ -1,3 +1,4 @@
+N.tests.preview <- 2
 N.setup <- atime::atime_grid(
   N=2^seq(2, 20),
   setup={
