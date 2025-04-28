@@ -1,4 +1,5 @@
 #include "binseg.h"
+#include <cmath>
 #include "PiecewiseFunction.h"
 
 Split::Split() {}
@@ -49,11 +50,11 @@ void Set::write_cumsums(int write_index){
   weighted_squares.cumsum_vec[write_index] = total_weighted_squares;
 }
 
-static dist_map_type dist_map;
-// we need get_dist_map in this file to query map contents from
+static dist_umap_type dist_umap;
+// we need get_dist_umap in this file to query map contents from
 // interface.cpp
-dist_map_type* get_dist_map(void){
-  return &dist_map;
+dist_umap_type* get_dist_umap(void){
+  return &dist_umap;
 }
 
 class CumDistribution : public Distribution {
@@ -139,7 +140,7 @@ public:
       description = DESC;                                               \
       param_names_vec.push_back("mean");                                \
       if(var_param)param_names_vec.push_back("var");                  \
-      dist_map.emplace( #NAME, this );					\
+      dist_umap.emplace( #NAME, this );					\
     }                                                                   \
   };                                                                    \
   static CONCAT(NAME,Distribution) NAME;
@@ -277,7 +278,7 @@ class absDistribution : public Distribution {
       description = DESC;                                       \
       param_names_vec.push_back("median");                      \
       if(var_param)param_names_vec.push_back("scale");        \
-      dist_map.emplace( #NAME, this );                          \
+      dist_umap.emplace( #NAME, this );                          \
     }                                                           \
   };                                                            \
 static CONCAT(NAME, Distribution) NAME;
@@ -398,15 +399,15 @@ public:
 };
 
 typedef std::multiset<Segment> segment_set_type;
-static factory_map_type factory_map;
+static container_umap_type container_umap;
 ContainerFactory::ContainerFactory
 (const char *name, construct_fun_type construct, destruct_fun_type destruct){
   construct_fun_ptr = construct;
   destruct_fun_ptr = destruct;
-  factory_map.emplace(name, this);
+  container_umap.emplace(name, this);
 }
-factory_map_type* get_factory_map(void){
-  return &factory_map;
+container_umap_type* get_container_umap(void){
+  return &container_umap;
 }
 
 #define CMAKER(CONTAINER, INSERT, BEST) \
@@ -450,7 +451,7 @@ public:
    double *subtrain_borders, Distribution *dist_ptr,
    int min_segment_length_arg
    ){
-    factory_ptr = factory_map.at(container_str);
+    factory_ptr = container_umap.at(container_str);
     container_ptr = factory_ptr->construct_fun_ptr();
     min_segment_length = min_segment_length_arg;
     subtrain.dist_ptr = dist_ptr;
@@ -664,7 +665,12 @@ int binseg
       return ERROR_POSITIONS_MUST_INCREASE;
     }
   }
-  Distribution* dist_ptr = dist_map.at(distribution_str);
+  for(int data_i=0; data_i<n_data; data_i++){
+    if(!std::isfinite(data_vec[data_i])){
+      return ERROR_DATA_MUST_BE_FINITE;
+    }
+  }
+  Distribution* dist_ptr = dist_umap.at(distribution_str);
   for(int data_i=0; data_i<n_data; data_i++){
     int status = dist_ptr->check_data(data_vec[data_i]);
     if(status != 0){
@@ -769,5 +775,5 @@ int get_n_subtrain
   
 param_names_type* get_param_names
 (const char *distribution_str){
-  return &(dist_map.at(distribution_str)->param_names_vec);
+  return &(dist_umap.at(distribution_str)->param_names_vec);
 }

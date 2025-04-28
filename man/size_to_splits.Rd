@@ -12,7 +12,7 @@ during the optimization.}
 
 \value{Number of splits, integer. }
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 

@@ -17,7 +17,7 @@ size, and column splits with number of splits to check after
 computing that model size; "totals" which is a data table with
 total number of splits for each case. }
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 

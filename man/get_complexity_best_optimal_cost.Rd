@@ -19,7 +19,7 @@ of size s.}
 
 \value{data table with one row for each f(d,s) value computed.}
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 

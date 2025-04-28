@@ -2,6 +2,7 @@
 #include "depth_first.h"
 #include "binseg.h"
 #include "cum_median.h"
+#include <stdio.h>
 
 //' Efficient log-linear cumulative median.
 // [[Rcpp::export]]
@@ -53,14 +54,14 @@ Rcpp::CharacterVector get_param_names_vec
 //' parameters, description.
 // [[Rcpp::export]]
 Rcpp::DataFrame get_distribution_info(){
-  dist_map_type *dmap = get_dist_map();
+  dist_umap_type *dmap = get_dist_umap();
   int n_items = dmap->size();
   Rcpp::CharacterVector dist_name_vec(n_items);
   Rcpp::CharacterVector desc_vec(n_items);
   Rcpp::List params_list(n_items);
   params_list.attr("class") = "AsIs";
   int i=0;
-  for(dist_map_type::iterator it=dmap->begin(); it != dmap->end(); it++){
+  for(dist_umap_type::iterator it=dmap->begin(); it != dmap->end(); it++){
     desc_vec[i] = it->second->description;
     dist_name_vec[i] = it->first;
     params_list[i] = get_param_names_vec(it->first);
@@ -101,6 +102,10 @@ Rcpp::List binseg_interface
  const Rcpp::LogicalVector is_validation_vec,
  const Rcpp::NumericVector position_vec
  ) {
+  const double *data_ptr=0;
+  const double *weight_ptr=0;
+  const int *is_validation_ptr=0;
+  const double *position_ptr=0;
   int n_data = data_vec.size();
   if(n_data < 1){
     Rcpp::stop("need at least one data point"); 
@@ -114,10 +119,11 @@ Rcpp::List binseg_interface
   if(position_vec.size() != n_data){
     Rcpp::stop("length of position_vec must be same as data_vec");
   }
-  if(Rcpp::any(!Rcpp::is_finite(data_vec))){
-    Rcpp::stop("data must be finite");
-  }
-  int n_subtrain = get_n_subtrain(n_data, &is_validation_vec[0]);
+  data_ptr = data_vec.begin();
+  weight_ptr = weight_vec.begin();
+  is_validation_ptr = is_validation_vec.begin();
+  position_ptr = position_vec.begin();
+  int n_subtrain = get_n_subtrain(n_data, is_validation_ptr);
   if(n_subtrain == 0){
     Rcpp::stop("need at least one subtrain data");
   }
@@ -129,7 +135,7 @@ Rcpp::List binseg_interface
     param_names_vec = get_param_names_vec(distribution_str);
   }
   catch(const std::out_of_range& err){
-    Rcpp::stop(unrecognized<dist_map_type>("distribution", get_dist_map));
+    Rcpp::stop(unrecognized<dist_umap_type>("distribution", get_dist_umap));
   }
   int n_params = param_names_vec.size();
   Rcpp::NumericVector subtrain_borders(n_subtrain+1);
@@ -146,9 +152,9 @@ Rcpp::List binseg_interface
   Rcpp::IntegerVector invalidates_index(max_segments);
   Rcpp::IntegerVector invalidates_after(max_segments);
   int status = binseg 
-    (&data_vec[0], &weight_vec[0],
+    (data_ptr, weight_ptr,
      n_data, max_segments, min_segment_length,
-     &is_validation_vec[0], &position_vec[0],
+     is_validation_ptr, position_ptr,
      distribution_str.c_str(),
      container_str.c_str(),
      //inputs above, outputs below.
@@ -160,11 +166,14 @@ Rcpp::List binseg_interface
   if(status == ERROR_DATA_MUST_BE_INTEGER_FOR_POISSON_LOSS){
     Rcpp::stop("data must be integer for poisson loss");
   }
+  if(status == ERROR_DATA_MUST_BE_FINITE){
+    Rcpp::stop("data must be finite");
+  }
   if(status == ERROR_DATA_MUST_BE_NON_NEGATIVE_FOR_POISSON_LOSS){
     Rcpp::stop("data must be non-negative for poisson loss");
   }
   if(status == ERROR_UNRECOGNIZED_CONTAINER){
-    Rcpp::stop(unrecognized<factory_map_type>("container", get_factory_map));
+    Rcpp::stop(unrecognized<container_umap_type>("container", get_container_umap));
   }
   if(status == ERROR_TOO_MANY_SEGMENTS){
     Rcpp::stop("too many segments, max_segments=%d and min_segment_length=%d which would require at least %d data but n_subtrain=%d", max_segments, min_segment_length, max_segments*min_segment_length, n_subtrain); 

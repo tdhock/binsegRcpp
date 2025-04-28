@@ -8,7 +8,7 @@ parameters, description.}
 
 
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 

@@ -12,6 +12,7 @@
 #define ERROR_UNRECOGNIZED_CONTAINER 6
 #define ERROR_DATA_MUST_BE_INTEGER_FOR_POISSON_LOSS 7
 #define ERROR_DATA_MUST_BE_NON_NEGATIVE_FOR_POISSON_LOSS 8
+#define ERROR_DATA_MUST_BE_FINITE 9
 #define ERROR_POSITIONS_MUST_INCREASE -4
 
 class Distribution;
@@ -80,8 +81,8 @@ public:
   virtual double get_max_zero_var(Set &subtrain) = 0;
 };
 
-typedef std::unordered_map<std::string, Distribution*> dist_map_type;
-dist_map_type* get_dist_map(void);  
+typedef std::unordered_map<std::string, Distribution*> dist_umap_type;
+dist_umap_type* get_dist_umap(void);  
 
 int get_n_subtrain(const int, const int*);
 
@@ -144,5 +145,5 @@ public:
   destruct_fun_type destruct_fun_ptr;
   ContainerFactory(const char *name, construct_fun_type construct, destruct_fun_type destruct);
 };
-typedef std::unordered_map<std::string, ContainerFactory*> factory_map_type;
-factory_map_type* get_factory_map(void);
+typedef std::unordered_map<std::string, ContainerFactory*> container_umap_type;
+container_umap_type* get_container_umap(void);

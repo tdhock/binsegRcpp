@@ -15,7 +15,7 @@ of selected \code{segments}.}
 
 \value{data.table with one row for each segment.}
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 

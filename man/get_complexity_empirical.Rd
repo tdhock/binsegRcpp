@@ -13,7 +13,7 @@
 \value{data.table with one row per model size, and column splits with
 number of splits to check after computing that model size.}
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 

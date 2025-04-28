@@ -16,7 +16,7 @@ number of splits to check after computing that model size. Column
 case has values best (equal segment sizes, min splits to check)
 and worst (unequal segment sizes, max splits to check).}
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 

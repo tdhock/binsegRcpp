@@ -1,3 +1,7 @@
+Changes in version 2025.4.29
+
+- update Rcpp code in interface.cpp to avoid access warnings: use .begin() instead of &vec[0] to get pointer to first element of vector.
+
 Changes in version 2023.10.24
 
 - laplace test 1:8 yields asymmetric split.

@@ -69,7 +69,7 @@ is a data.table with columns:
 \item{invalidates.index}{index of param invalidated by this split.}
 \item{invalidates.after}{indicates if before/after params invalidated by this split.}}
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 

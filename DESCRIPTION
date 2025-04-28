@@ -1,8 +1,11 @@
 Package: binsegRcpp
 Type: Package
 Title: Efficient Implementation of Binary Segmentation
-Version: 2023.10.24
-Author: Toby Dylan Hocking
+Version: 2025.4.29
+Authors@R: person(given = c("Toby", "Dylan"),
+                  family = "Hocking",
+                  role = c("aut", "cre"),
+                  email = "toby.hocking@r-project.org")
 Maintainer: Toby Dylan Hocking <toby.hocking@r-project.org>
 Description: Standard template library 
  containers are used to implement an efficient binary segmentation

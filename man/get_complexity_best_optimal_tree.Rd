@@ -9,7 +9,7 @@
 
 \value{Data table with one row for each node in the tree.}
 
-\author{Toby Dylan Hocking}
+\author{Toby Dylan Hocking <toby.hocking@r-project.org> [aut, cre]}
 
 
 
