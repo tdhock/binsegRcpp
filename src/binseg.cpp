@@ -384,17 +384,8 @@ template <typename T>
 class MyContainer : public Container {
 public:
   T segment_container;
-  typename T::iterator best;
   int get_size(void){
     return segment_container.size();
-  }
-  void remove_best(void){
-    segment_container.erase(best);
-  }
-  virtual typename T::iterator get_best_it(void) = 0;  
-  const Segment* set_best(void){
-    best = get_best_it();
-    return &(*best);
   }
 };
 
@@ -410,14 +401,36 @@ container_umap_type* get_container_umap(void){
   return &container_umap;
 }
 
-#define CMAKER(CONTAINER, INSERT, BEST) \
+class QWrapper : public MyContainer< std::priority_queue<Segment> > {
+public:                                                               
+  void insert(Segment& new_seg){                                      
+    segment_container.push(new_seg);                                
+  }                                                                   
+  Segment get_best(void){
+    Segment seg = segment_container.top();
+    segment_container.pop();
+    return seg;
+  }                                                                   
+};
+Container* Qconstruct (){                            
+  return new QWrapper;                               
+}                                                                     
+void Qdestruct (Container *c_ptr){                   
+  delete c_ptr;                                                       
+}                                                                     
+static ContainerFactory Q_instance ( "pq", Qconstruct, Qdestruct );
+
+#define CMAKER(CONTAINER, INSERT, SET_IT, GET_SEG, ERASE)		\
   class CONCAT(CONTAINER,Wrapper) : public MyContainer< std::CONTAINER<Segment> > { \
   public:                                                               \
     void insert(Segment& new_seg){                                      \
       segment_container.INSERT(new_seg);                                \
     }                                                                   \
-    std::CONTAINER<Segment>::iterator get_best_it(void){                \
-      return BEST;                                                      \
+    Segment get_best(void){						\
+      SET_IT;								\
+      Segment seg = GET_SEG;						\
+      ERASE;								\
+      return seg;							\
     }                                                                   \
   };                                                                    \
   Container* CONCAT(CONTAINER,construct) (){                            \
@@ -429,9 +442,14 @@ container_umap_type* get_container_umap(void){
   static ContainerFactory CONCAT(CONTAINER,_instance)                   \
     ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
 
-CMAKER(multiset, insert, segment_container.begin())
+#define CIT(CONTAINER, INSERT, BEST) \
+  CMAKER(CONTAINER, INSERT, std::CONTAINER<Segment>::iterator it = BEST, *it, segment_container.erase(it))
 
-CMAKER(list, push_back, std::min_element(segment_container.begin(),segment_container.end()))
+CIT(multiset, insert, segment_container.begin())
+
+CIT(list, push_back, std::min_element(segment_container.begin(),segment_container.end()))
+
+CMAKER(priority_queue, push, , segment_container.top(), segment_container.pop())
 
 class Candidates {
 public:
@@ -729,35 +747,32 @@ int binseg
   int seg_i = 0;
   while(V.container_ptr->not_empty() && ++seg_i < max_segments){
     // Store loss and model parameters associated with this split.
-    const Segment *seg_ptr = V.container_ptr->set_best();
+    const Segment seg = V.container_ptr->get_best();
     out_arrays.save
       (seg_i, 
-       subtrain_loss[seg_i-1] + seg_ptr->best_decrease,
-       validation_loss[seg_i-1] + seg_ptr->validation_decrease,
-       seg_ptr->best_split.this_end,
-       seg_ptr->depth,
-       seg_ptr->best_split.before,
-       seg_ptr->best_split.after,
-       seg_ptr->invalidates_index,
-       seg_ptr->invalidates_after,
-       seg_ptr->best_split.this_end - seg_ptr->first_i + 1,
-       seg_ptr->last_i - seg_ptr->best_split.this_end);
+       subtrain_loss[seg_i-1] + seg.best_decrease,
+       validation_loss[seg_i-1] + seg.validation_decrease,
+       seg.best_split.this_end,
+       seg.depth,
+       seg.best_split.before,
+       seg.best_split.after,
+       seg.invalidates_index,
+       seg.invalidates_after,
+       seg.best_split.this_end - seg.first_i + 1,
+       seg.last_i - seg.best_split.this_end);
     // Finally add new split candidates if necessary.
     V.maybe_add
-      (seg_ptr->first_i, seg_ptr->best_split.this_end,
+      (seg.first_i, seg.best_split.this_end,
        0,//invalidates_after=0 => before_mean invalidated.
-       seg_i, seg_ptr->best_split.before.loss,
-       seg_ptr->before_validation_loss,
-       seg_ptr->depth);
+       seg_i, seg.best_split.before.loss,
+       seg.before_validation_loss,
+       seg.depth);
     V.maybe_add
-      (seg_ptr->best_split.this_end+1, seg_ptr->last_i,
+      (seg.best_split.this_end+1, seg.last_i,
        1,//invalidates_after=1 => after_mean invalidated.
-       seg_i, seg_ptr->best_split.after.loss,
-       seg_ptr->after_validation_loss,
-       seg_ptr->depth);
-    // Erase at end because we need seg_ptr->values during maybe_add
-    // inserts above.
-    V.container_ptr->remove_best();
+       seg_i, seg.best_split.after.loss,
+       seg.after_validation_loss,
+       seg.depth);
   }
   return 0;//SUCCESS.
 }
