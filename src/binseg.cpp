@@ -401,25 +401,6 @@ container_umap_type* get_container_umap(void){
   return &container_umap;
 }
 
-class QWrapper : public MyContainer< std::priority_queue<Segment> > {
-public:                                                               
-  void insert(Segment& new_seg){                                      
-    segment_container.push(new_seg);                                
-  }                                                                   
-  Segment get_best(void){
-    Segment seg = segment_container.top();
-    segment_container.pop();
-    return seg;
-  }                                                                   
-};
-Container* Qconstruct (){                            
-  return new QWrapper;                               
-}                                                                     
-void Qdestruct (Container *c_ptr){                   
-  delete c_ptr;                                                       
-}                                                                     
-static ContainerFactory Q_instance ( "pq", Qconstruct, Qdestruct );
-
 #define CMAKER(CONTAINER, INSERT, SET_IT, GET_SEG, ERASE)		\
   class CONCAT(CONTAINER,Wrapper) : public MyContainer< std::CONTAINER<Segment> > { \
   public:                                                               \
