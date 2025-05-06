@@ -441,8 +441,6 @@ CMAKER(priority_queue, PQ_STRUCT, push, , segment_container.top(), segment_conta
 //template <class T, class Container = vector<T>,  class Compare = less<typename Container::value_type> >
 //template < class T,                        // multiset::key_type/value_type           class Compare = less<T>,        // multiset::key_compare/value_compare           class Alloc = allocator<T> >    // multiset::allocator_type           > class multiset;
 
-
-
 class Candidates {
 public:
   ContainerFactory *factory_ptr;
