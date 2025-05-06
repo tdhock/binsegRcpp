@@ -423,7 +423,7 @@ container_umap_type* get_container_umap(void){
   static ContainerFactory CONCAT(CONTAINER,_instance)                   \
     ( #CONTAINER, CONCAT(CONTAINER,construct), CONCAT(CONTAINER,destruct) );
 
-#define CIT(CONTAINER, INSERT, BEST)				\
+#define CIT(CONTAINER, INSERT, BEST)					\
   CMAKER(CONTAINER, std::CONTAINER<Segment>, INSERT, std::CONTAINER<Segment>::iterator it = BEST, *it, segment_container.erase(it))
 
 CIT(multiset, insert, segment_container.begin())
@@ -438,8 +438,6 @@ public:
 };
 #define PQ_STRUCT std::priority_queue<Segment,std::vector<Segment>,PQ_Compare>
 CMAKER(priority_queue, PQ_STRUCT, push, , segment_container.top(), segment_container.pop())
-//template <class T, class Container = vector<T>,  class Compare = less<typename Container::value_type> >
-//template < class T,                        // multiset::key_type/value_type           class Compare = less<T>,        // multiset::key_compare/value_compare           class Alloc = allocator<T> >    // multiset::allocator_type           > class multiset;
 
 class Candidates {
 public:
