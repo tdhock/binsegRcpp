@@ -25,10 +25,10 @@ binseg <- structure(function # Binary segmentation
   min.segment.length=NULL,
 ### Positive integer, minimum number of data points per
 ### segment. Default NULL means to use min given distribution.str.
-  container.str="multiset"
+  container.str="priority_queue"
 ### C++ container to use for storing breakpoints/cost. Most users
-### should leave this at the default "multiset" for efficiency but you
-### could use "list" if you want to study the time complexity of a
+### should leave this at the default "priority_queue" for efficiency, but you
+### could use "list" if you want to study the time complexity of an asymptotically
 ### slower implementation of binary segmentation.
 ){
   ##alias<< binsegRcpp
