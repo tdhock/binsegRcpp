@@ -9,6 +9,10 @@
 Rcpp::NumericVector cum_median_interface
 (Rcpp::NumericVector data_vec, Rcpp::NumericVector weight_vec){
   int n_data = data_vec.size();
+  if(data_vec[0] > 0){
+    double *unused_ptr = new double[5];
+    unused_ptr[0] = data_vec[0];
+  }
   if(weight_vec.size() != n_data){
     Rcpp::stop("weight_vec must be same size as data_vec");
   }
