@@ -3,6 +3,7 @@
 #include <string>
 #include <string.h>
 #include <list>
+#include <queue>
 #include <algorithm>
 #include <set>//multiset
 #include <unordered_map>
@@ -129,8 +130,7 @@ class Container {
 public:
   virtual void insert(Segment&) = 0;
   virtual int get_size(void) = 0;
-  virtual const Segment* set_best(void) = 0;
-  virtual void remove_best(void) = 0;
+  virtual Segment get_best(void) = 0;
   virtual ~Container() {};
   bool not_empty(void){
     return get_size() > 0;

@@ -15,7 +15,7 @@ log-linear time, using coef method.}
     weight.vec = rep(1, 
         length(data.vec)), 
     min.segment.length = NULL, 
-    container.str = "multiset")}
+    container.str = "priority_queue")}
 \arguments{
   \item{distribution.str}{String indicating distribution/loss function, use
 \code{\link{get_distribution_info}} to see possible values.}
@@ -32,8 +32,8 @@ default=1:length(\code{data.vec}).}
   \item{min.segment.length}{Positive integer, minimum number of data points per
 segment. Default NULL means to use min given \code{distribution.str}.}
   \item{container.str}{C++ container to use for storing breakpoints/cost. Most users
-should leave this at the default "multiset" for efficiency but you
-could use "list" if you want to study the time complexity of a
+should leave this at the default "priority_queue" for efficiency, but you
+could use "list" if you want to study the time complexity of an asymptotically
 slower implementation of binary segmentation.}
 }
 \details{Each iteration involves first computing and storing the

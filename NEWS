@@ -1,3 +1,7 @@
+Changes in version 2025.5.6
+
+- add new container: STL priority_queue (heap), almost no difference with multiset.
+
 Changes in version 2025.4.29
 
 - update Rcpp code in interface.cpp to avoid access warnings: use .begin() instead of &vec[0] to get pointer to first element of vector.
