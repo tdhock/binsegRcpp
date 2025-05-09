@@ -139,7 +139,7 @@ public:
       var_param = VARIANCE;						\
       description = DESC;                                               \
       param_names_vec.push_back("mean");                                \
-      if(var_param)param_names_vec.push_back("var");                  \
+      if(var_param)param_names_vec.push_back("var");			\
       dist_umap.emplace( #NAME, this );					\
     }                                                                   \
   };                                                                    \
@@ -216,22 +216,27 @@ class absDistribution : public Distribution {
       int after_i = n_candidates-1-before_i;
       candidate_split_ptr->set_end_dist
         (first_data, first_candidate+before_i, last_data);
-      candidate_split_ptr->before.center = 
-        before_median_vec[before_i];
-      candidate_split_ptr->after.center = 
-        after_median_vec[after_i];
-      candidate_split_ptr->before.spread =
-        before_loss_vec[before_i]/before_weight_vec[before_i];
-      candidate_split_ptr->after.spread =
-        after_loss_vec[after_i]/after_weight_vec[after_i];
-      candidate_split_ptr->before.loss = adjust
-        (before_loss_vec[before_i],
-         before_weight_vec[before_i],
-         candidate_split_ptr->before.spread);
-      candidate_split_ptr->after.loss = adjust
-        (after_loss_vec[after_i],
-         after_weight_vec[after_i],
-         candidate_split_ptr->after.spread);
+      std::vector<double> *loss_ptr, *median_ptr, *weight_ptr;
+      ParamsLoss *pl_ptr;
+      int i;
+      for(int direction=0; direction<2; direction++){
+	if(direction==0){
+	  loss_ptr = &before_loss_vec;
+	  median_ptr = &before_median_vec;
+	  weight_ptr = &before_weight_vec;
+	  pl_ptr = &candidate_split_ptr->before;
+	  i = before_i;
+	}else{
+	  loss_ptr = &after_loss_vec;
+	  median_ptr = &after_median_vec;
+	  weight_ptr = &after_weight_vec;
+	  pl_ptr = &candidate_split_ptr->after;
+	  i = after_i;
+	}
+	pl_ptr->center = (*median_ptr)[i];
+	pl_ptr->spread = (*loss_ptr)[i]/(*weight_ptr)[i];
+	pl_ptr->loss = adjust((*loss_ptr)[i], (*weight_ptr)[i], pl_ptr->spread);
+      }
       best_split_ptr->maybe_update(candidate_split_ptr);
     }
   }
@@ -270,17 +275,17 @@ class absDistribution : public Distribution {
   }
 };
 
-#define ABS_DIST(NAME, DESC, VARIANCE)                          \
-  class CONCAT(NAME, Distribution) : public absDistribution {   \
-  public:                                                       \
-    CONCAT(NAME, Distribution) (){                              \
-      var_param = VARIANCE;                                   \
-      description = DESC;                                       \
-      param_names_vec.push_back("median");                      \
-      if(var_param)param_names_vec.push_back("scale");        \
+#define ABS_DIST(NAME, DESC, VARIANCE)				 \
+  class CONCAT(NAME, Distribution) : public absDistribution {	 \
+  public:							 \
+    CONCAT(NAME, Distribution) (){				 \
+      var_param = VARIANCE;					 \
+      description = DESC;					 \
+      param_names_vec.push_back("median");			 \
+      if(var_param)param_names_vec.push_back("scale");		 \
       dist_umap.emplace( #NAME, this );                          \
-    }                                                           \
-  };                                                            \
+    }								 \
+  };								 \
 static CONCAT(NAME, Distribution) NAME;
 
 ABS_DIST(l1, "change in median (loss is total absolute deviation)", false)
