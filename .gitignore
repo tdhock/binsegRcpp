@@ -5,3 +5,6 @@ src-*/
 *o
 *so
 *dll
+.ci/atime/*png
+.ci/atime/tests.RData
+.ci/atime/install_seconds.txt
