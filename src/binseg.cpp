@@ -488,12 +488,12 @@ public:
 	write_subtrain = last_subtrain_i >= 0 && is_subtrain;
       }
       if(write_subtrain || write_end){
+	if(write_index==0){
+	  subtrain_borders[write_index] = position_vec[0]-0.5;
+	}
 	if(write_subtrain){
 	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
 	  pos_change = pos_total/2;
-	  if(write_index==0){
-	    subtrain_borders[write_index] = position_vec[0]-0.5;
-	  }
 	}else{
 	  pos_change = position_vec[n_data-1]+0.5;//last.
 	}

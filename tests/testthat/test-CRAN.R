@@ -126,6 +126,21 @@ test_that("error for two segments with one subtrain", {
   }, "too many segments")
 })
 
+test_that("one data point, subtrain borders", {
+  L <- binsegRcpp::binseg_normal(1)
+  expect_equal(L$subtrain.borders, c(0.5, 1.5))
+})
+
+test_that("two data, subtrain borders", {
+  L <- binsegRcpp::binseg_normal(1:2)
+  expect_equal(L$subtrain.borders, c(0.5, 1.5, 2.5))
+})
+
+test_that("two data, one valid, subtrain borders", {
+  L <- binsegRcpp::binseg_normal(1:2, is.validation.vec = c(TRUE,FALSE))
+  expect_equal(L$subtrain.borders, c(0.5, 2.5))
+})
+
 test_that("two data with one subtrain and one segment is ok", {
   L <- binsegRcpp::binseg_normal(1:2, 1, is.validation.vec=c(FALSE,TRUE))
   fit <- L$splits
