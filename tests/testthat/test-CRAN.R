@@ -100,12 +100,18 @@ test_that("validation loss ok for simple example", {
   }, "some consecutive data values are identical in set=validation")
   fit <- L$splits
   subtrain.vec <- data.vec[is.validation==0]
+  subtrain.pos <- position[is.validation==0]
   validation.vec <- data.vec[is.validation==1]
   m1 <- mean(subtrain.vec)
   expect_equal(fit$validation.loss[1], sum((validation.vec-m1)^2))
   m2 <- rep(c(1.5, 30), c(4, 2))
   expect_equal(fit$validation.loss[2], sum((validation.vec-m2)^2))
   expect_equal(fit$validation.loss[3], 0)
+  expected.borders <- c(
+    position[1]-0.5,
+    subtrain.pos[-1]-diff(subtrain.pos)/2,
+    position[length(position)]+0.5)
+  expect_equal(L$subtrain.borders, expected.borders)
 })
 
 test_that("error for no subtrain data", {
