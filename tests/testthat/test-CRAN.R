@@ -107,10 +107,7 @@ test_that("validation loss ok for simple example", {
   m2 <- rep(c(1.5, 30), c(4, 2))
   expect_equal(fit$validation.loss[2], sum((validation.vec-m2)^2))
   expect_equal(fit$validation.loss[3], 0)
-  expected.borders <- c(
-    position[1]-0.5,
-    subtrain.pos[-1]-diff(subtrain.pos)/2,
-    position[length(position)]+0.5)
+  expected.borders <- c(0.5, 52.5, 151.5, 203.5)
   expect_equal(L$subtrain.borders, expected.borders)
 })
 
@@ -139,6 +136,11 @@ test_that("two data, subtrain borders", {
 test_that("two data, one valid, subtrain borders", {
   L <- binsegRcpp::binseg_normal(1:2, is.validation.vec = c(TRUE,FALSE))
   expect_equal(L$subtrain.borders, c(0.5, 2.5))
+})
+
+test_that("three data, middle valid, subtrain borders", {
+  L <- binsegRcpp::binseg_normal(1:3, is.validation.vec = c(FALSE,TRUE,FALSE))
+  expect_equal(L$subtrain.borders, c(0.5, 2.5, 3.5))
 })
 
 test_that("two data with one subtrain and one segment is ok", {

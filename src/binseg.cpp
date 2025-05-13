@@ -502,6 +502,12 @@ public:
 	while(read_index < n_data && position_vec[read_index] <= pos_change){
 	  double data_value = data_vec[read_index];
           double weight_value = weight_vec[read_index];
+	  if(read_index < n_data-1){
+	    double maybe_change = (position_vec[read_index]+position_vec[read_index+1])/2;
+	    if(maybe_change>pos_change){
+	      subtrain_borders[write_index+1] = maybe_change;
+	    }
+	  }
           Set *this_set;
 	  if(is_validation_vec[read_index]){
             this_set = &validation;
