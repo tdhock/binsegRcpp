@@ -1,3 +1,7 @@
+Changes in version 2025.5.13
+
+- correct first/last subtrain.borders (was defined using first/last validation data, now using all/train data).
+
 Changes in version 2025.5.6
 
 - add new container: STL priority_queue (heap), almost no difference with multiset.
