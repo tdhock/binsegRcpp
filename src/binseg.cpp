@@ -488,20 +488,26 @@ public:
 	write_subtrain = last_subtrain_i >= 0 && is_subtrain;
       }
       if(write_subtrain || write_end){
+	if(write_index==0){
+	  subtrain_borders[write_index] = position_vec[0]-0.5;
+	}
 	if(write_subtrain){
 	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
 	  pos_change = pos_total/2;
-	  if(write_index==0){
-	    subtrain_borders[write_index] = position_vec[last_subtrain_i]-0.5;
-	  }
 	}else{
-	  pos_change = position_vec[data_i-1]+0.5;//last.
+	  pos_change = position_vec[n_data-1]+0.5;//last.
 	}
 	subtrain_borders[write_index+1] = pos_change;
 	int read_index=read_start;
 	while(read_index < n_data && position_vec[read_index] <= pos_change){
 	  double data_value = data_vec[read_index];
           double weight_value = weight_vec[read_index];
+	  if(read_index < n_data-1){
+	    double maybe_change = (position_vec[read_index]+position_vec[read_index+1])/2;
+	    if(maybe_change>pos_change){
+	      subtrain_borders[write_index+1] = maybe_change;
+	    }
+	  }
           Set *this_set;
 	  if(is_validation_vec[read_index]){
             this_set = &validation;

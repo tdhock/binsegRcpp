@@ -91,8 +91,9 @@ binseg <- structure(function # Binary segmentation
     is.validation.vec, position.vec)
   na <- function(x)ifelse(x<0, NA, x)
   ##value<< list of class binsegRcpp with elements min.segment.length,
-  ##distribution.str, param.names, subtrain.borders and splits, which
-  ##is a data.table with columns:
+  ##distribution.str, param.names, subtrain.borders (positions used
+  ##for assignment of segment means to validation data) and splits,
+  ##which is a data.table with columns:
   dt <- with(result, list(
     min.segment.length=min.segment.length,
     distribution.str=distribution.str,

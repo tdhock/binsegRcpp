@@ -100,12 +100,15 @@ test_that("validation loss ok for simple example", {
   }, "some consecutive data values are identical in set=validation")
   fit <- L$splits
   subtrain.vec <- data.vec[is.validation==0]
+  subtrain.pos <- position[is.validation==0]
   validation.vec <- data.vec[is.validation==1]
   m1 <- mean(subtrain.vec)
   expect_equal(fit$validation.loss[1], sum((validation.vec-m1)^2))
   m2 <- rep(c(1.5, 30), c(4, 2))
   expect_equal(fit$validation.loss[2], sum((validation.vec-m2)^2))
   expect_equal(fit$validation.loss[3], 0)
+  expected.borders <- c(0.5, 52.5, 151.5, 203.5)
+  expect_equal(L$subtrain.borders, expected.borders)
 })
 
 test_that("error for no subtrain data", {
@@ -118,6 +121,26 @@ test_that("error for two segments with one subtrain", {
   expect_error({
     binsegRcpp::binseg_normal(1:2, 2, is.validation.vec=c(FALSE,TRUE))
   }, "too many segments")
+})
+
+test_that("one data point, subtrain borders", {
+  L <- binsegRcpp::binseg_normal(1)
+  expect_equal(L$subtrain.borders, c(0.5, 1.5))
+})
+
+test_that("two data, subtrain borders", {
+  L <- binsegRcpp::binseg_normal(1:2)
+  expect_equal(L$subtrain.borders, c(0.5, 1.5, 2.5))
+})
+
+test_that("two data, one valid, subtrain borders", {
+  L <- binsegRcpp::binseg_normal(1:2, is.validation.vec = c(TRUE,FALSE))
+  expect_equal(L$subtrain.borders, c(0.5, 2.5))
+})
+
+test_that("three data, middle valid, subtrain borders", {
+  L <- binsegRcpp::binseg_normal(1:3, is.validation.vec = c(FALSE,TRUE,FALSE))
+  expect_equal(L$subtrain.borders, c(0.5, 2.5, 3.5))
 })
 
 test_that("two data with one subtrain and one segment is ok", {

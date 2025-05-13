@@ -55,8 +55,9 @@ splits. For l1/laplace distributions the best case is O(N log N
 log K) time for equal splits and worst case is O(N log N K) time
 for unequal splits.}
 \value{list of class binsegRcpp with elements \code{min.segment.length},
-\code{distribution.str}, param.names, subtrain.borders and splits, which
-is a data.table with columns:
+\code{distribution.str}, param.names, subtrain.borders (positions used
+for assignment of segment means to validation data) and splits,
+which is a data.table with columns:
 \item{segments}{number of segments}
 \item{loss}{total subtrain loss}
 \item{validation.loss}{total validation loss}
