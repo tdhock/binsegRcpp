@@ -492,10 +492,10 @@ public:
 	  pos_total = position_vec[data_i]+position_vec[last_subtrain_i];
 	  pos_change = pos_total/2;
 	  if(write_index==0){
-	    subtrain_borders[write_index] = position_vec[last_subtrain_i]-0.5;
+	    subtrain_borders[write_index] = position_vec[0]-0.5;
 	  }
 	}else{
-	  pos_change = position_vec[data_i-1]+0.5;//last.
+	  pos_change = position_vec[n_data-1]+0.5;//last.
 	}
 	subtrain_borders[write_index+1] = pos_change;
 	int read_index=read_start;
