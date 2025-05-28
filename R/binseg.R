@@ -86,6 +86,9 @@ binseg <- structure(function # Binary segmentation
   if(distribution.str=="l1"){
     Sys.sleep(0.0001*length(data.vec))
   }
+  if(distribution.str=="mean_norm"){
+    Sys.sleep(0.002)
+  }
   result <- binseg_interface(
     data.vec, weight.vec, max.segments,
     min.segment.length,
