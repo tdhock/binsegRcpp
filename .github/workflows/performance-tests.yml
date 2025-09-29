@@ -29,4 +29,4 @@ jobs:
         with:
           extra-packages: any::rcmdcheck
           needs: check
-      - uses: Anirban166/Autocomment-atime-results@v1.4.1
+      - uses: Anirban166/Autocomment-atime-results@v1.4.3
