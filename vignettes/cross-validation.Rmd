@@ -25,71 +25,70 @@ n.validation.sets <- 100
 n.folds.vec <- c(10, 2)
 prop.valid.vec <- 1/n.folds.vec
 sim.result.list <- list()
-if(interactive()){
-  for(data.seed in 1:100){
-    set.seed(data.seed)
-    data.vec <- rnorm(n.data, data.mean.vec, 0.1)
-    is.valid.vec.list <- list()
-    for(n.folds in n.folds.vec){
-      uniq.folds <- 1:n.folds
-      n.seeds <- n.validation.sets/n.folds
-      split.type <- sprintf("%d-fold %d times", n.folds, n.seeds)
-      for(seed in 1:n.seeds){
-        set.seed(seed)
-        fold.vec <- sample(rep(uniq.folds, l=n.data))
-        for(valid.fold in uniq.folds){
-          is.valid.vec.list[[split.type]][[paste(seed, valid.fold)]] <-
-            fold.vec==valid.fold
-        }
+for(data.seed in 1:100){
+  set.seed(data.seed)
+  data.vec <- rnorm(n.data, data.mean.vec, 0.1)
+  is.valid.vec.list <- list()
+  for(n.folds in n.folds.vec){
+    uniq.folds <- 1:n.folds
+    n.seeds <- n.validation.sets/n.folds
+    split.type <- sprintf("%d-fold %d times", n.folds, n.seeds)
+    for(seed in 1:n.seeds){
+      set.seed(seed)
+      fold.vec <- sample(rep(uniq.folds, l=n.data))
+      for(valid.fold in uniq.folds){
+        is.valid.vec.list[[split.type]][[paste(seed, valid.fold)]] <-
+          fold.vec==valid.fold
       }
     }
-    for(prop.valid in prop.valid.vec){
-      split.type <- sprintf("%d%% %d times", 100*prop.valid, n.validation.sets)
-      prop.vec <- c(subtrain=1-prop.valid, validation=prop.valid)
-      for(split.i in 1:n.validation.sets){
-        set.seed(split.i)
-        is.valid.vec.list[[split.type]][[split.i]] <- binsegRcpp::random_set_vec(
-          n.data, prop.vec) == "validation"
-      }
-    }
-    loss.dt <- CJ(split.i=1:n.validation.sets, type=names(is.valid.vec.list))[, {
-      is.valid <- is.valid.vec.list[[type]][[split.i]]
-      bs.model <- binsegRcpp::binseg_normal(data.vec, is.validation.vec=is.valid)
-      bs.model$splits[, data.table(
-        segments,
-        validation.loss)]
-    }, by=.(split.i, type)]
-    loss.stats <- loss.dt[, .(
-      mean.valid.loss=mean(validation.loss)
-    ), by=.(type, segments)]
-    select.each.split <- loss.dt[
-    , .SD[which.min(validation.loss)],
-      by=.(type, split.i)]
-    selected.times <- select.each.split[, .(
-      times=.N
-    ), by=.(type, segments)]
-    selected.segments <- rbind(
-      select.each.split[, .(
-        selected=min(segments)
-      ), by=.(method=paste(type, "min err, min segs"))],
-      selected.times[, .(
-        selected=segments[which.max(times)]
-      ), by=.(method=paste(type, "min err, max times"))],
-      loss.stats[, .(
-        selected=segments[which.min(mean.valid.loss)]
-      ), by=.(method=paste(type, "mean err, min err"))]
-    )
-    sim.result.list[[data.seed]] <- data.table(
-      data.seed, selected.segments, n.segments)
   }
-  sim.result <- do.call(rbind, sim.result.list)
-  (sim.err <- sim.result[, .(
-    zero.one.loss=sum(selected != n.segments),
-    L1.loss=sum(abs(selected-n.segments)),
-    L2.loss=sum((selected-n.segments)^2)
-  ), by=method][order(zero.one.loss)])
-  plot(data.vec)
+  for(prop.valid in prop.valid.vec){
+    split.type <- sprintf("%d%% %d times", 100*prop.valid, n.validation.sets)
+    prop.vec <- c(subtrain=1-prop.valid, validation=prop.valid)
+    for(split.i in 1:n.validation.sets){
+      set.seed(split.i)
+      is.valid.vec.list[[split.type]][[split.i]] <- binsegRcpp::random_set_vec(
+        n.data, prop.vec) == "validation"
+    }
+  }
+  loss.dt <- CJ(split.i=1:n.validation.sets, type=names(is.valid.vec.list))[, {
+    is.valid <- is.valid.vec.list[[type]][[split.i]]
+    bs.model <- binsegRcpp::binseg_normal(data.vec, is.validation.vec=is.valid)
+    bs.model$splits[, data.table(
+      segments,
+      validation.loss)]
+  }, by=.(split.i, type)]
+  loss.stats <- loss.dt[, .(
+    mean.valid.loss=mean(validation.loss)
+  ), by=.(type, segments)]
+  select.each.split <- loss.dt[
+  , .SD[which.min(validation.loss)],
+    by=.(type, split.i)]
+  selected.times <- select.each.split[, .(
+    times=.N
+  ), by=.(type, segments)]
+  selected.segments <- rbind(
+    select.each.split[, .(
+      selected=min(segments)
+    ), by=.(method=paste(type, "min err, min segs"))],
+    selected.times[, .(
+      selected=segments[which.max(times)]
+    ), by=.(method=paste(type, "min err, max times"))],
+    loss.stats[, .(
+      selected=segments[which.min(mean.valid.loss)]
+    ), by=.(method=paste(type, "mean err, min err"))]
+  )
+  sim.result.list[[data.seed]] <- data.table(
+    data.seed, selected.segments, n.segments)
 }
+sim.result <- do.call(rbind, sim.result.list)
+(sim.err <- sim.result[, .(
+  zero.one.loss=sum(selected != n.segments),
+  L1.loss=sum(abs(selected-n.segments)),
+  L2.loss=sum((selected-n.segments)^2)
+), by=method][order(zero.one.loss)])
+
+
 ```
 
 The code above compares several types of cross-validation for
