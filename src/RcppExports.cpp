@@ -10,6 +10,17 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// max_segs_interface
+int max_segs_interface(int N);
+RcppExport SEXP _binsegRcpp_max_segs_interface(SEXP NSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type N(NSEXP);
+    rcpp_result_gen = Rcpp::wrap(max_segs_interface(N));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cum_median_interface
 Rcpp::NumericVector cum_median_interface(Rcpp::NumericVector data_vec, Rcpp::NumericVector weight_vec);
 RcppExport SEXP _binsegRcpp_cum_median_interface(SEXP data_vecSEXP, SEXP weight_vecSEXP) {
@@ -64,6 +75,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_binsegRcpp_max_segs_interface", (DL_FUNC) &_binsegRcpp_max_segs_interface, 1},
     {"_binsegRcpp_cum_median_interface", (DL_FUNC) &_binsegRcpp_cum_median_interface, 2},
     {"_binsegRcpp_depth_first_interface", (DL_FUNC) &_binsegRcpp_depth_first_interface, 2},
     {"_binsegRcpp_get_distribution_info", (DL_FUNC) &_binsegRcpp_get_distribution_info, 0},

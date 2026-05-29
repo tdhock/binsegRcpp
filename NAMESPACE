@@ -1,4 +1,4 @@
-useDynLib(binsegRcpp, .registration=TRUE)
+useDynLib(binsegRcpp)
 import(data.table)
 importFrom("graphics", "lines", "points", "text")
 importFrom(Rcpp, evalCpp)

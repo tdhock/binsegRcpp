@@ -3,6 +3,11 @@
 #include "binseg.h"
 #include "cum_median.h"
 
+// [[Rcpp::export]]
+int max_segs_interface(int N){
+  return N/2;
+}
+
 //' Efficient log-linear cumulative median.
 // [[Rcpp::export]]
 Rcpp::NumericVector cum_median_interface
