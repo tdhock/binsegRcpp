@@ -7,7 +7,7 @@ partial.list <- lapply(atime::atime_grid(
 test.list <- atime::atime_test_list(
   N=2^seq(2, 20),
   setup={
-    max.segs <- binsegRcpp:::max_segs(N)
+    max.segs <- binsegRcpp:::max_segs_interface(N)
     data.vec <- 1:N
   },
   tests=partial.list,
