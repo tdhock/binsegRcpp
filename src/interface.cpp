@@ -4,6 +4,11 @@
 #include "cum_median.h"
 #include <stdio.h>
 
+// [[Rcpp::export]]
+int pr_mseg(int N){
+  return N/2;
+}
+
 //' Efficient log-linear cumulative median.
 // [[Rcpp::export]]
 Rcpp::NumericVector cum_median_interface
