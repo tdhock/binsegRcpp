@@ -27,6 +27,6 @@ jobs:
           use-public-rspm: true
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck, binsegRcpp
+          extra-packages: any::rcmdcheck, binsegRcpp, tdhock/atime
           needs: check
       - uses: Anirban166/Autocomment-atime-results@v1.4.1
