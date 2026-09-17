@@ -108,6 +108,7 @@ jobs:
             fi
         }
         
+        echo -e "\n" >> comment.md
         echo -e "\n| Task | Duration |" >> comment.md
         echo -e "|---|---|" >> comment.md
         echo -e "| R setup and installing dependencies   | $(formatTime $R_SETUP_DURATION)       |" >> comment.md
