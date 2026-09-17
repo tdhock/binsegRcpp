@@ -82,7 +82,7 @@ jobs:
           local png=$1
           curl -F "file=@$png" -F "visibility=unlisted" https://picrd.com/api/upload | sed 's/.*image_url":"//' | sed 's/",".*//'
         }
-	cat comment-number.txt
+        cat comment-number.txt
         PREVIEW_URL=$(uploadImage .ci/atime/tests_preview_facet.png)
         ALL_URL=$(uploadImage .ci/atime/tests_all_facet.png)
         echo $PREVIEW_URL $ALL_URL
