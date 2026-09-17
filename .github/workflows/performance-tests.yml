@@ -70,10 +70,10 @@ jobs:
         console.log(content);
         prc = JSON.parse(content);
         flist = prc.filter((o) => { return o.body.startsWith(tag); });
-	console.log(flist);
+        console.log(flist);
         if(flist.length == 0) process.exit(0);
-	comment_id = flist[0].id;
-	console.log(comment_id);
+        comment_id = flist[0].id;
+        console.log(comment_id);
         fs.writeFileSync('comment-number.txt', comment_id+"");
     - name: add images
       shell: bash
