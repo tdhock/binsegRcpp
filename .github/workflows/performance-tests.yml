@@ -108,13 +108,12 @@ jobs:
             fi
         }
         
-        echo -e "\n" >> comment.md
         echo -e "\n| Task | Duration |" >> comment.md
         echo -e "|---|---|" >> comment.md
         echo -e "| R setup and installing dependencies   | $(formatTime $R_SETUP_DURATION)       |" >> comment.md
         echo -e "| Installing different package versions | $(formatTime $VERSION_SETUP_DURATION) |" >> comment.md
         echo -e "| Running and plotting the test cases   | $(formatTime $ATIME_TESTS_DURATION)   |" >> comment.md
-    - name: post diff in comment
+    - name: convert comment to json https://stackoverflow.com/questions/1251999/how-can-i-replace-each-newline-n-with-a-space-using-sed/1252191#1252191 then post
       if: ${{ github.event_name == 'pull_request' }}
       env:
         PR_COMMENT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -128,7 +127,7 @@ jobs:
         COMMENT_NUMBER=$(cat comment-number.txt)
         if [ "$COMMENT_NUMBER" == "" ]; then CMD=$PR_API; else CMD=$ISSUES_API/comments/$COMMENT_NUMBER; fi; echo $CMD
         cat comment.md
-        MD=$(sed 's/"/\\"/g' comment.md | awk '$1=$1' ORS='\\n')
+        MD=$(sed 's/"/\\"/g' comment.md | sed ':a;N;$!ba;s/\n/\\n/g')
         echo '{"body":"'$MD'"}' > pr-comment.json
         cat pr-comment.json
         curl --no-progress-meter -L -H "Accept: $ACCEPT" -H "X-GitHub-Api-Version: $VERSION" -X POST -H "Authorization: Bearer $PR_COMMENT_TOKEN" $CMD -d "@pr-comment.json"
